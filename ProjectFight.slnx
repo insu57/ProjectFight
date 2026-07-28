@@ -1,0 +1,7 @@
+﻿<Solution>
+  <Project Path="MotionWarping.Editor.csproj" />
+  <Project Path="MotionWarping.Runtime.csproj" />
+  <Project Path="Assembly-CSharp-firstpass.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+</Solution>

@@ -10,6 +10,8 @@
 /[Bb]uilds/
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
+/Assets/External/
+/Assets/Plugins/Demigiant
 *.log
 
 # MemoryCaptures can get excessive in size.
