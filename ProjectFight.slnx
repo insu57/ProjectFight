@@ -1,7 +1,17 @@
 ﻿<Solution>
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="AstarPathfindingProject.csproj" />
+  <Project Path="AstarPathfindingProjectEditor.csproj" />
+  <Project Path="com.unity.animations.springbone.csproj" />
+  <Project Path="com.unity.animations.springbone.editor.csproj" />
   <Project Path="MotionWarping.Editor.csproj" />
+  <Project Path="Drawing.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="MotionWarping.Runtime.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="AstarPackageToolsEditor.csproj" />
+  <Project Path="andywiecko.BurstTriangulator.csproj" />
+  <Project Path="PackageTools.csproj" />
+  <Project Path="DrawingEditor.csproj" />
+  <Project Path="DrawingPackageToolsEditor.csproj" />
 </Solution>

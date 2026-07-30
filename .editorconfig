@@ -1,0 +1,89 @@
+# top-most EditorConfig file
+root = true
+
+[*]
+end_of_line = crlf
+insert_final_newline = true
+charset = utf-8-bom
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+
+# Unity C# scripts should keep access intent explicit.
+dotnet_style_require_accessibility_modifiers = always:warning
+
+# Keep control flow visually stable even when the body has one statement.
+csharp_prefer_braces = true:warning
+
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_readonly_field = true:warning
+
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+
+csharp_style_expression_bodied_methods = false:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_operators = false:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+
+# Interfaces use IPascalCase.
+dotnet_naming_rule.interfaces_should_be_ipascalcase.severity = warning
+dotnet_naming_rule.interfaces_should_be_ipascalcase.symbols = interfaces
+dotnet_naming_rule.interfaces_should_be_ipascalcase.style = ipascalcase
+
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+
+dotnet_naming_style.ipascalcase.required_prefix = I
+dotnet_naming_style.ipascalcase.capitalization = pascal_case
+
+# Types use PascalCase.
+dotnet_naming_rule.types_should_be_pascalcase.severity = warning
+dotnet_naming_rule.types_should_be_pascalcase.symbols = types
+dotnet_naming_rule.types_should_be_pascalcase.style = pascalcase
+
+dotnet_naming_symbols.types.applicable_kinds = class, struct, enum, delegate
+dotnet_naming_symbols.types.applicable_accessibilities = *
+
+dotnet_naming_style.pascalcase.capitalization = pascal_case
+
+# Methods, properties, and events use PascalCase.
+dotnet_naming_rule.members_should_be_pascalcase.severity = warning
+dotnet_naming_rule.members_should_be_pascalcase.symbols = members
+dotnet_naming_rule.members_should_be_pascalcase.style = pascalcase
+
+dotnet_naming_symbols.members.applicable_kinds = method, property, event
+dotnet_naming_symbols.members.applicable_accessibilities = *
+
+# Visible fields use PascalCase.
+dotnet_naming_rule.visible_fields_should_be_pascalcase.severity = warning
+dotnet_naming_rule.visible_fields_should_be_pascalcase.symbols = visible_fields
+dotnet_naming_rule.visible_fields_should_be_pascalcase.style = pascalcase
+
+dotnet_naming_symbols.visible_fields.applicable_kinds = field
+dotnet_naming_symbols.visible_fields.applicable_accessibilities = public, protected, internal, protected_internal, private_protected
+
+# Private fields use _camelCase, matching Unity's underscore private-field recommendation.
+dotnet_naming_rule.private_fields_should_be_underscore_camelcase.severity = warning
+dotnet_naming_rule.private_fields_should_be_underscore_camelcase.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_underscore_camelcase.style = underscore_camelcase
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camelcase.required_prefix = _
+dotnet_naming_style.underscore_camelcase.capitalization = camel_case
+
+# Local variables and parameters use camelCase.
+dotnet_naming_rule.locals_should_be_camelcase.severity = warning
+dotnet_naming_rule.locals_should_be_camelcase.symbols = locals_and_parameters
+dotnet_naming_rule.locals_should_be_camelcase.style = camelcase
+
+dotnet_naming_symbols.locals_and_parameters.applicable_kinds = local, parameter
+dotnet_naming_symbols.locals_and_parameters.applicable_accessibilities = *
+
+dotnet_naming_style.camelcase.capitalization = camel_case

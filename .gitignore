@@ -12,6 +12,8 @@
 /[Uu]ser[Ss]ettings/
 /Assets/External/
 /Assets/Plugins/Demigiant
+/Packages/com.arongranberg.astar
+/AGENTS.MD
 *.log
 
 # MemoryCaptures can get excessive in size.
