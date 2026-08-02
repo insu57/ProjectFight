@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 981085486d8c95f47b012f180a2e49ae, type: 3}
   m_Name: RewardRoom01
   m_EditorClassIdentifier: Assembly-CSharp::RoomDef
-  <RoomPrefab>k__BackingField: {fileID: 2825532405257329596, guid: 8797d9e7edef75f419a5610c98347eeb, type: 3}
+  <RoomPrefab>k__BackingField: {fileID: 5733638877101900956, guid: 3881478d4db473c468620df2dc1c2202, type: 3}
   <StageID>k__BackingField: 1
   <RoomType>k__BackingField: 2
+  <RoomSpacing>k__BackingField: {x: 10, y: 10}

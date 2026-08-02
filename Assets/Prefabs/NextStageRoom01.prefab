@@ -8,6 +8,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 167401094203026293, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_VersionIndex
+      value: 3921
+      objectReference: {fileID: 0}
+    - target: {fileID: 181738269451609622, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -4.75
+      objectReference: {fileID: 0}
     - target: {fileID: 6275643571205478383, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -48,9 +56,21 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7196770319402141803, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_VersionIndex
+      value: 3921
+      objectReference: {fileID: 0}
+    - target: {fileID: 7384263892825106302, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_VersionIndex
+      value: 3921
+      objectReference: {fileID: 0}
     - target: {fileID: 7604064244004780585, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_Name
       value: NextStageRoom01
+      objectReference: {fileID: 0}
+    - target: {fileID: 7800211889743682405, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_VersionIndex
+      value: 3921
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
