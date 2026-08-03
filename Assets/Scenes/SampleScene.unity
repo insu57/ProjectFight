@@ -582,8 +582,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a482f9a3a3980644db4b3115a23b1965, type: 2}
   _bossRoomData: {fileID: 11400000, guid: 380c3d3f7111f09408ebab9fa43df095, type: 2}
   _nextRoomData: {fileID: 11400000, guid: 4da45d482b9ff6142a54bad1039e600b, type: 2}
-  _normalRoomDepth: 3
-  _guranteedRewardRoomCount: 1
+  _mainRoomDepth: 4
+  _guaranteedMainRewardRoomCount: 1
+  _guaranteedBranchRewardRoomCount: 1
+  _minBranchCount: 2
+  _maxBranchCount: 3
+  _minBranchDepth: 1
+  _maxBranchDepth: 2
+  _maxBranchPerNode: 1
   _roomDistance: 5
   _corridorModule: {fileID: 2345354589709060967, guid: 1f9d860e7061821468d4b463d27687e6, type: 3}
 --- !u!4 &2144577789

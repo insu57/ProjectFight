@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+﻿﻿using UnityEngine;
 
 public enum DoorDirection
 {
@@ -38,7 +38,7 @@ public class Door : MonoBehaviour
         return true;
     }
 
-    public void Disconnect()
+    public void Disconnect() //연결해제
     {
         if (ConnectedDoor == null)
         {
