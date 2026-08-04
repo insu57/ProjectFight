@@ -5,13 +5,26 @@ using Random = UnityEngine.Random;
 
 public class StageManager : MonoBehaviour
 {
+    private static readonly DoorDirection[] _branchDirections =
+    {
+        DoorDirection.North,
+        DoorDirection.East,
+        DoorDirection.South,
+        DoorDirection.West
+    };
+
     //temp
     [field: SerializeField] private RoomDef _startRoomData;
     [field: SerializeField] private List<RoomDef> _battleRoomData;
     [field: SerializeField] private List<RoomDef> _rewardRoomData;
     [field: SerializeField] private RoomDef _bossRoomData;
     [field: SerializeField] private RoomDef _nextRoomData;
-    [field: SerializeField] private int _mainRoomDepth = 4; //Battle, Reward
+
+    [Header("Main Path")]
+    [field: SerializeField] private int _mainRoomDepth = 3; //Battle, Reward
+    [field: SerializeField] private int _minMainTurnCount = 2;
+    [field: SerializeField] private int _maxMainTurnCount = 3;
+    [field: SerializeField] private int _maxMainPathGenerationAttempts = 30;
 
     [Header("Guranteed Reward Room Count")]
     [field: SerializeField] private int _guaranteedMainRewardRoomCount = 1;
@@ -32,7 +45,7 @@ public class StageManager : MonoBehaviour
     private Room _nextRoom;
     
     [field: SerializeField] private float _roomDistance = 5f;
-    [SerializeField] private GameObject _corridorModule;
+    [field: SerializeField] private GameObject _corridorModule;
 
     private void Start()
     {
@@ -69,34 +82,46 @@ public class StageManager : MonoBehaviour
             return false;
         }
 
-        int normalRoomCount = Mathf.Max(0, _mainRoomDepth);
+        int minTurnCount = Mathf.Max(0, _minMainTurnCount);
+        int maxTurnCount = Mathf.Max(minTurnCount, _maxMainTurnCount);
+        int targetTurnCount = Random.Range(minTurnCount, maxTurnCount + 1);
+
+        // 굴절마다 일반방 하나를 추가해 기본 깊이와 굴절용 경로 길이를 함께 확보한다.
+        int normalRoomCount = Mathf.Max(0, _mainRoomDepth) + targetTurnCount;
+
+        if (!TryCreateMainPathPlan(normalRoomCount, targetTurnCount, out List<Vector2Int> mainPositions,
+            out List<DoorDirection> mainDirections, out Vector2Int nextRoomPosition))
+        {
+            Debug.LogError($"굴절 {targetTurnCount}회를 만족하는 메인 경로를 생성하지 못했습니다.", this);
+            return false;
+        }
+
+        // 실제 오브젝트를 만들기 전에 스테이지의 논리적인 연결 구조를 완성한다.
         int maxBranchCount = Mathf.Max(0, Mathf.Max(_minBranchCount, _maxBranchCount));
         int maxBranchDepth = Mathf.Max(1, _maxBranchDepth);
         int graphCapacity = normalRoomCount + 3 + maxBranchCount * maxBranchDepth;
-
-        // 실제 오브젝트를 만들기 전에 스테이지의 논리적인 연결 구조를 완성한다.
         graph = new StageGraph(graphCapacity);
-        StageNode previousNode = graph.AddNode(StageNodeGroup.Fixed, _startRoomData);
+        StageNode previousNode = graph.AddNode(StageNodeGroup.Fixed, mainPositions[0], _startRoomData);
         var branchRootCandidates = new List<StageNode>(normalRoomCount);
 
         for (int depth = 0; depth < normalRoomCount; depth++)
         {
             // 방 종류는 전체 그래프를 완성한 뒤 인접 제한과 보상방 수를 함께 검사해 결정한다.
-            StageNode node = graph.AddNode(StageNodeGroup.Main);
-            graph.AddEdge(previousNode, node, DoorDirection.North, DoorDirection.South);
-            previousNode = node;
-
-            // 메인 경로의 전투방과 보상방 모두 분기의 시작점이 될 수 있다.
+            StageNode node = graph.AddNode(StageNodeGroup.Main, mainPositions[depth + 1]);
+            DoorDirection direction = mainDirections[depth];
+            graph.AddEdge(previousNode, node, direction, GetOppositeDirection(direction));
             branchRootCandidates.Add(node);
+            previousNode = node;
         }
 
-        StageNode bossNode = graph.AddNode(StageNodeGroup.Fixed, _bossRoomData);
-        graph.AddEdge(previousNode, bossNode, DoorDirection.North, DoorDirection.South);
+        DoorDirection bossDirection = mainDirections[normalRoomCount];
+        StageNode bossNode = graph.AddNode(StageNodeGroup.Fixed, mainPositions[normalRoomCount + 1], _bossRoomData);
+        graph.AddEdge(previousNode, bossNode, bossDirection, GetOppositeDirection(bossDirection));
 
-        StageNode nextNode = graph.AddNode(StageNodeGroup.Fixed, _nextRoomData);
-        graph.AddEdge(bossNode, nextNode, DoorDirection.North, DoorDirection.South);
+        // 보스방은 일반방 하나와 다음 방 하나에만 연결한다.
+        StageNode nextNode = graph.AddNode(StageNodeGroup.Fixed, nextRoomPosition, _nextRoomData);
+        graph.AddEdge(bossNode, nextNode, bossDirection, GetOppositeDirection(bossDirection));
 
-        // 메인 경로를 먼저 완성해 배치 단계에서 모든 분기 부모의 위치가 먼저 결정되도록 한다.
         if (!TryAddBranches(graph, branchRootCandidates))
         {
             graph = null;
@@ -112,48 +137,244 @@ public class StageManager : MonoBehaviour
         return true;
     }
 
+    private bool TryCreateMainPathPlan(int normalRoomCount, int targetTurnCount, out List<Vector2Int> positions,
+        out List<DoorDirection> directions, out Vector2Int nextRoomPosition)
+    {
+        int connectionCount = normalRoomCount + 1;
+        int maximumPossibleTurnCount = Mathf.Max(0, connectionCount - 1);
+
+        positions = null;
+        directions = null;
+        nextRoomPosition = default;
+
+        if (targetTurnCount > maximumPossibleTurnCount)
+        {
+            return false;
+        }
+
+        var plannedPositions = new List<Vector2Int>(normalRoomCount + 2);
+        var plannedDirections = new List<DoorDirection>(connectionCount);
+        var occupiedPositions = new HashSet<Vector2Int>();
+        var turnFlags = new bool[connectionCount];
+        var turnCandidateIndices = new int[maximumPossibleTurnCount];
+        int attemptCount = Mathf.Max(1, _maxMainPathGenerationAttempts);
+
+        for (int attempt = 0; attempt < attemptCount; attempt++)
+        {
+            plannedPositions.Clear();
+            plannedDirections.Clear();
+            occupiedPositions.Clear();
+
+            for (int index = 0; index < turnFlags.Length; index++)
+            {
+                turnFlags[index] = false;
+            }
+
+            for (int index = 0; index < turnCandidateIndices.Length; index++)
+            {
+                // 첫 연결은 북쪽으로 고정하므로 두 번째 연결부터 굴절 후보가 된다.
+                turnCandidateIndices[index] = index + 1;
+            }
+
+            ShuffleIndices(turnCandidateIndices);
+
+            for (int index = 0; index < targetTurnCount; index++)
+            {
+                turnFlags[turnCandidateIndices[index]] = true;
+            }
+
+            Vector2Int currentPosition = Vector2Int.zero;
+            DoorDirection currentDirection = DoorDirection.North;
+            bool pathCompleted = true;
+
+            plannedPositions.Add(currentPosition);
+            occupiedPositions.Add(currentPosition);
+
+            for (int connectionIndex = 0; connectionIndex < connectionCount; connectionIndex++)
+            {
+                if (turnFlags[connectionIndex])
+                {
+                    currentDirection = GetRandomTurnDirection(currentDirection);
+                }
+
+                Vector2Int nextPosition = currentPosition + GetGridOffset(currentDirection);
+
+                // 직전 방을 포함해 기존 메인 경로 좌표로 돌아가는 진행은 허용하지 않는다.
+                if (!occupiedPositions.Add(nextPosition))//HashSet에 이미 원소를 추가하면 false 반환
+                {
+                    pathCompleted = false;
+                    break;
+                }
+
+                plannedDirections.Add(currentDirection);
+                plannedPositions.Add(nextPosition);
+                currentPosition = nextPosition;
+            }
+
+            if (!pathCompleted)
+            {
+                continue;
+            }
+
+            // 다음 방은 보스방을 통과한 뒤 마지막 진행 방향으로 이어지게 한다.
+            Vector2Int candidateNextRoomPosition = currentPosition + GetGridOffset(currentDirection);
+
+            if (occupiedPositions.Contains(candidateNextRoomPosition))
+            {
+                continue;
+            }
+
+            positions = plannedPositions;
+            directions = plannedDirections;
+            nextRoomPosition = candidateNextRoomPosition;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static DoorDirection GetRandomTurnDirection(DoorDirection currentDirection)
+    {
+        return currentDirection switch
+        {
+            DoorDirection.North => Random.value < 0.5f ? DoorDirection.East : DoorDirection.West,
+            DoorDirection.East => DoorDirection.North,
+            DoorDirection.West => DoorDirection.North,
+            _ => DoorDirection.North
+        };
+    }
+
+    private static Vector2Int GetGridOffset(DoorDirection direction)
+    {
+        return direction switch
+        {
+            DoorDirection.North => Vector2Int.up,
+            DoorDirection.East => Vector2Int.right,
+            DoorDirection.South => Vector2Int.down,
+            DoorDirection.West => Vector2Int.left,
+            _ => Vector2Int.zero
+        };
+    }
+
+    private static DoorDirection GetOppositeDirection(DoorDirection direction)
+    {
+        return direction switch
+        {
+            DoorDirection.North => DoorDirection.South,
+            DoorDirection.East => DoorDirection.West,
+            DoorDirection.South => DoorDirection.North,
+            DoorDirection.West => DoorDirection.East,
+            _ => direction
+        };
+    }
+
+    private static void ShuffleIndices(int[] indices)
+    {
+        for (int index = indices.Length - 1; index > 0; index--)
+        {
+            int randomIndex = Random.Range(0, index + 1);
+            int temporary = indices[index];
+            indices[index] = indices[randomIndex];
+            indices[randomIndex] = temporary;
+        }
+    }
+
     private bool TryAddBranches(StageGraph graph, List<StageNode> branchRootCandidates)
     {
         if (branchRootCandidates.Count == 0)
         {
-            return true;
+            return Mathf.Max(0, _minBranchCount) == 0;
         }
 
         int minBranchCount = Mathf.Max(0, _minBranchCount);
         int maxBranchCount = Mathf.Max(minBranchCount, _maxBranchCount);
-        int branchCount = Mathf.Min(Random.Range(minBranchCount, maxBranchCount + 1), branchRootCandidates.Count);
+        int targetBranchCount = Mathf.Min(Random.Range(minBranchCount, maxBranchCount + 1), branchRootCandidates.Count);
 
-        if (branchCount == 0)
+        if (targetBranchCount == 0)
         {
             return true;
         }
 
         int minBranchDepth = Mathf.Max(1, _minBranchDepth);
         int maxBranchDepth = Mathf.Max(minBranchDepth, _maxBranchDepth);
+        var availableDirections = new DoorDirection[_branchDirections.Length];
 
         ShuffleNodes(branchRootCandidates);
 
-        for (int branchIndex = 0; branchIndex < branchCount; branchIndex++)
+        int createdBranchCount = 0;
+
+        for (int rootIndex = 0; rootIndex < branchRootCandidates.Count && createdBranchCount < targetBranchCount; rootIndex++)
         {
-            StageNode previousNode = branchRootCandidates[branchIndex];
-
-            DoorDirection branchDirection = Random.value < 0.5f
-                ? DoorDirection.East : DoorDirection.West;
-
-            DoorDirection entranceDirection = branchDirection == DoorDirection.East
-                ? DoorDirection.West : DoorDirection.East;
-
+            StageNode branchRoot = branchRootCandidates[rootIndex];
             int branchDepth = Random.Range(minBranchDepth, maxBranchDepth + 1);
+            int availableDirectionCount = FindAvailableBranchDirections(graph, branchRoot.GridPosition, branchDepth, availableDirections);
 
-            for (int depth = 0; depth < branchDepth; depth++)
+            if (availableDirectionCount == 0)
             {
-                StageNode branchNode = graph.AddNode(StageNodeGroup.Branch);
-                graph.AddEdge(previousNode, branchNode, branchDirection, entranceDirection);
-                previousNode = branchNode;
+                continue;
+            }
+
+            DoorDirection branchDirection = availableDirections[Random.Range(0, availableDirectionCount)];
+            AddBranch(graph, branchRoot, branchDirection, branchDepth);
+            createdBranchCount++;
+        }
+
+        return createdBranchCount == targetBranchCount;
+    }
+
+    private static int FindAvailableBranchDirections(StageGraph graph, Vector2Int rootPosition, int branchDepth, DoorDirection[] results)
+    {
+        int resultCount = 0;
+
+        for (int directionIndex = 0; directionIndex < _branchDirections.Length; directionIndex++)
+        {
+            DoorDirection direction = _branchDirections[directionIndex];
+
+            if (!IsBranchPathAvailable(graph, rootPosition, direction, branchDepth))
+            {
+                continue;
+            }
+
+            results[resultCount] = direction;
+            resultCount++;
+        }
+
+        return resultCount;
+    }
+
+    private static bool IsBranchPathAvailable(StageGraph graph, Vector2Int rootPosition, DoorDirection direction, int branchDepth)
+    {
+        Vector2Int offset = GetGridOffset(direction);
+        Vector2Int position = rootPosition;
+
+        for (int depth = 0; depth < branchDepth; depth++)
+        {
+            position += offset;
+
+            if (graph.ContainsNode(position))
+            {
+                return false;
             }
         }
 
         return true;
+    }
+
+    private static void AddBranch(StageGraph graph, StageNode branchRoot, DoorDirection direction, int branchDepth)
+    {
+        Vector2Int offset = GetGridOffset(direction);
+        DoorDirection entranceDirection = GetOppositeDirection(direction);
+        Vector2Int position = branchRoot.GridPosition;
+        StageNode previousNode = branchRoot;
+
+        for (int depth = 0; depth < branchDepth; depth++)
+        {
+            position += offset;
+
+            StageNode branchNode = graph.AddNode(StageNodeGroup.Branch, position);
+            graph.AddEdge(previousNode, branchNode, direction, entranceDirection);
+            previousNode = branchNode;
+        }
     }
 
     private bool TryAssignNormalRoomData(StageGraph graph)
@@ -340,33 +561,30 @@ public class StageManager : MonoBehaviour
 
     private void LayoutGraph(StageGraph graph)
     {
-        graph.Nodes[0].Position = Vector3.zero;
+        Vector2 cellSize = CalculateCellSize(graph);
 
-        for (int index = 0; index < graph.Edges.Count; index++)
+        for (int index = 0; index < graph.Nodes.Count; index++)
         {
-            StageEdge edge = graph.Edges[index];
-            edge.To.Position = CalculateConnectedPosition(edge);
+            StageNode node = graph.Nodes[index];
+            node.Position = new Vector3(node.GridPosition.x * cellSize.x, 0f, node.GridPosition.y * cellSize.y);
         }
     }
 
-    private Vector3 CalculateConnectedPosition(StageEdge edge)
+    private Vector2 CalculateCellSize(StageGraph graph)
     {
-        Vector2 fromSpacing = edge.From.RoomData.RoomSpacing;
-        Vector2 toSpacing = edge.To.RoomData.RoomSpacing;
+        float maximumWidth = 0f;
+        float maximumDepth = 0f;
 
-        // 두 방 크기의 절반씩과 복도 길이를 더해 방 중심 사이의 거리를 구한다.
-        return edge.FromDirection switch
+        for (int index = 0; index < graph.Nodes.Count; index++)
         {
-            DoorDirection.North => edge.From.Position +
-                Vector3.forward * ((fromSpacing.y + toSpacing.y) * 0.5f + _roomDistance),
-            DoorDirection.East => edge.From.Position +
-                Vector3.right * ((fromSpacing.x + toSpacing.x) * 0.5f + _roomDistance),
-            DoorDirection.South => edge.From.Position +
-                Vector3.back * ((fromSpacing.y + toSpacing.y) * 0.5f + _roomDistance),
-            DoorDirection.West => edge.From.Position +
-                Vector3.left * ((fromSpacing.x + toSpacing.x) * 0.5f + _roomDistance),
-            _ => edge.From.Position
-        };
+            //if (graph.Nodes[index].Group == StageNodeGroup.Fixed) continue;
+            Vector2 roomSpacing = graph.Nodes[index].RoomData.RoomSpacing;
+            maximumWidth = Mathf.Max(maximumWidth, roomSpacing.x);
+            maximumDepth = Mathf.Max(maximumDepth, roomSpacing.y);
+        }
+
+        // 가장 큰 방을 기준으로 모든 격자 칸이 겹치지 않을 크기를 확보한다.
+        return new Vector2(maximumWidth + _roomDistance, maximumDepth + _roomDistance);
     }
 
     private void InstantiateRooms(StageGraph graph)

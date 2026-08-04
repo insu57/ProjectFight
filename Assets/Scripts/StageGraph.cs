@@ -12,12 +12,15 @@ public sealed class StageNode
 {
     public StageNodeGroup Group { get; }
     public RoomDef RoomData { get; private set; }
+    // 방의 논리적인 격자 좌표로, 물리적인 월드 좌표와 분리해서 관리한다.
+    public Vector2Int GridPosition { get; }
     public Vector3 Position { get; set; }
     public Room RoomInstance { get; set; }
 
-    public StageNode(StageNodeGroup group, RoomDef roomData = null)
+    public StageNode(StageNodeGroup group, Vector2Int gridPosition, RoomDef roomData = null)
     {
         Group = group;
+        GridPosition = gridPosition;
         RoomData = roomData;
     }
 
@@ -57,11 +60,24 @@ public sealed class StageGraph
         _edges = new List<StageEdge>(Mathf.Max(0, nodeCapacity - 1));
     }
 
-    public StageNode AddNode(StageNodeGroup group, RoomDef roomData = null)
+    public StageNode AddNode(StageNodeGroup group, Vector2Int gridPosition, RoomDef roomData = null)
     {
-        var node = new StageNode(group, roomData);
+        var node = new StageNode(group, gridPosition, roomData);
         _nodes.Add(node);
         return node;
+    }
+
+    public bool ContainsNode(Vector2Int gridPosition)
+    {
+        for (int index = 0; index < _nodes.Count; index++)
+        {
+            if (_nodes[index].GridPosition == gridPosition)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void AddEdge(StageNode from,StageNode to, DoorDirection fromDirection, DoorDirection toDirection)
