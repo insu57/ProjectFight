@@ -594,7 +594,8 @@ MonoBehaviour:
   _maxBranchDepth: 2
   _maxBranchPerNode: 1
   _roomDistance: 5
-  _corridorModule: {fileID: 2345354589709060967, guid: 1f9d860e7061821468d4b463d27687e6, type: 3}
+  _normalCorridorModule: {fileID: 2345354589709060967, guid: 1f9d860e7061821468d4b463d27687e6, type: 3}
+  _cornerCorridorModule: {fileID: 4901211449568578853, guid: 923e0faa0de9b534fbaa8cf0a900b506, type: 3}
 --- !u!4 &2144577789
 Transform:
   m_ObjectHideFlags: 0

@@ -45,7 +45,8 @@ public class StageManager : MonoBehaviour
     private Room _nextRoom;
     
     [field: SerializeField] private float _roomDistance = 5f;
-    [field: SerializeField] private GameObject _corridorModule;
+    [field: SerializeField] private GameObject _normalCorridorModule;
+    [field: SerializeField] private GameObject _cornerCorridorModule;
 
     private void Start()
     {
@@ -649,7 +650,7 @@ public class StageManager : MonoBehaviour
             return false;
         }
 
-        if (Corridor.TryGenerate(_corridorModule, fromDoor, toDoor, fromRoom.CorridorParent)) //복도 생성
+        if (Corridor.TryGenerate(_normalCorridorModule, _cornerCorridorModule, fromDoor, toDoor, fromRoom.CorridorParent)) //복도 생성
         {
             return true;
         }
