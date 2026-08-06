@@ -8,6 +8,12 @@ public enum StageNodeGroup
     Branch
 }
 
+public enum StageEdgeType
+{
+    Normal,
+    Loop
+}
+
 public sealed class StageNode
 {
     public StageNodeGroup Group { get; }
@@ -36,13 +42,15 @@ public readonly struct StageEdge
     public StageNode To { get; }
     public DoorDirection FromDirection { get; }
     public DoorDirection ToDirection { get; }
+    public StageEdgeType Type { get; }
 
-    public StageEdge( StageNode from, StageNode to, DoorDirection fromDirection, DoorDirection toDirection)
+    public StageEdge(StageNode from, StageNode to, DoorDirection fromDirection, DoorDirection toDirection, StageEdgeType type)
     {
         From = from;
         To = to;
         FromDirection = fromDirection;
         ToDirection = toDirection;
+        Type = type;
     }
 }
 
@@ -80,9 +88,124 @@ public sealed class StageGraph
         return false;
     }
 
-    public void AddEdge(StageNode from,StageNode to, DoorDirection fromDirection, DoorDirection toDirection)
-
+    public bool HasEdge(StageNode first, StageNode second)
     {
-        _edges.Add(new StageEdge(from, to, fromDirection, toDirection));
+        for (int index = 0; index < _edges.Count; index++)
+        {
+            StageEdge edge = _edges[index];
+
+            if (ReferenceEquals(edge.From, first) && ReferenceEquals(edge.To, second) ||
+                ReferenceEquals(edge.From, second) && ReferenceEquals(edge.To, first))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool IsDirectionUsed(StageNode node, DoorDirection direction)
+    {
+        for (int index = 0; index < _edges.Count; index++)
+        {
+            StageEdge edge = _edges[index];
+
+            if (ReferenceEquals(edge.From, node) && edge.FromDirection == direction ||
+                ReferenceEquals(edge.To, node) && edge.ToDirection == direction)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public int CountEdges(StageNode node, StageEdgeType type)
+    {
+        int count = 0;
+
+        for (int index = 0; index < _edges.Count; index++)
+        {
+            StageEdge edge = _edges[index];
+
+            if (edge.Type == type && (ReferenceEquals(edge.From, node) || ReferenceEquals(edge.To, node)))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    public int GetShortestDistance(StageNode from, StageNode to, int[] queue, int[] distances)
+    {
+        //BFS로 최단거리 계산
+        int fromIndex = _nodes.IndexOf(from);
+        int toIndex = _nodes.IndexOf(to);
+
+        if (fromIndex < 0 || toIndex < 0 || queue.Length < _nodes.Count || distances.Length < _nodes.Count)
+        {
+            return -1;
+        }
+
+        for (int index = 0; index < _nodes.Count; index++)
+        {
+            distances[index] = -1;
+        }
+
+        int readIndex = 0;
+        int writeIndex = 0;
+
+        queue[writeIndex++] = fromIndex;
+        distances[fromIndex] = 0;
+
+        while (readIndex < writeIndex)
+        {
+            int currentIndex = queue[readIndex++];
+
+            if (currentIndex == toIndex)
+            {
+                return distances[currentIndex];
+            }
+
+            StageNode currentNode = _nodes[currentIndex];
+
+            for (int edgeIndex = 0; edgeIndex < _edges.Count; edgeIndex++)
+            {
+                StageEdge edge = _edges[edgeIndex];
+                StageNode neighbor = null;
+
+                if (ReferenceEquals(edge.From, currentNode))
+                {
+                    neighbor = edge.To;
+                }
+                else if (ReferenceEquals(edge.To, currentNode))
+                {
+                    neighbor = edge.From;
+                }
+
+                if (neighbor == null)
+                {
+                    continue;
+                }
+
+                int neighborIndex = _nodes.IndexOf(neighbor);
+
+                if (neighborIndex < 0 || distances[neighborIndex] >= 0)
+                {
+                    continue;
+                }
+
+                distances[neighborIndex] = distances[currentIndex] + 1;
+                queue[writeIndex++] = neighborIndex;
+            }
+        }
+
+        return -1;
+    }
+
+    public void AddEdge(StageNode from, StageNode to, DoorDirection fromDirection, DoorDirection toDirection, StageEdgeType type = StageEdgeType.Normal)
+    {
+        _edges.Add(new StageEdge(from, to, fromDirection, toDirection, type));
     }
 }

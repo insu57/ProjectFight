@@ -583,18 +583,23 @@ MonoBehaviour:
   _bossRoomData: {fileID: 11400000, guid: 380c3d3f7111f09408ebab9fa43df095, type: 2}
   _nextRoomData: {fileID: 11400000, guid: 4da45d482b9ff6142a54bad1039e600b, type: 2}
   _mainRoomDepth: 2
-  _minMainTurnCount: 3
-  _maxMainTurnCount: 4
+  _minMainTurnCount: 4
+  _maxMainTurnCount: 5
   _maxMainPathGenerationAttempts: 30
   _guaranteedMainRewardRoomCount: 1
   _guaranteedBranchRewardRoomCount: 1
-  _minBranchCount: 1
-  _maxBranchCount: 2
+  _minBranchCount: 2
+  _maxBranchCount: 3
   _minBranchDepth: 1
-  _maxBranchDepth: 2
-  _maxBranchPerNode: 1
+  _maxBranchDepth: 3
+  _maxBranchPerNode: 2
+  _minLoopCount: 3
+  _maxLoopCount: 3
+  _minLoopGraphDistance: 3
+  _maxLoopPerNode: 2
   _roomDistance: 5
   _normalCorridorModule: {fileID: 2345354589709060967, guid: 1f9d860e7061821468d4b463d27687e6, type: 3}
+  _halfCorridorModule: {fileID: 4572922992601898069, guid: 0fc99130375745a469464de8f0f09cec, type: 3}
   _cornerCorridorModule: {fileID: 4901211449568578853, guid: 923e0faa0de9b534fbaa8cf0a900b506, type: 3}
 --- !u!4 &2144577789
 Transform:

@@ -3,11 +3,13 @@ using UnityEngine;
 public static class Corridor
 {
     private const float _moduleLength = 1f;
+    private const float _halfModuleLength = 0.5f;
     private const float _cornerHalfSize = 1.5f;
     private const float _distanceTolerance = 0.01f;
     private const float _directionTolerance = 0.999f;
 
-    public static bool TryGenerate(GameObject normalModule, GameObject cornerModule, Door fromDoor, Door toDoor, Transform corridorParent)
+    public static bool TryGenerate(GameObject normalModule, GameObject halfModule, GameObject cornerModule,
+        Door fromDoor, Door toDoor, Transform corridorParent)
     {
         if (normalModule == null || fromDoor == null || toDoor == null || corridorParent == null)
         {
@@ -23,19 +25,20 @@ public static class Corridor
 
         if (Door.AreOpposite(fromDoor.Direction, toDoor.Direction))
         {
-            return TryGenerateStraight(normalModule, fromDoor, toDoor, corridorParent);
+            return TryGenerateStraight(normalModule, halfModule, fromDoor, toDoor, corridorParent);
         }
 
         if (IsPerpendicular(fromDoor.Direction, toDoor.Direction))
         {
-            return TryGenerateCorner(normalModule, cornerModule, fromDoor, toDoor, corridorParent);
+            return TryGenerateCorner(normalModule, halfModule, cornerModule, fromDoor, toDoor, corridorParent);
         }
 
         Debug.LogError($"지원하지 않는 문 방향 조합입니다: {fromDoor.Direction}, {toDoor.Direction}");
         return false;
     }
 
-    private static bool TryGenerateStraight(GameObject normalModule, Door fromDoor, Door toDoor, Transform corridorParent)
+    private static bool TryGenerateStraight(GameObject normalModule, GameObject halfModule,
+        Door fromDoor, Door toDoor, Transform corridorParent)
     {
         Vector3 fromPosition = fromDoor.transform.position;
         Vector3 toPosition = toDoor.transform.position;
@@ -61,17 +64,25 @@ public static class Corridor
             return false;
         }
 
-        if (!TryGetModuleCount(distance, out int moduleCount))
+        if (!TryGetModuleLayout(distance, out int normalModuleCount, out bool requiresHalfModule))
         {
-            Debug.LogError($"문 사이 거리({distance})를 1유닛 복도 모듈로 채울 수 없습니다.");
+            Debug.LogError($"문 사이 거리({distance})를 1유닛 및 0.5유닛 복도 모듈로 채울 수 없습니다.");
             return false;
         }
 
-        GenerateStraightSegment(normalModule, fromPosition, corridorDirection, moduleCount, corridorParent);
+        if (requiresHalfModule && halfModule == null)
+        {
+            Debug.LogError("0.5유닛 복도 모듈이 필요하지만 설정되지 않았습니다.");
+            return false;
+        }
+
+        GenerateStraightSegment(normalModule, halfModule, fromPosition, corridorDirection,
+            normalModuleCount, requiresHalfModule, corridorParent);
         return true;
     }
 
-    private static bool TryGenerateCorner(GameObject normalModule, GameObject cornerModule, Door fromDoor, Door toDoor, Transform corridorParent)
+    private static bool TryGenerateCorner(GameObject normalModule, GameObject halfModule, GameObject cornerModule,
+        Door fromDoor, Door toDoor, Transform corridorParent)
     {
         if (cornerModule == null)
         {
@@ -84,7 +95,8 @@ public static class Corridor
         Vector3 fromDirection = GetWorldDirection(fromDoor.Direction);
         Vector3 toDirection = GetWorldDirection(toDoor.Direction);
 
-        if (!TryFindCorner(fromPosition, fromDirection, toPosition, toDirection, out Vector3 cornerPosition, out float fromDistance, out float toDistance))
+        if (!TryFindCorner(fromPosition, fromDirection, toPosition, toDirection,
+            out Vector3 cornerPosition, out float fromDistance, out float toDistance))
         {
             Debug.LogError("두 문의 바깥 진행 방향에서 유효한 모퉁이 위치를 찾지 못했습니다.");
             return false;
@@ -94,15 +106,23 @@ public static class Corridor
         float fromStraightLength = fromDistance - _cornerHalfSize;
         float toStraightLength = toDistance - _cornerHalfSize;
 
-        if (!TryGetModuleCount(fromStraightLength, out int fromModuleCount) ||
-            !TryGetModuleCount(toStraightLength, out int toModuleCount))
+        if (!TryGetModuleLayout(fromStraightLength, out int fromNormalModuleCount, out bool fromRequiresHalfModule) ||
+            !TryGetModuleLayout(toStraightLength, out int toNormalModuleCount, out bool toRequiresHalfModule))
         {
-            Debug.LogError($"모퉁이까지의 직선 구간을 1유닛 모듈로 채울 수 없습니다: {fromStraightLength}, {toStraightLength}");
+            Debug.LogError($"모퉁이까지의 직선 구간을 1유닛 및 0.5유닛 모듈로 채울 수 없습니다: {fromStraightLength}, {toStraightLength}");
             return false;
         }
 
-        GenerateStraightSegment(normalModule, fromPosition, fromDirection, fromModuleCount, corridorParent);
-        GenerateStraightSegment(normalModule, toPosition, toDirection, toModuleCount, corridorParent);
+        if ((fromRequiresHalfModule || toRequiresHalfModule) && halfModule == null)
+        {
+            Debug.LogError("모퉁이 연결에 0.5유닛 복도 모듈이 필요하지만 설정되지 않았습니다.");
+            return false;
+        }
+
+        GenerateStraightSegment(normalModule, halfModule, fromPosition, fromDirection,
+            fromNormalModuleCount, fromRequiresHalfModule, corridorParent);
+        GenerateStraightSegment(normalModule, halfModule, toPosition, toDirection,
+            toNormalModuleCount, toRequiresHalfModule, corridorParent);
 
         Quaternion cornerRotation = GetCornerRotation(fromDoor.Direction, toDoor.Direction);
         Object.Instantiate(cornerModule, cornerPosition, cornerRotation, corridorParent);
@@ -146,35 +166,50 @@ public static class Corridor
         return true;
     }
 
-    private static bool TryGetModuleCount(float length, out int moduleCount)
+    private static bool TryGetModuleLayout(float length, out int normalModuleCount, out bool requiresHalfModule)
     {
+        normalModuleCount = 0;
+        requiresHalfModule = false;
+
         if (length < -_distanceTolerance)
         {
-            moduleCount = 0;
             return false;
         }
 
         float clampedLength = Mathf.Max(0f, length);
-        moduleCount = Mathf.RoundToInt(clampedLength / _moduleLength);
-        return Mathf.Abs(clampedLength - moduleCount * _moduleLength) <= _distanceTolerance;
-    }
+        int halfUnitCount = Mathf.RoundToInt(clampedLength / _halfModuleLength);
 
-    private static void GenerateStraightSegment(GameObject normalModule, Vector3 startPosition, Vector3 direction,
-        int moduleCount, Transform corridorParent)
-    {
-        if (moduleCount == 0)
+        if (Mathf.Abs(clampedLength - halfUnitCount * _halfModuleLength) > _distanceTolerance)
         {
-            return;
+            return false;
         }
 
+        normalModuleCount = halfUnitCount / 2;
+        requiresHalfModule = halfUnitCount % 2 != 0;
+        return true;
+    }
+
+    private static void GenerateStraightSegment(GameObject normalModule, GameObject halfModule, Vector3 startPosition, Vector3 direction,
+        int normalModuleCount, bool requiresHalfModule, Transform corridorParent)
+    {
         var rotation = Quaternion.LookRotation(direction, Vector3.up);
 
-        for (int index = 0; index < moduleCount; index++)
+        for (int index = 0; index < normalModuleCount; index++)
         {
             // 길이 1 모듈의 중심이 직선 구간을 빈틈없이 채우도록 0.5유닛부터 배치한다.
             Vector3 modulePosition = startPosition + direction * ((index + 0.5f) * _moduleLength);
             Object.Instantiate(normalModule, modulePosition, rotation, corridorParent);
         }
+
+        if (!requiresHalfModule)
+        {
+            return;
+        }
+
+        // Half 모듈의 중심을 마지막 일반 모듈 이후의 0.25유닛 위치에 맞춘다.
+        float halfModuleCenterDistance = normalModuleCount * _moduleLength + _halfModuleLength * 0.5f;
+        Vector3 halfModulePosition = startPosition + direction * halfModuleCenterDistance;
+        Object.Instantiate(halfModule, halfModulePosition, rotation, corridorParent);
     }
 
     private static bool IsPerpendicular(DoorDirection first, DoorDirection second)

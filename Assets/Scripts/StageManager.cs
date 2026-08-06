@@ -35,8 +35,40 @@ public class StageManager : MonoBehaviour
     [field: SerializeField] private int _maxBranchCount = 2;
     [field: SerializeField] private int _minBranchDepth = 1;
     [field: SerializeField] private int _maxBranchDepth = 2;
-    [field: SerializeField] private int _maxBranchPerNode = 1;
+    [field: SerializeField] private int _maxBranchPerNode = 2;
 
+    [Header("Loop")]
+    [field: SerializeField] private int _minLoopCount = 0;
+    [field: SerializeField] private int _maxLoopCount = 2;
+    [field: SerializeField] private int _minLoopGraphDistance = 3;
+    [field: SerializeField] private int _maxLoopPerNode = 1;
+
+    private enum LoopPathType
+    {
+        Straight,
+        Corner
+    }
+
+    private readonly struct LoopCandidate
+    {
+        public StageNode From { get; }
+        public StageNode To { get; }
+        public DoorDirection FromDirection { get; }
+        public DoorDirection ToDirection { get; }
+        public LoopPathType PathType { get; }
+        public Vector2Int CornerGridPosition { get; }
+
+        public LoopCandidate(StageNode from, StageNode to, DoorDirection fromDirection, DoorDirection toDirection,
+            LoopPathType pathType, Vector2Int cornerGridPosition)
+        {
+            From = from;
+            To = to;
+            FromDirection = fromDirection;
+            ToDirection = toDirection;
+            PathType = pathType;
+            CornerGridPosition = cornerGridPosition;
+        }
+    }
 
     private Room _startRoom;
     private readonly List<Room> _battleRooms = new();
@@ -46,7 +78,9 @@ public class StageManager : MonoBehaviour
     
     [field: SerializeField] private float _roomDistance = 5f;
     [field: SerializeField] private GameObject _normalCorridorModule;
+    [field: SerializeField] private GameObject _halfCorridorModule;
     [field: SerializeField] private GameObject _cornerCorridorModule;
+
 
     private void Start()
     {
@@ -127,6 +161,13 @@ public class StageManager : MonoBehaviour
         {
             graph = null;
             return false;
+        }
+
+        if (!TryAddLoops(graph))
+        {
+            Debug.LogWarning($"Fail: TryAddLoops {_minLoopCount}");
+            //graph = null;
+            //return false;
         }
 
         if (!TryAssignNormalRoomData(graph))
@@ -282,14 +323,17 @@ public class StageManager : MonoBehaviour
 
     private bool TryAddBranches(StageGraph graph, List<StageNode> branchRootCandidates)
     {
-        if (branchRootCandidates.Count == 0)
+        int minBranchCount = Mathf.Max(0, _minBranchCount);
+        int maxBranchPerNode = Mathf.Clamp(_maxBranchPerNode, 0, _branchDirections.Length);
+
+        if (branchRootCandidates.Count == 0 || maxBranchPerNode == 0)
         {
-            return Mathf.Max(0, _minBranchCount) == 0;
+            return minBranchCount == 0;
         }
 
-        int minBranchCount = Mathf.Max(0, _minBranchCount);
         int maxBranchCount = Mathf.Max(minBranchCount, _maxBranchCount);
-        int targetBranchCount = Mathf.Min(Random.Range(minBranchCount, maxBranchCount + 1), branchRootCandidates.Count);
+        int maximumPossibleBranchCount = branchRootCandidates.Count * maxBranchPerNode;
+        int targetBranchCount = Mathf.Min(Random.Range(minBranchCount, maxBranchCount + 1), maximumPossibleBranchCount);
 
         if (targetBranchCount == 0)
         {
@@ -304,20 +348,24 @@ public class StageManager : MonoBehaviour
 
         int createdBranchCount = 0;
 
-        for (int rootIndex = 0; rootIndex < branchRootCandidates.Count && createdBranchCount < targetBranchCount; rootIndex++)
+        // 모든 후보 노드에 branch를 하나씩 배치한 뒤 남은 branch가 있으면 다시 순회한다.
+        for (int branchIndex = 0; branchIndex < maxBranchPerNode && createdBranchCount < targetBranchCount; branchIndex++)
         {
-            StageNode branchRoot = branchRootCandidates[rootIndex];
-            int branchDepth = Random.Range(minBranchDepth, maxBranchDepth + 1);
-            int availableDirectionCount = FindAvailableBranchDirections(graph, branchRoot.GridPosition, branchDepth, availableDirections);
-
-            if (availableDirectionCount == 0)
+            for (int rootIndex = 0; rootIndex < branchRootCandidates.Count && createdBranchCount < targetBranchCount; rootIndex++)
             {
-                continue;
-            }
+                StageNode branchRoot = branchRootCandidates[rootIndex];
+                int branchDepth = Random.Range(minBranchDepth, maxBranchDepth + 1);
+                int availableDirectionCount = FindAvailableBranchDirections(graph, branchRoot.GridPosition, branchDepth, availableDirections);
 
-            DoorDirection branchDirection = availableDirections[Random.Range(0, availableDirectionCount)];
-            AddBranch(graph, branchRoot, branchDirection, branchDepth);
-            createdBranchCount++;
+                if (availableDirectionCount == 0)
+                {
+                    continue;
+                }
+
+                DoorDirection branchDirection = availableDirections[Random.Range(0, availableDirectionCount)];
+                AddBranch(graph, branchRoot, branchDirection, branchDepth);
+                createdBranchCount++;
+            }
         }
 
         return createdBranchCount == targetBranchCount;
@@ -375,6 +423,197 @@ public class StageManager : MonoBehaviour
             StageNode branchNode = graph.AddNode(StageNodeGroup.Branch, position);
             graph.AddEdge(previousNode, branchNode, direction, entranceDirection);
             previousNode = branchNode;
+        }
+    }
+
+    private bool TryAddLoops(StageGraph graph)
+    {
+        int minLoopCount = Mathf.Max(0, _minLoopCount);
+        int maxLoopCount = Mathf.Max(minLoopCount, _maxLoopCount);
+        int targetLoopCount = Random.Range(minLoopCount, maxLoopCount + 1);
+
+        if (targetLoopCount == 0)
+        {
+            return true;
+        }
+
+        var candidates = new List<LoopCandidate>(graph.Nodes.Count * 4);
+        var occupiedCornerPositions = new HashSet<Vector2Int>();
+        var shortestPathQueue = new int[graph.Nodes.Count];
+        var shortestPathDistances = new int[graph.Nodes.Count];
+
+        CollectLoopCandidates(graph, candidates);//루프 후보자 계산
+        ShuffleLoopCandidates(candidates);
+
+        int createdLoopCount = 0;
+
+        for (int candidateIndex = 0; candidateIndex < candidates.Count && createdLoopCount < targetLoopCount; candidateIndex++)
+        {
+            LoopCandidate candidate = candidates[candidateIndex];
+
+            if (!IsLoopCandidateAvailable(graph, candidate, occupiedCornerPositions, shortestPathQueue, shortestPathDistances))
+            {
+                continue;
+            }
+
+            graph.AddEdge(candidate.From, candidate.To, candidate.FromDirection, candidate.ToDirection, StageEdgeType.Loop);
+
+            if (candidate.PathType == LoopPathType.Corner)
+            {
+                occupiedCornerPositions.Add(candidate.CornerGridPosition);
+            }
+
+            createdLoopCount++;
+        }
+
+        return createdLoopCount >= minLoopCount;
+    }
+
+    private static void CollectLoopCandidates(StageGraph graph, List<LoopCandidate> results)
+    {
+        for (int fromIndex = 0; fromIndex < graph.Nodes.Count; fromIndex++)
+        {
+            StageNode from = graph.Nodes[fromIndex];
+
+            if (from.Group == StageNodeGroup.Fixed)
+            {
+                continue;
+            }
+
+            for (int toIndex = fromIndex + 1; toIndex < graph.Nodes.Count; toIndex++)
+            {
+                StageNode to = graph.Nodes[toIndex];
+
+                if (to.Group == StageNodeGroup.Fixed || graph.HasEdge(from, to))
+                {
+                    continue;
+                }
+
+                Vector2Int offset = to.GridPosition - from.GridPosition;
+                int absoluteX = Mathf.Abs(offset.x);
+                int absoluteY = Mathf.Abs(offset.y);
+
+                if (absoluteX + absoluteY == 1)
+                {
+                    AddStraightLoopCandidate(graph, from, to, offset, results);
+                    continue;
+                }
+
+                if (absoluteX == 1 && absoluteY == 1)
+                {
+                    AddCornerLoopCandidates(graph, from, to, offset, results);
+                }
+            }
+        }
+    }
+
+    private static void AddStraightLoopCandidate(StageGraph graph, StageNode from, StageNode to, Vector2Int offset, List<LoopCandidate> results)
+    {
+        DoorDirection fromDirection;
+
+        if (offset.x > 0)
+        {
+            fromDirection = DoorDirection.East;
+        }
+        else if (offset.x < 0)
+        {
+            fromDirection = DoorDirection.West;
+        }
+        else if (offset.y > 0)
+        {
+            fromDirection = DoorDirection.North;
+        }
+        else
+        {
+            fromDirection = DoorDirection.South;
+        }
+
+        DoorDirection toDirection = GetOppositeDirection(fromDirection);
+
+        if (graph.IsDirectionUsed(from, fromDirection) || graph.IsDirectionUsed(to, toDirection))
+        {
+            return;
+        }
+
+        results.Add(new LoopCandidate(from, to, fromDirection, toDirection, LoopPathType.Straight, default));
+    }
+
+    private static void AddCornerLoopCandidates(StageGraph graph, StageNode from, StageNode to, Vector2Int offset, List<LoopCandidate> results)
+    {
+        DoorDirection verticalFromDirection = offset.y > 0 ? DoorDirection.North : DoorDirection.South;
+        DoorDirection horizontalToDirection = offset.x > 0 ? DoorDirection.West : DoorDirection.East;
+        Vector2Int verticalCornerPosition = new Vector2Int(from.GridPosition.x, to.GridPosition.y);
+
+        TryAddCornerLoopCandidate(graph, from, to, verticalFromDirection, horizontalToDirection, verticalCornerPosition, results);
+
+        DoorDirection horizontalFromDirection = offset.x > 0 ? DoorDirection.East : DoorDirection.West;
+        DoorDirection verticalToDirection = offset.y > 0 ? DoorDirection.South : DoorDirection.North;
+        Vector2Int horizontalCornerPosition = new Vector2Int(to.GridPosition.x, from.GridPosition.y);
+
+        TryAddCornerLoopCandidate(graph, from, to, horizontalFromDirection, verticalToDirection, horizontalCornerPosition, results);
+    }
+
+    private static void TryAddCornerLoopCandidate(StageGraph graph, StageNode from, StageNode to, DoorDirection fromDirection, DoorDirection toDirection, Vector2Int cornerGridPosition, List<LoopCandidate> results)
+    {
+        // 코너 모듈이 차지할 격자에 방이 있으면 해당 ㄱ자 경로를 사용할 수 없다.
+        if (graph.ContainsNode(cornerGridPosition))
+        {
+            return;
+        }
+
+        if (graph.IsDirectionUsed(from, fromDirection) || graph.IsDirectionUsed(to, toDirection))
+        {
+            return;
+        }
+
+        results.Add(new LoopCandidate(from, to, fromDirection, toDirection, LoopPathType.Corner, cornerGridPosition));
+    }
+
+    private bool IsLoopCandidateAvailable(StageGraph graph, LoopCandidate candidate, HashSet<Vector2Int> occupiedCornerPositions, int[] shortestPathQueue, int[] shortestPathDistances)
+    {
+        if (candidate.From.Group == StageNodeGroup.Fixed || candidate.To.Group == StageNodeGroup.Fixed)
+        {
+            return false;
+        }
+
+        if (graph.HasEdge(candidate.From, candidate.To))
+        {
+            return false;
+        }
+
+        if (graph.IsDirectionUsed(candidate.From, candidate.FromDirection) ||
+            graph.IsDirectionUsed(candidate.To, candidate.ToDirection))
+        {
+            return false;
+        }
+
+        int maxLoopPerNode = Mathf.Max(0, _maxLoopPerNode);
+
+        if (graph.CountEdges(candidate.From, StageEdgeType.Loop) >= maxLoopPerNode ||
+            graph.CountEdges(candidate.To, StageEdgeType.Loop) >= maxLoopPerNode)
+        {
+            return false;
+        }
+
+        if (candidate.PathType == LoopPathType.Corner &&
+            (graph.ContainsNode(candidate.CornerGridPosition) || occupiedCornerPositions.Contains(candidate.CornerGridPosition)))
+        {
+            return false;
+        }
+
+        int minimumGraphDistance = Mathf.Max(2, _minLoopGraphDistance);
+        int graphDistance = graph.GetShortestDistance(candidate.From, candidate.To, shortestPathQueue, shortestPathDistances);
+        return graphDistance >= minimumGraphDistance;
+    }
+
+    private static void ShuffleLoopCandidates(List<LoopCandidate> candidates)
+    {
+        for (int index = candidates.Count - 1; index > 0; index--)
+        {
+            int randomIndex = Random.Range(0, index + 1);
+            LoopCandidate temporary = candidates[index];
+            candidates[index] = candidates[randomIndex];
+            candidates[randomIndex] = temporary;
         }
     }
 
@@ -650,7 +889,8 @@ public class StageManager : MonoBehaviour
             return false;
         }
 
-        if (Corridor.TryGenerate(_normalCorridorModule, _cornerCorridorModule, fromDoor, toDoor, fromRoom.CorridorParent)) //복도 생성
+        if (Corridor.TryGenerate(_normalCorridorModule, _halfCorridorModule, _cornerCorridorModule,
+            fromDoor, toDoor, fromRoom.CorridorParent)) //복도 생성
         {
             return true;
         }
