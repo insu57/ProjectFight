@@ -8,8 +8,8 @@ public enum RoomType
     Boss, Next
 }
 
-[CreateAssetMenu(fileName = "RoomDef", menuName = "Scriptable Objects/RoomDef")]
-public class RoomDef : ScriptableObject
+[CreateAssetMenu(fileName = "RoomDefinition", menuName = "Scriptable Objects/RoomDefinition")]
+public class RoomDefinition : ScriptableObject
 {
     [field: SerializeField] public Room RoomPrefab { get; private set; }
     [field: SerializeField] public int StageID { get; private set; } = 0;

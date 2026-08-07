@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62da0b18dccce1e4b9a4a034a45e38e1, type: 3}
+  m_Name: StageDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::StageDefinition
+  <StageID>k__BackingField: 0
+  <StartRoomDef>k__BackingField: {fileID: 11400000, guid: c960f2173f6c72b409207ac62adc9962, type: 2}
+  <BossRoomDef>k__BackingField: {fileID: 11400000, guid: 380c3d3f7111f09408ebab9fa43df095, type: 2}
+  <NextRoomDef>k__BackingField: {fileID: 11400000, guid: 4da45d482b9ff6142a54bad1039e600b, type: 2}
+  <BattleRoomsDef>k__BackingField:
+  - {fileID: 11400000, guid: 77703a51f96a37744bcaf6d256b47c15, type: 2}
+  - {fileID: 11400000, guid: 42f34f58354935d45be33b1a37528e6d, type: 2}
+  - {fileID: 11400000, guid: 9abe034251e4fb84b8bbe275c745c92a, type: 2}
+  <RewardRoomsDef>k__BackingField:
+  - {fileID: 11400000, guid: a482f9a3a3980644db4b3115a23b1965, type: 2}
+  <RoomDistance>k__BackingField: 5
+  <NormalCorridorModule>k__BackingField: {fileID: 2345354589709060967, guid: 1f9d860e7061821468d4b463d27687e6, type: 3}
+  <HalfCorridorModule>k__BackingField: {fileID: 4572922992601898069, guid: 0fc99130375745a469464de8f0f09cec, type: 3}
+  <CornerCorridorModule>k__BackingField: {fileID: 4901211449568578853, guid: 923e0faa0de9b534fbaa8cf0a900b506, type: 3}
+  <MainRoomDepth>k__BackingField: 2
+  <MinMainTurnCount>k__BackingField: 4
+  <MaxMainTurnCount>k__BackingField: 5
+  <GuaranteedMainRewardRoomCount>k__BackingField: 1
+  <GuaranteedBranchRewardRoomCount>k__BackingField: 1
+  <MinBranchCount>k__BackingField: 2
+  <MaxBranchCount>k__BackingField: 3
+  <MinBranchDepth>k__BackingField: 1
+  <MaxBranchDepth>k__BackingField: 3
+  <MaxBranchPerNode>k__BackingField: 2
+  <MinLoopCount>k__BackingField: 3
+  <MaxLoopCount>k__BackingField: 3
+  <MinLoopGraphDistance>k__BackingField: 3
+  <MaxLoopPerNode>k__BackingField: 2

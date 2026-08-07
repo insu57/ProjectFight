@@ -554,6 +554,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2144577789}
   - component: {fileID: 2144577788}
+  - component: {fileID: 2144577790}
   m_Layer: 0
   m_Name: StageManager
   m_TagString: Untagged
@@ -573,19 +574,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6055c2c5c7b0cdf4488ac8471f36e52e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StageManager
-  _startRoomData: {fileID: 11400000, guid: c960f2173f6c72b409207ac62adc9962, type: 2}
-  _battleRoomData:
-  - {fileID: 11400000, guid: 77703a51f96a37744bcaf6d256b47c15, type: 2}
-  - {fileID: 11400000, guid: 42f34f58354935d45be33b1a37528e6d, type: 2}
-  - {fileID: 11400000, guid: 9abe034251e4fb84b8bbe275c745c92a, type: 2}
-  _rewardRoomData:
-  - {fileID: 11400000, guid: a482f9a3a3980644db4b3115a23b1965, type: 2}
-  _bossRoomData: {fileID: 11400000, guid: 380c3d3f7111f09408ebab9fa43df095, type: 2}
-  _nextRoomData: {fileID: 11400000, guid: 4da45d482b9ff6142a54bad1039e600b, type: 2}
-  _mainRoomDepth: 2
-  _minMainTurnCount: 4
-  _maxMainTurnCount: 5
-  _maxMainPathGenerationAttempts: 30
   _guaranteedMainRewardRoomCount: 1
   _guaranteedBranchRewardRoomCount: 1
   _minBranchCount: 2
@@ -616,6 +604,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2144577790
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2144577787}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: daf3f435f5169e84e97bf7b42857a1d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StageManager
+  _stageDefinition: {fileID: 11400000, guid: 74b732fb16820f14b93db0a951204f16, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

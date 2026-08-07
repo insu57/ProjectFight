@@ -17,20 +17,20 @@ public enum StageEdgeType
 public sealed class StageNode
 {
     public StageNodeGroup Group { get; }
-    public RoomDef RoomData { get; private set; }
+    public RoomDefinition RoomData { get; private set; }
     // 방의 논리적인 격자 좌표로, 물리적인 월드 좌표와 분리해서 관리한다.
     public Vector2Int GridPosition { get; }
     public Vector3 Position { get; set; }
     public Room RoomInstance { get; set; }
 
-    public StageNode(StageNodeGroup group, Vector2Int gridPosition, RoomDef roomData = null)
+    public StageNode(StageNodeGroup group, Vector2Int gridPosition, RoomDefinition roomData = null)
     {
         Group = group;
         GridPosition = gridPosition;
         RoomData = roomData;
     }
 
-    public void SetRoomData(RoomDef roomData)
+    public void SetRoomData(RoomDefinition roomData)
     {
         RoomData = roomData;
     }
@@ -68,7 +68,7 @@ public sealed class StageGraph
         _edges = new List<StageEdge>(Mathf.Max(0, nodeCapacity - 1));
     }
 
-    public StageNode AddNode(StageNodeGroup group, Vector2Int gridPosition, RoomDef roomData = null)
+    public StageNode AddNode(StageNodeGroup group, Vector2Int gridPosition, RoomDefinition roomData = null)
     {
         var node = new StageNode(group, gridPosition, roomData);
         _nodes.Add(node);
