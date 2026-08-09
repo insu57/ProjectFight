@@ -48,10 +48,6 @@ public class MapGenerator : MonoBehaviour
     private Room _bossRoom;
     private Room _nextRoom;
     
-    [field: SerializeField] private float _roomDistance = 5f;
-    [field: SerializeField] private GameObject _normalCorridorModule;
-    [field: SerializeField] private GameObject _halfCorridorModule;
-    [field: SerializeField] private GameObject _cornerCorridorModule;
 
     public void GenerateStage(StageDefinition stageDefinition)
     {
@@ -839,8 +835,10 @@ public class MapGenerator : MonoBehaviour
             maximumDepth = Mathf.Max(maximumDepth, roomSpacing.y);
         }
 
+        float roomDistance = _stageDefinition.RoomDistance;
+
         // 가장 큰 방을 기준으로 모든 격자 칸이 겹치지 않을 크기를 확보한다.
-        return new Vector2(maximumWidth + _roomDistance, maximumDepth + _roomDistance);
+        return new Vector2(maximumWidth + roomDistance, maximumDepth + roomDistance);
     }
 
     private void InstantiateRooms(StageGraph graph)
@@ -905,8 +903,8 @@ public class MapGenerator : MonoBehaviour
             return false;
         }
 
-        if (Corridor.TryGenerate(_normalCorridorModule, _halfCorridorModule, _cornerCorridorModule,
-            fromDoor, toDoor, fromRoom.CorridorParent)) //복도 생성
+        if (Corridor.TryGenerate(_stageDefinition.NormalCorridorModule, _stageDefinition.HalfCorridorModule
+            , _stageDefinition.CornerCorridorModule,fromDoor, toDoor, fromRoom.CorridorParent)) //복도 생성
         {
             return true;
         }
