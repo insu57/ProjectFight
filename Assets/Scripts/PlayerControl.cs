@@ -10,8 +10,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public Vector2 LookInput { get; private set; }
     public bool IsLookInputDelta { get; private set; }
     public event Action JumpPressed;
-
-
+    public event Action LockOnPressed;
 
     private void Awake()
     {
@@ -57,5 +56,13 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public void OnSprint(InputAction.CallbackContext context)
     {
 
+    }
+
+    public void OnLockOn(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            LockOnPressed?.Invoke();
+        }
     }
 }

@@ -113,18 +113,18 @@ public class MapGenerator : MonoBehaviour
             // 방 종류는 전체 그래프를 완성한 뒤 인접 제한과 보상방 수를 함께 검사해 결정한다.
             StageNode node = graph.AddNode(StageNodeGroup.Main, mainPositions[depth + 1]);
             DoorDirection direction = mainDirections[depth];
-            graph.AddEdge(previousNode, node, direction, GetOppositeDirection(direction));
+            graph.AddEdge(previousNode, node, direction, StageGraph.GetOppositeDirection(direction));
             branchRootCandidates.Add(node);
             previousNode = node;
         }
 
         DoorDirection bossDirection = mainDirections[normalRoomCount];
         StageNode bossNode = graph.AddNode(StageNodeGroup.Fixed, mainPositions[normalRoomCount + 1], bossRoomDef);
-        graph.AddEdge(previousNode, bossNode, bossDirection, GetOppositeDirection(bossDirection));
+        graph.AddEdge(previousNode, bossNode, bossDirection, StageGraph.GetOppositeDirection(bossDirection));
 
         // 보스방은 일반방 하나와 다음 방 하나에만 연결한다.
         StageNode nextNode = graph.AddNode(StageNodeGroup.Fixed, nextRoomPosition, nextRoomDef);
-        graph.AddEdge(bossNode, nextNode, bossDirection, GetOppositeDirection(bossDirection));
+        graph.AddEdge(bossNode, nextNode, bossDirection, StageGraph.GetOppositeDirection(bossDirection));
 
         if (!TryAddBranches(graph, branchRootCandidates))
         {
@@ -203,10 +203,10 @@ public class MapGenerator : MonoBehaviour
         {
             if (turnFlags[connectionIndex])
             {
-                currentDirection = GetRandomTurnDirection(currentDirection);
+                currentDirection = StageGraph.GetRandomTurnDirection(currentDirection);
             }
 
-            Vector2Int nextPosition = currentPosition + GetGridOffset(currentDirection);
+            Vector2Int nextPosition = currentPosition + StageGraph.GetGridOffset(currentDirection);
 
             // 직전 방을 포함해 기존 메인 경로 좌표로 돌아가는 진행은 허용하지 않는다.
             if (!occupiedPositions.Add(nextPosition))//HashSet에 이미 원소를 추가하면 false 반환
@@ -226,7 +226,7 @@ public class MapGenerator : MonoBehaviour
         }
 
         // 다음 방은 보스방을 통과한 뒤 마지막 진행 방향으로 이어지게 한다.
-        Vector2Int candidateNextRoomPosition = currentPosition + GetGridOffset(currentDirection);
+        Vector2Int candidateNextRoomPosition = currentPosition + StageGraph.GetGridOffset(currentDirection);
 
         if (occupiedPositions.Contains(candidateNextRoomPosition))
         {
@@ -239,41 +239,9 @@ public class MapGenerator : MonoBehaviour
         return true;
     }
 
-    private static DoorDirection GetRandomTurnDirection(DoorDirection currentDirection)
-    {
-        return currentDirection switch
-        {
-            DoorDirection.North => Random.value < 0.5f ? DoorDirection.East : DoorDirection.West,
-            DoorDirection.East => DoorDirection.North,
-            DoorDirection.West => DoorDirection.North,
-            _ => DoorDirection.North
-        };
-    }
+    
 
-    private static Vector2Int GetGridOffset(DoorDirection direction)
-    {
-        return direction switch
-        {
-            DoorDirection.North => Vector2Int.up,
-            DoorDirection.East => Vector2Int.right,
-            DoorDirection.South => Vector2Int.down,
-            DoorDirection.West => Vector2Int.left,
-            _ => Vector2Int.zero
-        };
-    }
-
-    private static DoorDirection GetOppositeDirection(DoorDirection direction)
-    {
-        return direction switch
-        {
-            DoorDirection.North => DoorDirection.South,
-            DoorDirection.East => DoorDirection.West,
-            DoorDirection.South => DoorDirection.North,
-            DoorDirection.West => DoorDirection.East,
-            _ => direction
-        };
-    }
-
+    
     private static void ShuffleIndices(int[] indices)
     {
         for (int index = indices.Length - 1; index > 0; index--)
@@ -357,7 +325,7 @@ public class MapGenerator : MonoBehaviour
 
     private static bool IsBranchPathAvailable(StageGraph graph, Vector2Int rootPosition, DoorDirection direction, int branchDepth)
     {
-        Vector2Int offset = GetGridOffset(direction);
+        Vector2Int offset = StageGraph.GetGridOffset(direction);
         Vector2Int position = rootPosition;
 
         for (int depth = 0; depth < branchDepth; depth++)
@@ -375,8 +343,8 @@ public class MapGenerator : MonoBehaviour
 
     private static void AddBranch(StageGraph graph, StageNode branchRoot, DoorDirection direction, int branchDepth)
     {
-        Vector2Int offset = GetGridOffset(direction);
-        DoorDirection entranceDirection = GetOppositeDirection(direction);
+        Vector2Int offset = StageGraph.GetGridOffset(direction);
+        DoorDirection entranceDirection = StageGraph.GetOppositeDirection(direction);
         Vector2Int position = branchRoot.GridPosition;
         StageNode previousNode = branchRoot;
 
@@ -509,7 +477,7 @@ public class MapGenerator : MonoBehaviour
             fromDirection = DoorDirection.South;
         }
 
-        DoorDirection toDirection = GetOppositeDirection(fromDirection);
+        DoorDirection toDirection = StageGraph.GetOppositeDirection(fromDirection);
 
         if (graph.IsDirectionUsed(from, fromDirection) || graph.IsDirectionUsed(to, toDirection))
         {

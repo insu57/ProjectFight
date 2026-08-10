@@ -16,6 +16,7 @@ public class PlayerMove : MonoBehaviour
     private float _verticalVelocity;
 
     public float MoveAmount { get; private set; }
+    public Vector2 LocalMoveDirection { get; private set; }
 
     private void Awake()
     {
@@ -30,6 +31,11 @@ public class PlayerMove : MonoBehaviour
         MoveAmount = inputDirection.magnitude;
 
         Rotate(moveDirection, deltaTime);
+
+        // 회전 중에는 측면 모션을 섞고, 회전이 끝나면 전진 모션으로 수렴시킨다.
+        Vector3 localMoveDirection = transform.InverseTransformDirection(moveDirection);
+        LocalMoveDirection = new Vector2(localMoveDirection.x, localMoveDirection.z);
+
         ApplyGravity(deltaTime);
 
         moveDirection *= _moveSpeed;

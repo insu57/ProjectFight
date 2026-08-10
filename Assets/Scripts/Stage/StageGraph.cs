@@ -208,4 +208,39 @@ public sealed class StageGraph
     {
         _edges.Add(new StageEdge(from, to, fromDirection, toDirection, type));
     }
+
+    public static Vector2Int GetGridOffset(DoorDirection direction)
+    {
+        return direction switch
+        {
+            DoorDirection.North => Vector2Int.up,
+            DoorDirection.East => Vector2Int.right,
+            DoorDirection.South => Vector2Int.down,
+            DoorDirection.West => Vector2Int.left,
+            _ => Vector2Int.zero
+        };
+    }
+
+    public static DoorDirection GetOppositeDirection(DoorDirection direction)
+    {
+        return direction switch
+        {
+            DoorDirection.North => DoorDirection.South,
+            DoorDirection.East => DoorDirection.West,
+            DoorDirection.South => DoorDirection.North,
+            DoorDirection.West => DoorDirection.East,
+            _ => direction
+        };
+    }
+
+    public static DoorDirection GetRandomTurnDirection(DoorDirection currentDirection)
+    {
+        return currentDirection switch
+        {
+            DoorDirection.North => Random.value < 0.5f ? DoorDirection.East : DoorDirection.West,
+            DoorDirection.East => DoorDirection.North,
+            DoorDirection.West => DoorDirection.North,
+            _ => DoorDirection.North
+        };
+    }
 }

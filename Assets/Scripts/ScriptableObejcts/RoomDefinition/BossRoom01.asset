@@ -15,3 +15,4 @@ MonoBehaviour:
   <RoomPrefab>k__BackingField: {fileID: 5733638877101900956, guid: 02a32230145b7b846bae458921748449, type: 3}
   <StageID>k__BackingField: 1
   <RoomType>k__BackingField: 3
+  <RoomSpacing>k__BackingField: {x: 40, y: 40}
