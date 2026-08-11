@@ -3,15 +3,17 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class LockOnIndicatorUI : MonoBehaviour
 {
-    [SerializeField] private PlayerManager _playerManager;
-    [SerializeField] private RectTransform _indicator;
+    private PlayerManager _playerManager;
     private Camera _viewCamera;
 
+    [SerializeField] private RectTransform _indicator;
+    
     private RectTransform _canvasRect;
     private LockOnTarget _target;
 
     private void Awake()
     {
+        _playerManager = FindFirstObjectByType<PlayerManager>();
         _canvasRect = transform as RectTransform;
 
         _viewCamera = Camera.main;

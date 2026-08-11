@@ -8,15 +8,27 @@ public class PlayerMove : MonoBehaviour
     [SerializeField, Min(0f)] private float _moveSpeed = 5f;
     [SerializeField, Min(0f)] private float _rotationSpeed = 720f;
 
+    [Header("Sprint")]
+    [SerializeField, Min(0f)] private float _sprintSpeed = 8f;
+
+    [Header("Dodge")]
+    [SerializeField, Min(0f)] private float _dodgeSpeed = 8f;
+    [SerializeField, Min(0f)] private float _dodgeDuration = 0.4f;
+
     [Header("Gravity")]
     [SerializeField] private float _gravity = -25f;
     [SerializeField] private float _groundedVerticalVelocity = -2f;
 
     private CharacterController _characterController;
+    private Vector3 _dodgeWorldDirection;
     private float _verticalVelocity;
+    private float _dodgeElapsedTime;
+    private bool _isDodging;
 
     public float MoveAmount { get; private set; }
     public Vector2 LocalMoveDirection { get; private set; }
+    public bool IsDodging => _isDodging;
+    public Vector2 DodgeLocalDirection { get; private set; }
 
     private void Awake()
     {
@@ -25,12 +37,80 @@ public class PlayerMove : MonoBehaviour
 
     public void Move(Vector2 moveInput, Quaternion cameraRotation, float deltaTime)
     {
+        MoveInternal(moveInput, cameraRotation, false, _moveSpeed, deltaTime);
+    }
+
+    public void MoveSprint(Vector2 moveInput, Quaternion cameraRotation, float deltaTime)
+    {
+        // 달리기는 락온 여부와 관계없이 카메라 기준으로 이동하고 이동 방향을 바라본다.
+        MoveInternal(moveInput, cameraRotation, false, _sprintSpeed, deltaTime);
+    }
+
+    public void MoveLockedOn(Vector2 moveInput, Vector3 targetPosition, float deltaTime)
+    {
+        Vector3 targetDirection = targetPosition - transform.position;
+        targetDirection.y = 0f;
+
+        Quaternion targetRotation = targetDirection.sqrMagnitude > 0f ? Quaternion.LookRotation(targetDirection) : transform.rotation;
+        MoveInternal(moveInput, targetRotation, true, _moveSpeed, deltaTime);
+    }
+
+    public bool TryBeginDodge(Vector2 moveInput, Quaternion cameraRotation)
+    {
+        return TryBeginDodgeInternal(moveInput, cameraRotation);
+    }
+
+    public bool TryBeginLockedOnDodge(Vector2 moveInput, Vector3 targetPosition)
+    {
+        Vector3 targetDirection = targetPosition - transform.position;
+        targetDirection.y = 0f;
+
+        Quaternion referenceRotation = targetDirection.sqrMagnitude > 0f ? Quaternion.LookRotation(targetDirection) : transform.rotation;
+        return TryBeginDodgeInternal(moveInput, referenceRotation);
+    }
+
+    public void UpdateDodge(float deltaTime)
+    {
+        if (!_isDodging) return;
+
+        if (_dodgeDuration <= 0f)
+        {
+            EndDodge();
+            return;
+        }
+
+        float remainingTime = _dodgeDuration - _dodgeElapsedTime;
+        float dodgeDeltaTime = Mathf.Min(deltaTime, remainingTime);
+
+        ApplyGravity(deltaTime);
+
+        Vector3 displacement = _dodgeWorldDirection * (_dodgeSpeed * dodgeDeltaTime);
+        displacement.y = _verticalVelocity * deltaTime;
+        _characterController.Move(displacement);
+
+        _dodgeElapsedTime += deltaTime;
+
+        if (_dodgeElapsedTime >= _dodgeDuration)
+        {
+            EndDodge();
+        }
+    }
+
+    public void EndDodge()
+    {
+        _isDodging = false;
+        _dodgeElapsedTime = 0f;
+    }
+
+    private void MoveInternal(Vector2 moveInput, Quaternion referenceRotation, bool faceReferenceDirection, float moveSpeed, float deltaTime)
+    {
         Vector3 inputDirection = Vector3.ClampMagnitude(new Vector3(moveInput.x, 0f, moveInput.y), 1f);
-        Vector3 moveDirection = cameraRotation * inputDirection;
+        Vector3 moveDirection = referenceRotation * inputDirection;
 
         MoveAmount = inputDirection.magnitude;
 
-        Rotate(moveDirection, deltaTime);
+        // 락온 중에는 이동 방향과 관계없이 현재 타깃을 계속 바라본다.
+        Rotate(faceReferenceDirection ? referenceRotation * Vector3.forward : moveDirection, deltaTime);
 
         // 회전 중에는 측면 모션을 섞고, 회전이 끝나면 전진 모션으로 수렴시킨다.
         Vector3 localMoveDirection = transform.InverseTransformDirection(moveDirection);
@@ -38,10 +118,39 @@ public class PlayerMove : MonoBehaviour
 
         ApplyGravity(deltaTime);
 
-        moveDirection *= _moveSpeed;
+        moveDirection *= moveSpeed;
         moveDirection.y = _verticalVelocity;
 
         _characterController.Move(moveDirection * deltaTime);
+    }
+
+    private bool TryBeginDodgeInternal(Vector2 moveInput, Quaternion referenceRotation)
+    {
+        if (_isDodging) return false;
+
+        Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y);
+
+        if (inputDirection.sqrMagnitude <= 0f)
+        {
+            // 이동 입력이 없다면 현재 캐릭터의 전방으로 회피한다.
+            _dodgeWorldDirection = transform.forward;
+            _dodgeWorldDirection.y = 0f;
+            _dodgeWorldDirection.Normalize();
+            DodgeLocalDirection = Vector2.up;
+        }
+        else
+        {
+            _dodgeWorldDirection = referenceRotation * inputDirection.normalized;
+            _dodgeWorldDirection.y = 0f;
+            _dodgeWorldDirection.Normalize();
+
+            Vector3 localDodgeDirection = transform.InverseTransformDirection(_dodgeWorldDirection);
+            DodgeLocalDirection = new Vector2(localDodgeDirection.x, localDodgeDirection.z).normalized;
+        }
+
+        _dodgeElapsedTime = 0f;
+        _isDodging = true;
+        return true;
     }
 
     private void Rotate(Vector3 moveDirection, float deltaTime)

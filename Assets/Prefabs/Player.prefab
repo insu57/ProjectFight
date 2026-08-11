@@ -63,6 +63,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 532ce88ee88f4b4469b8f62a7805f925, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerControl
+  _sprintHoldDuration: 0.2
 --- !u!114 &1340694069054334948
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -93,6 +94,8 @@ MonoBehaviour:
   _stickRotationSpeed: 180
   _minimumPitch: -40
   _maximumPitch: 70
+  _lockOnRotationSpeed: 720
+  _lockOnPitchOffset: 10
 --- !u!114 &1581295833491925683
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -107,6 +110,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMove
   _moveSpeed: 5
   _rotationSpeed: 720
+  _sprintSpeed: 8
+  _dodgeSpeed: 8
+  _dodgeDuration: 0.4
   _gravity: -25
   _groundedVerticalVelocity: -2
 --- !u!114 &6208027609890155446
@@ -121,13 +127,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0b2006d7069f264eb41e02608e8c225, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerLockOn
-  _searchRange: 15
+  _searchRange: 10
   _targetLayerMask:
     serializedVersion: 2
     m_Bits: 128
   _viewportPadding: 0.05
   _maxCandidateCount: 32
-  _viewCamera: {fileID: 0}
   _currentTarget: {fileID: 0}
 --- !u!143 &5069475613526859143
 CharacterController:

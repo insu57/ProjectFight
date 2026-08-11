@@ -4,13 +4,12 @@ using UnityEngine;
 public sealed class PlayerLockOn : MonoBehaviour
 {
     [Header("Target Search")]
-    [SerializeField, Min(0f)] private float _searchRange = 15f;
+    [SerializeField, Min(0f)] private float _searchRange = 10f;
     [SerializeField] private LayerMask _targetLayerMask;
     [SerializeField, Range(0f, 0.49f)] private float _viewportPadding = 0.05f;
     [SerializeField, Min(1)] private int _maxCandidateCount = 32;
 
-    [Header("Camera")]
-    [SerializeField] private Camera _viewCamera;
+    private Camera _viewCamera;
 
     [Header("Runtime")]
     [SerializeField] private LockOnTarget _currentTarget;
@@ -22,28 +21,65 @@ public sealed class PlayerLockOn : MonoBehaviour
 
     private void Awake()
     {
-        if (!_viewCamera)
-        {
-            _viewCamera = Camera.main;
-        }
+        _viewCamera = Camera.main;
 
         // 탐색 시마다 배열을 생성하지 않도록 검색 버퍼를 한 번만 할당한다.
         _candidateBuffer = new Collider[_maxCandidateCount];
     }
 
-    public bool TryAcquireTarget()
+    public void ToggleTarget()
     {
+        if (_currentTarget)
+        {
+            ReleaseTarget();
+            return;
+        }
+
         _currentTarget = FindBestTarget();
-        Debug.Log($"{_currentTarget} !!!");
-        return _currentTarget;
+    }
+
+    public bool TryReleaseInvalidTarget()
+    {
+        if (!_currentTarget) return false;
+
+        if (!_currentTarget.isActiveAndEnabled)
+        {
+            ReleaseTarget();
+            return true;
+        }
+
+        Vector3 aimPosition = _currentTarget.AimPosition;
+        float searchRangeSqr = _searchRange * _searchRange;
+
+        // 락온 후에도 대상이 탐색 범위와 화면 안에 있는지 계속 검사한다.
+        if ((aimPosition - transform.position).sqrMagnitude <= searchRangeSqr
+            && IsInsideViewport(_viewCamera.WorldToViewportPoint(aimPosition)))
+        {
+            return false;
+        }
+
+        ReleaseTarget();
+        return true;
+    }
+
+    private void ReleaseTarget()
+    {
+        _currentTarget = null;
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, _searchRange);
     }
 
     private LockOnTarget FindBestTarget()
     {
         if (!_viewCamera) return null;
 
-        int candidateCount = Physics.OverlapSphereNonAlloc(transform.position, _searchRange, _candidateBuffer, _targetLayerMask,
-            QueryTriggerInteraction.Collide);
+        
+
+        int candidateCount = Physics.OverlapSphereNonAlloc(transform.position, _searchRange, _candidateBuffer, _targetLayerMask, QueryTriggerInteraction.Collide);
         LockOnTarget bestTarget = null;
         float bestScreenDistance = float.MaxValue;
 
