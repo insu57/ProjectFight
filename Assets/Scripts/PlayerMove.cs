@@ -4,6 +4,12 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerMove : MonoBehaviour
 {
+    private enum FacingMode
+    {
+        MoveDirection,
+        ReferenceDirection
+    }
+
     [Header("Movement")]
     [SerializeField, Min(0f)] private float _moveSpeed = 5f;
     [SerializeField, Min(0f)] private float _rotationSpeed = 720f;
@@ -23,11 +29,9 @@ public class PlayerMove : MonoBehaviour
     private Vector3 _dodgeWorldDirection;
     private float _verticalVelocity;
     private float _dodgeElapsedTime;
-    private bool _isDodging;
 
     public float MoveAmount { get; private set; }
     public Vector2 LocalMoveDirection { get; private set; }
-    public bool IsDodging => _isDodging;
     public Vector2 DodgeLocalDirection { get; private set; }
 
     private void Awake()
@@ -37,13 +41,13 @@ public class PlayerMove : MonoBehaviour
 
     public void Move(Vector2 moveInput, Quaternion cameraRotation, float deltaTime)
     {
-        MoveInternal(moveInput, cameraRotation, false, _moveSpeed, deltaTime);
+        MoveInternal(moveInput, cameraRotation, FacingMode.MoveDirection, _moveSpeed, deltaTime);
     }
 
     public void MoveSprint(Vector2 moveInput, Quaternion cameraRotation, float deltaTime)
     {
         // 달리기는 락온 여부와 관계없이 카메라 기준으로 이동하고 이동 방향을 바라본다.
-        MoveInternal(moveInput, cameraRotation, false, _sprintSpeed, deltaTime);
+        MoveInternal(moveInput, cameraRotation, FacingMode.MoveDirection, _sprintSpeed, deltaTime);
     }
 
     public void MoveLockedOn(Vector2 moveInput, Vector3 targetPosition, float deltaTime)
@@ -52,31 +56,29 @@ public class PlayerMove : MonoBehaviour
         targetDirection.y = 0f;
 
         Quaternion targetRotation = targetDirection.sqrMagnitude > 0f ? Quaternion.LookRotation(targetDirection) : transform.rotation;
-        MoveInternal(moveInput, targetRotation, true, _moveSpeed, deltaTime);
+        MoveInternal(moveInput, targetRotation, FacingMode.ReferenceDirection, _moveSpeed, deltaTime);
     }
 
-    public bool TryBeginDodge(Vector2 moveInput, Quaternion cameraRotation)
+    public void BeginDodge(Vector2 moveInput, Quaternion cameraRotation)
     {
-        return TryBeginDodgeInternal(moveInput, cameraRotation);
+        BeginDodgeInternal(moveInput, cameraRotation);
     }
 
-    public bool TryBeginLockedOnDodge(Vector2 moveInput, Vector3 targetPosition)
+    public void BeginLockedOnDodge(Vector2 moveInput, Vector3 targetPosition)
     {
         Vector3 targetDirection = targetPosition - transform.position;
         targetDirection.y = 0f;
 
         Quaternion referenceRotation = targetDirection.sqrMagnitude > 0f ? Quaternion.LookRotation(targetDirection) : transform.rotation;
-        return TryBeginDodgeInternal(moveInput, referenceRotation);
+        BeginDodgeInternal(moveInput, referenceRotation);
     }
 
-    public void UpdateDodge(float deltaTime)
+    public bool UpdateDodge(float deltaTime)
     {
-        if (!_isDodging) return;
-
         if (_dodgeDuration <= 0f)
         {
             EndDodge();
-            return;
+            return true;
         }
 
         float remainingTime = _dodgeDuration - _dodgeElapsedTime;
@@ -90,19 +92,18 @@ public class PlayerMove : MonoBehaviour
 
         _dodgeElapsedTime += deltaTime;
 
-        if (_dodgeElapsedTime >= _dodgeDuration)
-        {
-            EndDodge();
-        }
+        if (_dodgeElapsedTime < _dodgeDuration) return false;
+
+        EndDodge();
+        return true;
     }
 
     public void EndDodge()
     {
-        _isDodging = false;
         _dodgeElapsedTime = 0f;
     }
 
-    private void MoveInternal(Vector2 moveInput, Quaternion referenceRotation, bool faceReferenceDirection, float moveSpeed, float deltaTime)
+    private void MoveInternal(Vector2 moveInput, Quaternion referenceRotation, FacingMode facingMode, float moveSpeed, float deltaTime)
     {
         Vector3 inputDirection = Vector3.ClampMagnitude(new Vector3(moveInput.x, 0f, moveInput.y), 1f);
         Vector3 moveDirection = referenceRotation * inputDirection;
@@ -110,7 +111,7 @@ public class PlayerMove : MonoBehaviour
         MoveAmount = inputDirection.magnitude;
 
         // 락온 중에는 이동 방향과 관계없이 현재 타깃을 계속 바라본다.
-        Rotate(faceReferenceDirection ? referenceRotation * Vector3.forward : moveDirection, deltaTime);
+        Rotate(facingMode == FacingMode.ReferenceDirection ? referenceRotation * Vector3.forward : moveDirection, deltaTime);
 
         // 회전 중에는 측면 모션을 섞고, 회전이 끝나면 전진 모션으로 수렴시킨다.
         Vector3 localMoveDirection = transform.InverseTransformDirection(moveDirection);
@@ -124,10 +125,8 @@ public class PlayerMove : MonoBehaviour
         _characterController.Move(moveDirection * deltaTime);
     }
 
-    private bool TryBeginDodgeInternal(Vector2 moveInput, Quaternion referenceRotation)
+    private void BeginDodgeInternal(Vector2 moveInput, Quaternion referenceRotation)
     {
-        if (_isDodging) return false;
-
         Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y);
 
         if (inputDirection.sqrMagnitude <= 0f)
@@ -149,8 +148,6 @@ public class PlayerMove : MonoBehaviour
         }
 
         _dodgeElapsedTime = 0f;
-        _isDodging = true;
-        return true;
     }
 
     private void Rotate(Vector3 moveDirection, float deltaTime)

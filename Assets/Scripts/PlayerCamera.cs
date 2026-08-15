@@ -1,5 +1,11 @@
 using UnityEngine;
 
+public enum PlayerCameraMode
+{
+    Free,
+    LockOn
+}
+
 [DisallowMultipleComponent]
 public class PlayerCamera : MonoBehaviour
 {
@@ -24,9 +30,10 @@ public class PlayerCamera : MonoBehaviour
     private float _pitch;
     private bool _isLookInputDelta;
     private bool _canRotate = true;
-    private bool _hasLockOnTarget;
+    private PlayerCameraMode _cameraMode;
 
     public Quaternion YawRotation => Quaternion.Euler(0f, _yaw, 0f);
+    public PlayerCameraMode CameraMode => _cameraMode;
 
     private void Awake()
     {
@@ -54,19 +61,19 @@ public class PlayerCamera : MonoBehaviour
     public void SetLockOnTarget(Vector3 targetPosition)
     {
         _lockOnTargetPosition = targetPosition;
-        _hasLockOnTarget = true;
+        _cameraMode = PlayerCameraMode.LockOn;
     }
 
     public void ClearLockOnTarget()
     {
-        _hasLockOnTarget = false;
+        _cameraMode = PlayerCameraMode.Free;
     }
 
     private void UpdateRotation()
     {
         if (_canRotate)
         {
-            if (_hasLockOnTarget)
+            if (_cameraMode == PlayerCameraMode.LockOn)
             {
                 UpdateLockOnRotation();
             }
