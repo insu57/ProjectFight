@@ -8,6 +8,7 @@ public class PlayerManager : MonoBehaviour
     private PlayerState _playerState;
     private PlayerMove _playerMove;
     private PlayerDodge _playerDodge;
+    private PlayerAttack _playerAttack;
     private PlayerAnimation _playerAnimation;
     private PlayerCamera _playerCamera;
     private PlayerLockOn _playerLockOn;
@@ -20,6 +21,7 @@ public class PlayerManager : MonoBehaviour
         TryGetComponent(out _playerState);
         TryGetComponent(out _playerMove);
         TryGetComponent(out _playerDodge);
+        TryGetComponent(out _playerAttack);
         TryGetComponent(out _playerAnimation);
         TryGetComponent(out _playerCamera);
         TryGetComponent(out _playerLockOn);
@@ -31,6 +33,7 @@ public class PlayerManager : MonoBehaviour
         {
             _playerControl.LockOnPressed += HandleLockOnPressed;
             _playerControl.DodgePressed += HandleDodgePressed;
+            _playerControl.AttackPressed += HandleAttackPressed;
         }
     }
 
@@ -40,6 +43,7 @@ public class PlayerManager : MonoBehaviour
         {
             _playerControl.LockOnPressed -= HandleLockOnPressed;
             _playerControl.DodgePressed -= HandleDodgePressed;
+            _playerControl.AttackPressed -= HandleAttackPressed;
         }
     }
     private void Update()
@@ -77,6 +81,16 @@ public class PlayerManager : MonoBehaviour
             if (_playerMove.UpdateDodge(Time.deltaTime))
             {
                 // 회피 이동이 끝나면 다음 행동을 받을 수 있는 상태로 복귀한다.
+                _playerState.SetActionState(PlayerActionState.Free);
+            }
+        }
+        else if (_playerState.ActionState == PlayerActionState.Attacking)
+        {
+            if (_playerAnimation.IsAttackFinished())
+            {
+                // 실제 공격 애니메이션이 종료된 뒤 다음 행동을 받을 수 있는 상태로 복귀한다.
+                _playerAttack.EndAttack();
+                _playerAnimation.CompleteAttack();
                 _playerState.SetActionState(PlayerActionState.Free);
             }
         }
@@ -139,6 +153,18 @@ public class PlayerManager : MonoBehaviour
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _playerState.SetActionState(PlayerActionState.Dodging);
         _playerAnimation.PlayDodge(_playerMove.DodgeLocalDirection);
+    }
+
+    private void HandleAttackPressed(PlayerAttackType attackType)
+    {
+        if (!_playerState || !_playerAttack || !_playerAnimation) return;
+        if (!_playerState.CanUseNormalAttack) return;
+
+        // 공격 중에는 일반 이동을 멈추고 입력된 공격을 즉시 시작한다.
+        _playerAttack.BeginAttack(attackType);
+        _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
+        _playerState.SetActionState(PlayerActionState.Attacking);
+        _playerAnimation.PlayAttack(attackType);
     }
 
     private void UpdateLocomotionState()
