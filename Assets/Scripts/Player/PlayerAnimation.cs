@@ -3,18 +3,20 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class PlayerAnimation : MonoBehaviour
 {
+    private const string LocomotionStateName = "Base Layer.Locomotion";
+
     private static readonly int _moveXHash = Animator.StringToHash("MoveX");
     private static readonly int _moveYHash = Animator.StringToHash("MoveY");
     private static readonly int _dodgeXHash = Animator.StringToHash("DodgeX");
     private static readonly int _dodgeYHash = Animator.StringToHash("DodgeY");
     private static readonly int _dodgeHash = Animator.StringToHash("Dodge");
     private static readonly int _isSprintingHash = Animator.StringToHash("IsSprinting");
-    private static readonly int _attackHash = Animator.StringToHash("Attack");
-    private static readonly int _attackTypeHash = Animator.StringToHash("AttackType");
     private static readonly int _attackTagHash = Animator.StringToHash("Attack");
+    private static readonly int _locomotionStateHash = Animator.StringToHash(LocomotionStateName);
 
     [SerializeField, Min(0f)] private float _movementDampTime = 0.1f;
     [SerializeField, Min(0f)] private float _movementThreshold = 0.001f;
+    [SerializeField, Min(0f)] private float _attackExitTransitionDuration = 0.1f;
 
     private Animator _playerAnimator;
     private bool _isAttackRequested;
@@ -63,40 +65,94 @@ public class PlayerAnimation : MonoBehaviour
         _playerAnimator.SetTrigger(_dodgeHash);
     }
 
-    public void PlayAttack(PlayerAttackType attackType)
+    public void PlayAttack(AttackDefinition attackDefinition)
     {
-        if (!_playerAnimator) return;
+        if (!_playerAnimator || !attackDefinition)
+        {
+            return;
+        }
 
-        // Animator가 공격 종류에 맞는 상태를 선택하도록 타입을 먼저 전달한다.
-        _playerAnimator.SetInteger(_attackTypeHash, (int)attackType);
-        _playerAnimator.ResetTrigger(_attackHash);
-        _playerAnimator.SetTrigger(_attackHash);
+        // 콤보 그래프가 선택한 공격 State로 직접 전환한다.
+        _playerAnimator.CrossFadeInFixedTime(attackDefinition.AnimationStateHash, attackDefinition.TransitionDuration, 0);
 
         _isAttackRequested = true;
         _hasEnteredAttackState = false;
     }
-    //개선 및 수정 필요
+
+    public bool TryGetAttackNormalizedTime(out float normalizedTime)
+    {
+        normalizedTime = 0f;
+
+        if (!_playerAnimator || !_isAttackRequested)
+        {
+            return false;
+        }
+
+        if (_playerAnimator.IsInTransition(0))
+        {
+            AnimatorStateInfo nextStateInfo = _playerAnimator.GetNextAnimatorStateInfo(0);
+
+            if (nextStateInfo.tagHash == _attackTagHash)
+            {
+                _hasEnteredAttackState = true;
+                normalizedTime = nextStateInfo.normalizedTime;
+                return true;
+            }
+        }
+
+        AnimatorStateInfo currentStateInfo = _playerAnimator.GetCurrentAnimatorStateInfo(0);
+
+        if (currentStateInfo.tagHash != _attackTagHash)
+        {
+            return false;
+        }
+
+        _hasEnteredAttackState = true;
+        normalizedTime = currentStateInfo.normalizedTime;
+        return true;
+    }
+
     public bool IsAttackFinished()
     {
-        if (!_playerAnimator || !_isAttackRequested) return false;
+        if (!_playerAnimator || !_isAttackRequested)
+        {
+            return false;
+        }
 
-        AnimatorStateInfo stateInfo = _playerAnimator.GetCurrentAnimatorStateInfo(0);
-        bool isAttackState = stateInfo.tagHash == _attackTagHash;
+        bool isInTransition = _playerAnimator.IsInTransition(0);
+
+        if (isInTransition)
+        {
+            AnimatorStateInfo nextStateInfo = _playerAnimator.GetNextAnimatorStateInfo(0);
+
+            // 다른 공격으로 전환 중이면 현재 공격이 끝난 것으로 처리하지 않는다.
+            if (nextStateInfo.tagHash == _attackTagHash)
+            {
+                _hasEnteredAttackState = true;
+                return false;
+            }
+        }
+
+        AnimatorStateInfo currentStateInfo = _playerAnimator.GetCurrentAnimatorStateInfo(0);
+        bool isAttackState = currentStateInfo.tagHash == _attackTagHash;
 
         if (isAttackState)
         {
             _hasEnteredAttackState = true;
-
-            // 전환 중이 아닐 때 클립이 끝까지 재생되었는지 확인한다.
-            return !_playerAnimator.IsInTransition(0) && stateInfo.normalizedTime >= 1f;
+            return !isInTransition && currentStateInfo.normalizedTime >= 1f;
         }
 
-        // 공격 상태에 진입한 뒤 다른 상태로 전환됐다면 공격이 종료된 것이다.
         return _hasEnteredAttackState;
     }
 
     public void CompleteAttack()
     {
+        if (_playerAnimator)
+        {
+            // 공격 State에 별도 종료 Transition이 없어도 이동 상태로 돌아가게 한다.
+            _playerAnimator.CrossFadeInFixedTime(_locomotionStateHash, _attackExitTransitionDuration, 0);
+        }
+
         _isAttackRequested = false;
         _hasEnteredAttackState = false;
     }

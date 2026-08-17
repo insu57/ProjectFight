@@ -75,6 +75,23 @@ dotnet_naming_rule.private_fields_should_be_underscore_camelcase.style = undersc
 dotnet_naming_symbols.private_fields.applicable_kinds = field
 dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 
+# Constants use PascalCase regardless of their scope.
+dotnet_naming_rule.private_constants_should_be_pascalcase.severity = warning
+dotnet_naming_rule.private_constants_should_be_pascalcase.symbols = private_constants
+dotnet_naming_rule.private_constants_should_be_pascalcase.style = pascalcase
+
+dotnet_naming_symbols.private_constants.applicable_kinds = field
+dotnet_naming_symbols.private_constants.applicable_accessibilities = private
+dotnet_naming_symbols.private_constants.required_modifiers = const
+
+dotnet_naming_rule.local_constants_should_be_pascalcase.severity = warning
+dotnet_naming_rule.local_constants_should_be_pascalcase.symbols = local_constants
+dotnet_naming_rule.local_constants_should_be_pascalcase.style = pascalcase
+
+dotnet_naming_symbols.local_constants.applicable_kinds = local
+dotnet_naming_symbols.local_constants.applicable_accessibilities = *
+dotnet_naming_symbols.local_constants.required_modifiers = const
+
 dotnet_naming_style.underscore_camelcase.required_prefix = _
 dotnet_naming_style.underscore_camelcase.capitalization = camel_case
 

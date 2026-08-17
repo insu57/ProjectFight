@@ -721,7 +721,10 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2480727262216920660, guid: d55cf21ea2324580b54f539402b3e4e9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 171369477}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4856217311764608479, guid: d55cf21ea2324580b54f539402b3e4e9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1635805989}
   m_SourcePrefab: {fileID: 100100000, guid: d55cf21ea2324580b54f539402b3e4e9, type: 3}
 --- !u!4 &601661958 stripped
 Transform:
@@ -1072,6 +1075,25 @@ MonoBehaviour:
     CameraRadius: 0.2
     DampingIntoCollision: 0
     DampingFromCollision: 0.5
+--- !u!1 &1635805988 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4856217311764608479, guid: d55cf21ea2324580b54f539402b3e4e9, type: 3}
+  m_PrefabInstance: {fileID: 601661957}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1635805989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1635805988}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac0e15e06dd0a9a4e8c16bd07345d051, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyStat
+  _maxHealth: 100
+  _currentHealth: 0
 --- !u!4 &1675545557 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8810721567706772088, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
@@ -1266,6 +1288,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7894886072742760587, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+      propertyPath: _comboDefinitions.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7894886072742760587, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+      propertyPath: '_comboDefinitions.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 060b79dc0090948458f5113ba946ed01, type: 2}
+    - target: {fileID: 7894886072742760587, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+      propertyPath: '_comboDefinitions.Array.data[1]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 236b70c55aa4d3747a0cb1c27e36ee26, type: 2}
+    - target: {fileID: 7894886072742760587, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+      propertyPath: '_comboDefinitions.Array.data[2]'
+      value: 
+      objectReference: {fileID: 11400000, guid: b5d5229cc7b4cb841a3b7dd9b92ee579, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

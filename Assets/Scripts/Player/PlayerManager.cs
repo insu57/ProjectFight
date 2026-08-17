@@ -86,13 +86,7 @@ public class PlayerManager : MonoBehaviour
         }
         else if (_playerState.ActionState == PlayerActionState.Attacking)
         {
-            if (_playerAnimation.IsAttackFinished())
-            {
-                // 실제 공격 애니메이션이 종료된 뒤 다음 행동을 받을 수 있는 상태로 복귀한다.
-                _playerAttack.EndAttack();
-                _playerAnimation.CompleteAttack();
-                _playerState.SetActionState(PlayerActionState.Free);
-            }
+            UpdateAttack();
         }
         else if (_playerState.CanMove && _playerState.LocomotionState == PlayerLocomotionState.Sprinting)
         {
@@ -155,16 +149,45 @@ public class PlayerManager : MonoBehaviour
         _playerAnimation.PlayDodge(_playerMove.DodgeLocalDirection);
     }
 
-    private void HandleAttackPressed(PlayerAttackType attackType)
+    private void HandleAttackPressed(AttackInputType inputType)
     {
         if (!_playerState || !_playerAttack || !_playerAnimation) return;
-        if (!_playerState.CanUseNormalAttack) return;
 
-        // 공격 중에는 일반 이동을 멈추고 입력된 공격을 즉시 시작한다.
-        _playerAttack.BeginAttack(attackType);
+        if (_playerState.ActionState == PlayerActionState.Attacking)
+        {
+            QueueComboInput(inputType);
+            return;
+        }
+
+        if (!_playerState.CanUseNormalAttack) return;
+        if (!_playerAttack.TryBeginAttack(inputType, out AttackDefinition attackDefinition)) return;
+
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _playerState.SetActionState(PlayerActionState.Attacking);
-        _playerAnimation.PlayAttack(attackType);
+        _playerAnimation.PlayAttack(attackDefinition);
+    }
+
+    private void QueueComboInput(AttackInputType inputType)
+    {
+        if (!_playerAnimation.TryGetAttackNormalizedTime(out float normalizedTime)) return;
+
+        _playerAttack.TryQueueNextAttack(inputType, normalizedTime);
+    }
+
+    private void UpdateAttack()
+    {
+        if (_playerAnimation.TryGetAttackNormalizedTime(out float normalizedTime)
+            && _playerAttack.TryConsumeQueuedAttack(normalizedTime, out AttackDefinition nextAttack))
+        {
+            _playerAnimation.PlayAttack(nextAttack);
+            return;
+        }
+
+        if (!_playerAnimation.IsAttackFinished()) return;
+
+        _playerAttack.EndAttack();
+        _playerAnimation.CompleteAttack();
+        _playerState.SetActionState(PlayerActionState.Free);
     }
 
     private void UpdateLocomotionState()

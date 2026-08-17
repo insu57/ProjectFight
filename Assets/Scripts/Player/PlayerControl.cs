@@ -24,7 +24,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public event Action JumpPressed;
     public event Action LockOnPressed;
     public event Action DodgePressed;
-    public event Action<PlayerAttackType> AttackPressed;
+    public event Action<AttackInputType> AttackPressed;
 
     private void Awake()
     {
@@ -105,7 +105,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
         if (context.performed)
         {
             // 입력 종류만 전달하고 실제 공격 가능 여부와 실행은 PlayerManager가 판단한다.
-            AttackPressed?.Invoke(PlayerAttackType.Light);
+            AttackPressed?.Invoke(AttackInputType.Light);
         }
     }
 
@@ -118,7 +118,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     {
         if (context.performed)
         {
-            AttackPressed?.Invoke(PlayerAttackType.Heavy);
+            AttackPressed?.Invoke(AttackInputType.Heavy);
         }
     }
 
@@ -126,7 +126,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     {
         if (context.performed)
         {
-            AttackPressed?.Invoke(PlayerAttackType.Grab);
+            AttackPressed?.Invoke(AttackInputType.Grab);
         }
     }
 
