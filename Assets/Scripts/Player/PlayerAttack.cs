@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public enum AttackInputType
 {
@@ -11,20 +10,22 @@ public enum AttackInputType
 [DisallowMultipleComponent]
 public sealed class PlayerAttack : MonoBehaviour
 {
-    [SerializeField] private ComboDefinition[] _comboDefinitions;
+    private const string ComboDefinitionResourcePath = "ComboDefinition";
 
     private ComboGraph _comboGraph;
     private ComboNode _currentNode;
     private ComboNode _queuedNode;
     private AttackInputType _queuedInputType;
+    private float _previousAttackMoveProgress;
 
     public AttackInputType CurrentAttackType { get; private set; }
     public bool IsAttacking { get; private set; }
 
     private void Awake()
     {
-        // 인스펙터에 등록된 콤보 데이터를 런타임 탐색용 그래프로 변환한다.
-        _comboGraph = ComboGraph.Create(_comboDefinitions);
+        // Resources/ComboDefinition 및 하위 폴더의 콤보 데이터를 모두 불러온다.
+        ComboDefinition[] comboDefinitions = Resources.LoadAll<ComboDefinition>(ComboDefinitionResourcePath);
+        _comboGraph = ComboGraph.Create(comboDefinitions);
     }
 
     public bool TryBeginAttack(AttackInputType inputType, out AttackDefinition attackDefinition)
@@ -43,6 +44,7 @@ public sealed class PlayerAttack : MonoBehaviour
 
         _currentNode = firstNode;
         _queuedNode = null;
+        _previousAttackMoveProgress = 0f;
         CurrentAttackType = inputType;
         IsAttacking = true;
         attackDefinition = firstNode.AttackDefinition;
@@ -90,8 +92,27 @@ public sealed class PlayerAttack : MonoBehaviour
 
         _currentNode = _queuedNode;
         _queuedNode = null;
+        _previousAttackMoveProgress = 0f;
         CurrentAttackType = _queuedInputType;
         attackDefinition = _currentNode.AttackDefinition;
+        return true;
+    }
+
+    public bool TryGetAttackMoveDisplacement(float normalizedTime, out Vector2 localDisplacement)
+    {
+        localDisplacement = Vector2.zero;
+
+        if (!IsAttacking || _currentNode == null)
+        {
+            return false;
+        }
+
+        AttackDefinition attackDefinition = _currentNode.AttackDefinition;
+        float moveProgress = EvaluateAttackMoveProgress(attackDefinition, normalizedTime);
+        float progressDelta = moveProgress - _previousAttackMoveProgress;
+
+        _previousAttackMoveProgress = moveProgress;
+        localDisplacement = attackDefinition.AttackMoveDistance * progressDelta;
         return true;
     }
 
@@ -99,6 +120,29 @@ public sealed class PlayerAttack : MonoBehaviour
     {
         _currentNode = null;
         _queuedNode = null;
+        _previousAttackMoveProgress = 0f;
         IsAttacking = false;
+    }
+
+    private static float EvaluateAttackMoveProgress(AttackDefinition attackDefinition, float normalizedTime)
+    {
+        float moveStartTime = attackDefinition.MoveStartNormalizedTime;
+        float moveEndTime = attackDefinition.MoveEndNormalizedTime;
+
+        if (normalizedTime <= moveStartTime)
+        {
+            return 0f;
+        }
+
+        if (normalizedTime >= moveEndTime || moveEndTime <= moveStartTime)
+        {
+            return 1f;
+        }
+
+        float moveNormalizedTime = Mathf.InverseLerp(moveStartTime, moveEndTime, normalizedTime);
+        AnimationCurve moveCurve = attackDefinition.MoveCurve;
+
+        // 커브가 비어 있으면 이동 구간 동안 선형으로 이동한다.
+        return moveCurve != null ? moveCurve.Evaluate(moveNormalizedTime) : moveNormalizedTime;
     }
 }

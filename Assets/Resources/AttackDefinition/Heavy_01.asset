@@ -10,10 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 83940f8af5210a7498045a2390baef7f, type: 3}
-  m_Name: Light_01
+  m_Name: Heavy_01
   m_EditorClassIdentifier: Assembly-CSharp::AttackDefinition
-  <AttackId>k__BackingField: 1
-  <AttackName>k__BackingField: Light_01
-  <AnimationStateName>k__BackingField: Light_01
+  <AttackId>k__BackingField: 5
+  <AttackName>k__BackingField: Heavy_01
+  <AnimationStateName>k__BackingField: Heavy_01
   <BaseDamage>k__BackingField: 0
   <TrasitionDuration>k__BackingField: 0.1
+  <ComboInputStartNormalizedTime>k__BackingField: 0.2
+  <ComboTransitionNormalizedTime>k__BackingField: 0.55
+  <ComboInputEndNormalizedTime>k__BackingField: 0.8

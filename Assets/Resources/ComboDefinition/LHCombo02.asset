@@ -10,10 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 517e675514bfddb4194e25dff72a9051, type: 3}
-  m_Name: HeavyCombo
+  m_Name: LHCombo02
   m_EditorClassIdentifier: Assembly-CSharp::ComboDefinitioon
-  <ComboID>k__BackingField: 2
-  <ComboName>k__BackingField: "\uAC15\uACF5\uCF64\uBCF4"
+  <ComboID>k__BackingField: 4
+  <ComboName>k__BackingField: "\uC57D\uAC15\uCF64\uBCF401"
   <ComboSteps>k__BackingField:
-  - AttackDefinition: {fileID: 11400000, guid: 082a856532569b246b713a9209ae64e3, type: 2}
+  - AttackDefinition: {fileID: 11400000, guid: 1b85b861fab31a24e81f85e01772e7f5, type: 2}
+    AttackInputType: 0
+  - AttackDefinition: {fileID: 11400000, guid: 02cf39ab8e996ca4283675aad438ad9d, type: 2}
+    AttackInputType: 0
+  - AttackDefinition: {fileID: 11400000, guid: fb269fdd25fad0b43b1a615fb6db5c83, type: 2}
     AttackInputType: 1

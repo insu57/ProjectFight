@@ -1092,7 +1092,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac0e15e06dd0a9a4e8c16bd07345d051, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyStat
-  _maxHealth: 100
+  _baseMaxHealth: 100
   _currentHealth: 0
 --- !u!4 &1675545557 stripped
 Transform:
@@ -1290,7 +1290,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7894886072742760587, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
       propertyPath: _comboDefinitions.Array.size
-      value: 3
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 7894886072742760587, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
       propertyPath: '_comboDefinitions.Array.data[0]'
@@ -1304,6 +1304,14 @@ PrefabInstance:
       propertyPath: '_comboDefinitions.Array.data[2]'
       value: 
       objectReference: {fileID: 11400000, guid: b5d5229cc7b4cb841a3b7dd9b92ee579, type: 2}
+    - target: {fileID: 7894886072742760587, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+      propertyPath: '_comboDefinitions.Array.data[3]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 3712b67ddd7645840b918b296d7f2236, type: 2}
+    - target: {fileID: 7894886072742760587, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+      propertyPath: '_comboDefinitions.Array.data[4]'
+      value: 
+      objectReference: {fileID: 11400000, guid: b3fd2292b4597514da5c622743eccd92, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

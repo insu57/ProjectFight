@@ -176,8 +176,20 @@ public class PlayerManager : MonoBehaviour
 
     private void UpdateAttack()
     {
-        if (_playerAnimation.TryGetAttackNormalizedTime(out float normalizedTime)
-            && _playerAttack.TryConsumeQueuedAttack(normalizedTime, out AttackDefinition nextAttack))
+        bool hasNormalizedTime = _playerAnimation.TryGetAttackNormalizedTime(out float normalizedTime);
+
+        if (hasNormalizedTime && _playerAttack.TryGetAttackMoveDisplacement(normalizedTime, out Vector2 localDisplacement))
+        {
+            // PlayerManager가 공격 진행 정보를 이동 컴포넌트로 전달한다.
+            _playerMove.MoveAttack(localDisplacement, Time.deltaTime);
+        }
+        else
+        {
+            // 이동 구간 밖이나 공격 State 진입 전에도 중력은 계속 적용한다.
+            _playerMove.MoveAttack(Vector2.zero, Time.deltaTime);
+        }
+
+        if (hasNormalizedTime && _playerAttack.TryConsumeQueuedAttack(normalizedTime, out AttackDefinition nextAttack))
         {
             _playerAnimation.PlayAttack(nextAttack);
             return;

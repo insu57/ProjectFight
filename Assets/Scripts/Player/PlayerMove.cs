@@ -59,6 +59,17 @@ public class PlayerMove : MonoBehaviour
         MoveInternal(moveInput, targetRotation, FacingMode.ReferenceDirection, _moveSpeed, deltaTime);
     }
 
+    public void MoveAttack(Vector2 localDisplacement, float deltaTime)
+    {
+        // 공격 데이터의 X는 좌우, Y는 전후 방향의 실제 이동 거리로 적용한다.
+        Vector3 displacement = transform.right * localDisplacement.x + transform.forward * localDisplacement.y;
+
+        ApplyGravity(deltaTime);
+        displacement.y = _verticalVelocity * deltaTime;
+
+        _characterController.Move(displacement);
+    }
+
     public void BeginDodge(Vector2 moveInput, Quaternion cameraRotation)
     {
         BeginDodgeInternal(moveInput, cameraRotation);
