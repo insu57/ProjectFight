@@ -6,6 +6,7 @@ public enum PlayerActionState
     Free,
     Dodging,
     Attacking,
+    Guarding,
     Stunned,
     Dead
 }
@@ -28,6 +29,7 @@ public sealed class PlayerState : MonoBehaviour
 
     public bool CanMove => ActionState == PlayerActionState.Free;
     public bool CanDodge => ActionState == PlayerActionState.Free;
+    public bool CanGuard => ActionState == PlayerActionState.Free;
     public bool CanUseNormalAttack => ActionState == PlayerActionState.Free;
     public bool CanUseDodgeAttack => ActionState == PlayerActionState.Dodging;
     public bool CanUseSprintAttack => ActionState == PlayerActionState.Free && LocomotionState == PlayerLocomotionState.Sprinting;

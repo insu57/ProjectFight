@@ -21,10 +21,12 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public Vector2 LookInput { get; private set; }
     public bool IsLookInputDelta { get; private set; }
     public bool IsSprintRequested => _sprintInputState == SprintInputState.Held;
+    public bool IsGuardRequested { get; private set; }
     public event Action JumpPressed;
     public event Action LockOnPressed;
     public event Action DodgePressed;
     public event Action<AttackInputType> AttackPressed;
+    public event Action<bool> GuardChanged;
 
     private void Awake()
     {
@@ -40,6 +42,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     private void OnDisable()
     {
         _sprintInputState = SprintInputState.Released;
+        IsGuardRequested = false;
         _inputActions.Player.Disable();
     }
 
@@ -111,7 +114,17 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
 
     public void OnGuard(InputAction.CallbackContext context)
     {
+        if (context.started)
+        {
+            IsGuardRequested = true;
+            GuardChanged?.Invoke(true);
+            return;
+        }
 
+        if (!context.canceled) return;
+
+        IsGuardRequested = false;
+        GuardChanged?.Invoke(false);
     }
 
     public void OnHeavyAttack(InputAction.CallbackContext context)

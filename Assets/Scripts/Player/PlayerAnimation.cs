@@ -11,7 +11,9 @@ public class PlayerAnimation : MonoBehaviour
     private static readonly int _dodgeYHash = Animator.StringToHash("DodgeY");
     private static readonly int _dodgeHash = Animator.StringToHash("Dodge");
     private static readonly int _isSprintingHash = Animator.StringToHash("IsSprinting");
+    private static readonly int _isGuardingHash = Animator.StringToHash("IsGuarding");
     private static readonly int _attackTagHash = Animator.StringToHash("Attack");
+    private static readonly int _guardTagHash = Animator.StringToHash("Guard");
     private static readonly int _locomotionStateHash = Animator.StringToHash(LocomotionStateName);
 
     [SerializeField, Min(0f)] private float _movementDampTime = 0.1f;
@@ -21,6 +23,7 @@ public class PlayerAnimation : MonoBehaviour
     private Animator _playerAnimator;
     private bool _isAttackRequested;
     private bool _hasEnteredAttackState;
+    private bool _isGuardRequested;
 
     private void Awake()
     {
@@ -155,6 +158,38 @@ public class PlayerAnimation : MonoBehaviour
 
         _isAttackRequested = false;
         _hasEnteredAttackState = false;
+    }
+
+    public void SetGuarding(bool isGuarding)
+    {
+        _isGuardRequested = isGuarding;
+
+        if (!_playerAnimator) return;
+
+        // 입력 상태만 Animator에 전달하고 진입·루프·탈출 순서는 Animator가 처리한다.
+        _playerAnimator.SetBool(_isGuardingHash, isGuarding);
+    }
+
+    public bool IsGuardFinished()
+    {
+        if (!_playerAnimator || _isGuardRequested)
+        {
+            return false;
+        }
+
+        if (_playerAnimator.IsInTransition(0))
+        {
+            AnimatorStateInfo nextStateInfo = _playerAnimator.GetNextAnimatorStateInfo(0);
+
+            // 진입 또는 탈출을 포함한 가드 State 전환이 남아 있으면 종료하지 않는다.
+            if (nextStateInfo.tagHash == _guardTagHash)
+            {
+                return false;
+            }
+        }
+
+        AnimatorStateInfo currentStateInfo = _playerAnimator.GetCurrentAnimatorStateInfo(0);
+        return currentStateInfo.tagHash != _guardTagHash;
     }
 
     public void SetSprinting(bool isSprinting)

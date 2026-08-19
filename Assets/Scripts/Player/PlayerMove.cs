@@ -70,6 +70,17 @@ public class PlayerMove : MonoBehaviour
         _characterController.Move(displacement);
     }
 
+    public void MoveStationary(float deltaTime)
+    {
+        MoveAmount = 0f;
+        LocalMoveDirection = Vector2.zero;
+
+        ApplyGravity(deltaTime);
+
+        Vector3 displacement = Vector3.up * (_verticalVelocity * deltaTime);
+        _characterController.Move(displacement);
+    }
+
     public void BeginDodge(Vector2 moveInput, Quaternion cameraRotation)
     {
         BeginDodgeInternal(moveInput, cameraRotation);

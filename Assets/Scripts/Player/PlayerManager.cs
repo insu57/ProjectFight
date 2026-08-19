@@ -34,6 +34,7 @@ public class PlayerManager : MonoBehaviour
             _playerControl.LockOnPressed += HandleLockOnPressed;
             _playerControl.DodgePressed += HandleDodgePressed;
             _playerControl.AttackPressed += HandleAttackPressed;
+            _playerControl.GuardChanged += HandleGuardChanged;
         }
     }
 
@@ -44,6 +45,7 @@ public class PlayerManager : MonoBehaviour
             _playerControl.LockOnPressed -= HandleLockOnPressed;
             _playerControl.DodgePressed -= HandleDodgePressed;
             _playerControl.AttackPressed -= HandleAttackPressed;
+            _playerControl.GuardChanged -= HandleGuardChanged;
         }
     }
     private void Update()
@@ -87,6 +89,10 @@ public class PlayerManager : MonoBehaviour
         else if (_playerState.ActionState == PlayerActionState.Attacking)
         {
             UpdateAttack();
+        }
+        else if (_playerState.ActionState == PlayerActionState.Guarding)
+        {
+            UpdateGuard();
         }
         else if (_playerState.CanMove && _playerState.LocomotionState == PlayerLocomotionState.Sprinting)
         {
@@ -167,6 +173,27 @@ public class PlayerManager : MonoBehaviour
         _playerAnimation.PlayAttack(attackDefinition);
     }
 
+    private void HandleGuardChanged(bool isGuarding)
+    {
+        if (!_playerState || !_playerAnimation) return;
+
+        if (isGuarding)
+        {
+            if (!_playerState.CanGuard) return;
+
+            // 가드를 시작하면 일반 이동을 해제하고 가드 진입 모션을 요청한다.
+            _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
+            _playerState.SetActionState(PlayerActionState.Guarding);
+            _playerAnimation.SetGuarding(true);
+            return;
+        }
+
+        if (_playerState.ActionState != PlayerActionState.Guarding) return;
+
+        // 상태는 유지하여 탈출 모션이 끝날 때까지 다른 행동이 개입하지 않게 한다.
+        _playerAnimation.SetGuarding(false);
+    }
+
     private void QueueComboInput(AttackInputType inputType)
     {
         if (!_playerAnimation.TryGetAttackNormalizedTime(out float normalizedTime)) return;
@@ -199,6 +226,18 @@ public class PlayerManager : MonoBehaviour
 
         _playerAttack.EndAttack();
         _playerAnimation.CompleteAttack();
+        _playerState.SetActionState(PlayerActionState.Free);
+    }
+
+    private void UpdateGuard()
+    {
+        // 가드 중 이동은 막되 CharacterController의 중력 처리는 유지한다.
+        //추후 가드 이동 추가
+        _playerMove.MoveStationary(Time.deltaTime);
+
+        if (_playerControl.IsGuardRequested) return;
+        if (!_playerAnimation.IsGuardFinished()) return;
+
         _playerState.SetActionState(PlayerActionState.Free);
     }
 
