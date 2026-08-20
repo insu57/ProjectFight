@@ -14,6 +14,7 @@ public class PlayerManager : MonoBehaviour
     private PlayerLockOn _playerLockOn;
 
     public event Action<LockOnTarget> LockOnTargetChanged;
+    public event Action PlayerWindowRequested;
 
     private void Awake()
     {
@@ -35,6 +36,7 @@ public class PlayerManager : MonoBehaviour
             _playerControl.DodgePressed += HandleDodgePressed;
             _playerControl.AttackPressed += HandleAttackPressed;
             _playerControl.GuardChanged += HandleGuardChanged;
+            _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
         }
     }
 
@@ -46,6 +48,7 @@ public class PlayerManager : MonoBehaviour
             _playerControl.DodgePressed -= HandleDodgePressed;
             _playerControl.AttackPressed -= HandleAttackPressed;
             _playerControl.GuardChanged -= HandleGuardChanged;
+            _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
         }
     }
     private void Update()
@@ -130,6 +133,12 @@ public class PlayerManager : MonoBehaviour
 
         _playerLockOn.ToggleTarget();
         NotifyLockOnTargetChanged();
+    }
+
+    private void HandlePlayerWindowPressed()
+    {
+        // PlayerControl의 창 열기 요청을 UI가 받을 수 있도록 중개한다.
+        PlayerWindowRequested?.Invoke();
     }
 
     private void HandleDodgePressed()

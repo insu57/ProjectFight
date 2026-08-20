@@ -655,6 +655,24 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""PlayerWindow"",
+                    ""type"": ""Button"",
+                    ""id"": ""1ecf473f-e5bf-4f75-9651-244020ef854d"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OptionWindow"",
+                    ""type"": ""Button"",
+                    ""id"": ""82b9249f-009e-4c52-8ac4-cf02ac34d02d"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -996,6 +1014,50 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": "";Gamepad"",
                     ""action"": ""Guard"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""6808858c-ff8b-4dcd-8986-06f5e3a0567d"",
+                    ""path"": ""<Keyboard>/tab"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""PlayerWindow"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""868d1fae-d2ca-4a27-a078-511895fc7d1a"",
+                    ""path"": ""<Gamepad>/start"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Gamepad"",
+                    ""action"": ""PlayerWindow"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""886785ba-4d43-40d3-95d4-e007263cab40"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""OptionWindow"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""428f851b-d1a1-4008-b3ab-ae50a64d3436"",
+                    ""path"": ""<Gamepad>/select"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Gamepad"",
+                    ""action"": ""OptionWindow"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1604,6 +1666,8 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         m_Player_HeavyAttack = m_Player.FindAction("HeavyAttack", throwIfNotFound: true);
         m_Player_GrabAttack = m_Player.FindAction("GrabAttack", throwIfNotFound: true);
         m_Player_Interact = m_Player.FindAction("Interact", throwIfNotFound: true);
+        m_Player_PlayerWindow = m_Player.FindAction("PlayerWindow", throwIfNotFound: true);
+        m_Player_OptionWindow = m_Player.FindAction("OptionWindow", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -1892,6 +1956,8 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_HeavyAttack;
     private readonly InputAction m_Player_GrabAttack;
     private readonly InputAction m_Player_Interact;
+    private readonly InputAction m_Player_PlayerWindow;
+    private readonly InputAction m_Player_OptionWindow;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -1943,6 +2009,14 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/Interact".
         /// </summary>
         public InputAction @Interact => m_Wrapper.m_Player_Interact;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/PlayerWindow".
+        /// </summary>
+        public InputAction @PlayerWindow => m_Wrapper.m_Player_PlayerWindow;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/OptionWindow".
+        /// </summary>
+        public InputAction @OptionWindow => m_Wrapper.m_Player_OptionWindow;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1999,6 +2073,12 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @Interact.started += instance.OnInteract;
             @Interact.performed += instance.OnInteract;
             @Interact.canceled += instance.OnInteract;
+            @PlayerWindow.started += instance.OnPlayerWindow;
+            @PlayerWindow.performed += instance.OnPlayerWindow;
+            @PlayerWindow.canceled += instance.OnPlayerWindow;
+            @OptionWindow.started += instance.OnOptionWindow;
+            @OptionWindow.performed += instance.OnOptionWindow;
+            @OptionWindow.canceled += instance.OnOptionWindow;
         }
 
         /// <summary>
@@ -2040,6 +2120,12 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @Interact.started -= instance.OnInteract;
             @Interact.performed -= instance.OnInteract;
             @Interact.canceled -= instance.OnInteract;
+            @PlayerWindow.started -= instance.OnPlayerWindow;
+            @PlayerWindow.performed -= instance.OnPlayerWindow;
+            @PlayerWindow.canceled -= instance.OnPlayerWindow;
+            @OptionWindow.started -= instance.OnOptionWindow;
+            @OptionWindow.performed -= instance.OnOptionWindow;
+            @OptionWindow.canceled -= instance.OnOptionWindow;
         }
 
         /// <summary>
@@ -2481,6 +2567,20 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnInteract(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "PlayerWindow" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnPlayerWindow(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "OptionWindow" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnOptionWindow(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.

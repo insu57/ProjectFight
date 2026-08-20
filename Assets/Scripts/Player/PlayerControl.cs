@@ -27,6 +27,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public event Action DodgePressed;
     public event Action<AttackInputType> AttackPressed;
     public event Action<bool> GuardChanged;
+    public event Action PlayerWindowPressed;
 
     private void Awake()
     {
@@ -146,5 +147,17 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public void OnInteract(InputAction.CallbackContext context)
     {
 
+    }
+
+    public void OnPlayerWindow(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            PlayerWindowPressed?.Invoke();
+        }
+    }
+
+    public void OnOptionWindow(InputAction.CallbackContext context)
+    {
     }
 }
