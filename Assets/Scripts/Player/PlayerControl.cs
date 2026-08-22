@@ -16,6 +16,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     private InputSystem_Actions _inputActions;
     private float _sprintPressedTime;
     private SprintInputState _sprintInputState;
+    private bool _isGameplayInputEnabled = true;
 
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookInput { get; private set; }
@@ -38,6 +39,11 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     private void OnEnable()
     {
         _inputActions.Player.Enable();
+
+        if (!_isGameplayInputEnabled)
+        {
+            SetGameplayActionsEnabled(false);
+        }
     }
 
     private void OnDisable()
@@ -58,6 +64,59 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     private void OnDestroy()
     {
         _inputActions.Dispose();
+    }
+
+    public void SetGameplayInputEnabled(bool isEnabled)
+    {
+        if (_isGameplayInputEnabled == isEnabled)
+        {
+            return;
+        }
+
+        _isGameplayInputEnabled = isEnabled;
+        SetGameplayActionsEnabled(isEnabled);
+
+        if (isEnabled)
+        {
+            return;
+        }
+
+        // 창이 열린 동안 기존 입력값이 플레이어 동작에 남지 않도록 초기화한다.
+        MoveInput = Vector2.zero;
+        LookInput = Vector2.zero;
+        IsLookInputDelta = false;
+        _sprintInputState = SprintInputState.Released;
+        IsGuardRequested = false;
+    }
+
+    private void SetGameplayActionsEnabled(bool isEnabled)
+    {
+        if (isEnabled)
+        {
+            _inputActions.Player.Move.Enable();
+            _inputActions.Player.Look.Enable();
+            _inputActions.Player.Jump.Enable();
+            _inputActions.Player.Sprint.Enable();
+            _inputActions.Player.LockOn.Enable();
+            _inputActions.Player.LightAttack.Enable();
+            _inputActions.Player.Guard.Enable();
+            _inputActions.Player.HeavyAttack.Enable();
+            _inputActions.Player.GrabAttack.Enable();
+            _inputActions.Player.Interact.Enable();
+            return;
+        }
+
+        // 창을 다시 닫을 수 있도록 PlayerWindow 입력은 비활성화하지 않는다.
+        _inputActions.Player.Move.Disable();
+        _inputActions.Player.Look.Disable();
+        _inputActions.Player.Jump.Disable();
+        _inputActions.Player.Sprint.Disable();
+        _inputActions.Player.LockOn.Disable();
+        _inputActions.Player.LightAttack.Disable();
+        _inputActions.Player.Guard.Disable();
+        _inputActions.Player.HeavyAttack.Disable();
+        _inputActions.Player.GrabAttack.Disable();
+        _inputActions.Player.Interact.Disable();
     }
 
     public void OnMove(InputAction.CallbackContext context)

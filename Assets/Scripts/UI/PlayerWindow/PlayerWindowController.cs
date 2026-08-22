@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
+
 public enum PlayerTabType
 {
     SkillTree,
@@ -7,7 +9,7 @@ public enum PlayerTabType
 }
 
 [DisallowMultipleComponent]
-public sealed class PlayerWindowController : MonoBehaviour
+public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
 {
     
 
@@ -28,6 +30,8 @@ public sealed class PlayerWindowController : MonoBehaviour
 
     private PlayerTabType _currentTab;
     private bool _hasSelectedTab;
+    private float _timeScaleBeforeOpen = 1f;
+    private bool _isTimeScalePaused;
 
     public PlayerTabType CurrentTab => _currentTab;
     public bool IsOpen => _windowPanel && _windowPanel.activeSelf;
@@ -37,6 +41,7 @@ public sealed class PlayerWindowController : MonoBehaviour
     private void Awake()
     {
         _playerManager = FindFirstObjectByType<PlayerManager>();
+        _windowPanel.SetActive(false);
     }
 
     private void OnEnable()
@@ -58,11 +63,15 @@ public sealed class PlayerWindowController : MonoBehaviour
         }
 
         UnsubscribeTabButtons();
+
+        if (IsOpen)
+        {
+            SetWindowOpen(false);
+        }
     }
 
     public void ToggleWindow()
     {
-        Debug.Log("???");
         SetWindowOpen(!IsOpen);
     }
 
@@ -75,6 +84,61 @@ public sealed class PlayerWindowController : MonoBehaviour
 
         // 입력을 계속 받기 위해 Controller는 유지하고 표시 패널만 활성화한다.
         _windowPanel.SetActive(isOpen);
+        _playerManager?.SetGameplayInputEnabled(!isOpen);
+
+        if (isOpen)
+        {
+            // 창을 닫을 때 원래 게임 속도로 돌아갈 수 있도록 기존 값을 보관한다.
+            _timeScaleBeforeOpen = Time.timeScale;
+            Time.timeScale = 0f;
+            _isTimeScalePaused = true;
+            FocusCurrentTab();
+            return;
+        }
+
+
+        EventSystem.current?.SetSelectedGameObject(null);
+        RestoreTimeScale();
+    }
+
+    public void OnCancel(BaseEventData eventData)
+    {
+        if (IsOpen)
+        {
+            // UI Cancel 입력으로 플레이어 창을 닫는다.
+            SetWindowOpen(false);
+        }
+    }
+
+    private void FocusCurrentTab()
+    {
+        if (!EventSystem.current)
+        {
+            return;
+        }
+
+        for (int i = 0; i < _tabBindings.Length; i++)
+        {
+            TabBinding binding = _tabBindings[i];
+
+            if (binding != null && binding.Button && binding.Button.TabType == _currentTab)
+            {
+                // 키보드와 게임패드 탐색이 현재 탭에서 시작되도록 한다.
+                EventSystem.current.SetSelectedGameObject(binding.Button.gameObject);
+                return;
+            }
+        }
+    }
+
+    private void RestoreTimeScale()
+    {
+        if (!_isTimeScalePaused)
+        {
+            return;
+        }
+
+        Time.timeScale = _timeScaleBeforeOpen;
+        _isTimeScalePaused = false;
     }
 
     public void SelectTab(PlayerTabType tabType)

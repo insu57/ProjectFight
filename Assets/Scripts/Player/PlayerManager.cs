@@ -127,6 +127,15 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
+    public void SetGameplayInputEnabled(bool isEnabled)
+    {
+        if (_playerControl)
+        {
+            // UI의 입력 제한 요청을 PlayerControl로 중개한다.
+            _playerControl.SetGameplayInputEnabled(isEnabled);
+        }
+    }
+
     private void HandleLockOnPressed()
     {
         if (!_playerLockOn) return;

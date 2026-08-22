@@ -40,12 +40,6 @@ public sealed class PlayerWindowTabButton : MonoBehaviour
 
     public void SetSelected(bool isSelected)
     {
-        if (_button)
-        {
-            // 선택된 탭은 다시 누르지 못하게 하여 불필요한 선택 요청을 막는다.
-            _button.interactable = !isSelected;
-        }
-
         if (_selectedVisual && _selectedVisual.activeSelf != isSelected)
         {
             _selectedVisual.SetActive(isSelected);
