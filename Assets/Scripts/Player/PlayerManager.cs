@@ -12,9 +12,14 @@ public class PlayerManager : MonoBehaviour
     private PlayerAnimation _playerAnimation;
     private PlayerCamera _playerCamera;
     private PlayerLockOn _playerLockOn;
+    private PlayerSkillTree _playerSkillTree;
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
+    public event Action<int> SkillPointsChanged;
+    public event Action<SkillTreeNodeRuntime> SkillTreeNodeUnlocked;
+
+    public SkillTreeRuntime SkillTreeRuntime => _playerSkillTree ? _playerSkillTree.Runtime : null;
 
     private void Awake()
     {
@@ -26,6 +31,7 @@ public class PlayerManager : MonoBehaviour
         TryGetComponent(out _playerAnimation);
         TryGetComponent(out _playerCamera);
         TryGetComponent(out _playerLockOn);
+        TryGetComponent(out _playerSkillTree);
     }
 
     private void OnEnable()
@@ -38,6 +44,14 @@ public class PlayerManager : MonoBehaviour
             _playerControl.GuardChanged += HandleGuardChanged;
             _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
         }
+
+        SkillTreeRuntime skillTreeRuntime = SkillTreeRuntime;
+
+        if (skillTreeRuntime != null)
+        {
+            skillTreeRuntime.AvailablePointsChanged += HandleSkillPointsChanged;
+            skillTreeRuntime.NodeUnlocked += HandleSkillTreeNodeUnlocked;
+        }
     }
 
     private void OnDisable()
@@ -49,6 +63,14 @@ public class PlayerManager : MonoBehaviour
             _playerControl.AttackPressed -= HandleAttackPressed;
             _playerControl.GuardChanged -= HandleGuardChanged;
             _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
+        }
+
+        SkillTreeRuntime skillTreeRuntime = SkillTreeRuntime;
+
+        if (skillTreeRuntime != null)
+        {
+            skillTreeRuntime.AvailablePointsChanged -= HandleSkillPointsChanged;
+            skillTreeRuntime.NodeUnlocked -= HandleSkillTreeNodeUnlocked;
         }
     }
     private void Update()
@@ -133,6 +155,25 @@ public class PlayerManager : MonoBehaviour
         {
             // UI의 입력 제한 요청을 PlayerControl로 중개한다.
             _playerControl.SetGameplayInputEnabled(isEnabled);
+        }
+    }
+
+    public SkillTreeUnlockResult TryUnlockSkillTreeNode(int nodeId)
+    {
+        if (!_playerSkillTree)
+        {
+            return SkillTreeUnlockResult.RuntimeNotInitialized;
+        }
+
+        return _playerSkillTree.TryUnlockNode(nodeId);
+    }
+
+    public void AddSkillPoints(int amount)
+    {
+        if (_playerSkillTree)
+        {
+            // 외부 시스템의 포인트 지급 요청을 PlayerSkillTree로 중개한다.
+            _playerSkillTree.AddPoints(amount);
         }
     }
 
@@ -279,5 +320,15 @@ public class PlayerManager : MonoBehaviour
     private void NotifyLockOnTargetChanged()
     {
         LockOnTargetChanged?.Invoke(_playerLockOn.CurrentTarget);
+    }
+
+    private void HandleSkillPointsChanged(int availablePoints)
+    {
+        SkillPointsChanged?.Invoke(availablePoints);
+    }
+
+    private void HandleSkillTreeNodeUnlocked(SkillTreeNodeRuntime node)
+    {
+        SkillTreeNodeUnlocked?.Invoke(node);
     }
 }
