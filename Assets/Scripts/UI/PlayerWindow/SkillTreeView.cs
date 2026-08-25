@@ -32,11 +32,11 @@ public sealed class SkillTreeView : MonoBehaviour
     [SerializeField, Min(1f)] private float _verticalSpacing = 160f;
     [SerializeField, Min(0f)] private float _horizontalPadding = 100f;
     [SerializeField, Min(0f)] private float _verticalPadding = 100f;
-    [SerializeField] private Vector2 _nodeSize = new Vector2(120f, 120f);
+    [SerializeField] private Vector2 _nodeSize = new(120f, 120f);
 
-    private readonly Dictionary<int, SkillTreeNodeView> _nodeViews = new Dictionary<int, SkillTreeNodeView>();
-    private readonly Dictionary<int, Vector2> _nodePositions = new Dictionary<int, Vector2>();
-    private readonly List<ConnectionBinding> _connections = new List<ConnectionBinding>();
+    private readonly Dictionary<int, SkillTreeNodeView> _nodeViews = new();
+    private readonly Dictionary<int, Vector2> _nodePositions = new();
+    private readonly List<ConnectionBinding> _connections = new();
 
     private bool _isBuilt;
     private int _nextLeafIndex;
@@ -112,7 +112,7 @@ public sealed class SkillTreeView : MonoBehaviour
 
         if (children.Count == 0)
         {
-            xPosition = _horizontalPadding + _nextLeafIndex * _horizontalSpacing;
+            xPosition = _horizontalPadding + _nodeSize.x * 0.5f + _nextLeafIndex * _horizontalSpacing;
             _nextLeafIndex++;
         }
         else
@@ -122,7 +122,7 @@ public sealed class SkillTreeView : MonoBehaviour
 
             for (int i = 1; i < children.Count; i++)
             {
-                lastChildX = CalculateNodePosition(children[i], depth + 1);
+                lastChildX = CalculateNodePosition(children[i], depth + 1); //재귀적으로 계산
             }
 
             // 부모를 첫 번째 자식과 마지막 자식이 차지하는 영역의 중앙에 배치한다.
@@ -140,9 +140,11 @@ public sealed class SkillTreeView : MonoBehaviour
         float width = _horizontalPadding * 2f + (leafCount - 1) * _horizontalSpacing + _nodeSize.x;
         float height = _verticalPadding * 2f + _maximumDepth * _verticalSpacing + _nodeSize.y;
 
-        _treeContainer.anchorMin = new Vector2(0f, 1f);
-        _treeContainer.anchorMax = new Vector2(0f, 1f);
-        _treeContainer.pivot = new Vector2(0f, 1f);
+        // 스킬 트리 콘텐츠를 Viewport 상단 중앙에 배치한다.
+        _treeContainer.anchorMin = new Vector2(0.5f, 1f);
+        _treeContainer.anchorMax = new Vector2(0.5f, 1f);
+        _treeContainer.pivot = new Vector2(0.5f, 1f);
+        _treeContainer.anchoredPosition = Vector2.zero;
         _treeContainer.sizeDelta = new Vector2(width, height);
     }
 

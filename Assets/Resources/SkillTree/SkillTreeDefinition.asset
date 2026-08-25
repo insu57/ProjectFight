@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0105ea8a493dcb6439c628cb91c884ad, type: 3}
+  m_Name: SkillTreeDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::SkillTreeDefinition
+  <StartNodeID>k__BackingField: 0
+  <Nodes>k__BackingField:
+  - {fileID: 11400000, guid: 49d782a2df4e057488d49cd8b299c6be, type: 2}
+  - {fileID: 11400000, guid: daa51305533d0ca4fb266fc445a24309, type: 2}
+  - {fileID: 11400000, guid: c85030492952b844b913e4303afdd515, type: 2}
+  - {fileID: 11400000, guid: aa11ebd258e4a284e99ae2065485ea3b, type: 2}
+  - {fileID: 11400000, guid: ec46b2b62e27efe4a8200b345c378b50, type: 2}
