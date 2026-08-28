@@ -24,6 +24,7 @@ public sealed class SkillNodeDefinition : ScriptableObject
     [field: SerializeField] public int NodeID { get; private set; }
     [field: SerializeField] public string NodeName { get; private set; }
     [field: SerializeField] public Sprite NodeIcon { get; private set; }
+    [field: SerializeField] public string NodeDescription { get; private set; }
     [field: SerializeField] public SkillTreeNodeType NodeType { get; private set; }
     [field: SerializeField] public int RequiredNodeId { get; private set; } = -1;
     [field: SerializeField] public SkillTreeEffectType EffectType { get; private set; } = SkillTreeEffectType.None;

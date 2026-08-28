@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -26,6 +27,8 @@ public sealed class SkillTreeView : MonoBehaviour
     [SerializeField] private RectTransform _nodeLayer;
     [SerializeField] private SkillTreeNodeView _nodePrefab;
     [SerializeField] private SkillTreeConnectionView _connectionPrefab;
+    [SerializeField] private SkillDescriptionView _skillDescriptionView;
+    [SerializeField] private TMP_Text _availablePointsText;
 
     [Header("배치")]
     [SerializeField, Min(1f)] private float _horizontalSpacing = 240f;
@@ -154,6 +157,7 @@ public sealed class SkillTreeView : MonoBehaviour
         nodeView.Bind(node);
         nodeView.SetPosition(_nodePositions[node.NodeID]);
         nodeView.Selected += HandleNodeSelected;
+        nodeView.UnlockRequested += HandleNodeUnlockRequested;
 
         _nodeViews.Add(node.NodeID, nodeView);
 
@@ -193,6 +197,12 @@ public sealed class SkillTreeView : MonoBehaviour
 
         int availablePoints = runtime.AvailablePoints;
 
+        if (_availablePointsText)
+        {
+            // TMP의 숫자 포맷 오버로드를 사용해 문자열 할당을 줄인다.
+            _availablePointsText.SetText("Skill Points: {0}", availablePoints);
+        }
+
         foreach (KeyValuePair<int, SkillTreeNodeView> pair in _nodeViews)
         {
             pair.Value.Refresh(availablePoints);
@@ -202,11 +212,40 @@ public sealed class SkillTreeView : MonoBehaviour
         {
             _connections[i].View.Refresh();
         }
+
+        if (_skillDescriptionView)
+        {
+            // 선택 중인 노드의 비용 상태도 잔여 포인트와 해금 결과에 맞춰 갱신한다.
+            _skillDescriptionView.Refresh(availablePoints);
+        }
     }
 
     private void HandleNodeSelected(int nodeId)
     {
-        if (!_playerManager)
+        SkillTreeRuntime runtime = _playerManager ? _playerManager.SkillTreeRuntime : null;
+
+        if (runtime == null || !_skillDescriptionView)
+        {
+            return;
+        }
+
+        if (runtime.TryGetNode(nodeId, out SkillTreeNodeRuntime node))
+        {
+            // 현재 선택된 노드의 정의 정보를 설명 영역에 표시한다.
+            _skillDescriptionView.Show(node, runtime.AvailablePoints);
+        }
+    }
+
+    private void HandleNodeUnlockRequested(int nodeId)
+    {
+        SkillTreeRuntime runtime = _playerManager ? _playerManager.SkillTreeRuntime : null;
+
+        if (runtime == null || !runtime.TryGetNode(nodeId, out SkillTreeNodeRuntime node))
+        {
+            return;
+        }
+
+        if (!node.CanUnlock(runtime.AvailablePoints))
         {
             return;
         }

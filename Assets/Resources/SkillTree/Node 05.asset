@@ -15,9 +15,10 @@ MonoBehaviour:
   <NodeID>k__BackingField: 4
   <NodeName>k__BackingField: Depth 01-3
   <NodeIcon>k__BackingField: {fileID: 21300000, guid: 37e07b1bd28380b4f9cbfa0fc8bd564c, type: 3}
+  <NodeDescription>k__BackingField: 
   <NodeType>k__BackingField: 0
   <RequiredNodeId>k__BackingField: 1
   <EffectType>k__BackingField: 4
   <EffectValue>k__BackingField: 0
-  <RequiredPoints>k__BackingField: 0
+  <RequiredPoints>k__BackingField: 10
   <DisplayOrder>k__BackingField: 0

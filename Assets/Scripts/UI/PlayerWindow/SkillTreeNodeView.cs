@@ -1,17 +1,16 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(RectTransform))]
-public sealed class SkillTreeNodeView : MonoBehaviour
+public sealed class SkillTreeNodeView : MonoBehaviour, IPointerEnterHandler, ISelectHandler
 {
     [Header("기본 UI")]
     [SerializeField] private Button _button;
     [SerializeField] private Image _icon;
-    [SerializeField] private TMP_Text _nameText;
-    [SerializeField] private TMP_Text _costText;
 
     [Header("노드 타입")]
     [SerializeField] private GameObject _startVisual;
@@ -29,6 +28,7 @@ public sealed class SkillTreeNodeView : MonoBehaviour
     public int NodeID => _node != null ? _node.NodeID : -1;
 
     public event Action<int> Selected;
+    public event Action<int> UnlockRequested;
 
     private void Awake()
     {
@@ -61,17 +61,6 @@ public sealed class SkillTreeNodeView : MonoBehaviour
             _icon.enabled = node.Definition.NodeIcon;
         }
 
-        
-        if (_nameText)
-        {
-            _nameText.SetText(node.Definition.NodeName);
-        }
-
-        if (_costText)
-        {
-            _costText.SetText(node.IsStartNode ? string.Empty : node.Definition.RequiredPoints.ToString());
-        }
-
         SetTypeVisual(node.Definition.NodeType);
     }
 
@@ -97,9 +86,23 @@ public sealed class SkillTreeNodeView : MonoBehaviour
         SetActiveIfChanged(_availableVisual, !isUnlocked && canUnlock);
         SetActiveIfChanged(_unlockedVisual, isUnlocked);
 
-        if (_button)
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        NotifySelected();
+    }
+
+    public void OnSelect(BaseEventData eventData)
+    {
+        NotifySelected();
+    }
+
+    private void NotifySelected()
+    {
+        if (_node != null)
         {
-            _button.interactable = canUnlock;
+            Selected?.Invoke(_node.NodeID);
         }
     }
 
@@ -114,7 +117,7 @@ public sealed class SkillTreeNodeView : MonoBehaviour
     {
         if (_node != null)
         {
-            Selected?.Invoke(_node.NodeID);
+            UnlockRequested?.Invoke(_node.NodeID);
         }
     }
 
