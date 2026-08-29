@@ -28,6 +28,7 @@ public sealed class SkillTreeView : MonoBehaviour
     [SerializeField] private SkillTreeNodeView _nodePrefab;
     [SerializeField] private SkillTreeConnectionView _connectionPrefab;
     [SerializeField] private SkillDescriptionView _skillDescriptionView;
+    [SerializeField] private SkillUnlockConfirmationView _unlockConfirmationView;
     [SerializeField] private TMP_Text _availablePointsText;
 
     [Header("배치")]
@@ -58,6 +59,11 @@ public sealed class SkillTreeView : MonoBehaviour
             _playerManager.SkillTreeNodeUnlocked += HandleSkillTreeNodeUnlocked;
         }
 
+        if (_unlockConfirmationView)
+        {
+            _unlockConfirmationView.Confirmed += HandleNodeUnlockConfirmed;
+        }
+
         BuildIfNeeded();
         RefreshAll();
     }
@@ -68,6 +74,14 @@ public sealed class SkillTreeView : MonoBehaviour
         {
             _playerManager.SkillPointsChanged -= HandleSkillPointsChanged;
             _playerManager.SkillTreeNodeUnlocked -= HandleSkillTreeNodeUnlocked;
+        }
+
+        if (_unlockConfirmationView)
+        {
+            _unlockConfirmationView.Confirmed -= HandleNodeUnlockConfirmed;
+
+            // 탭을 전환하거나 플레이어 창을 닫을 때 진행 중인 확인 상태를 초기화한다.
+            _unlockConfirmationView.Hide();
         }
     }
 
@@ -240,11 +254,30 @@ public sealed class SkillTreeView : MonoBehaviour
     {
         SkillTreeRuntime runtime = _playerManager ? _playerManager.SkillTreeRuntime : null;
 
+        if (runtime == null || !_unlockConfirmationView || !runtime.TryGetNode(nodeId, out SkillTreeNodeRuntime node))
+        {
+            return;
+        }
+
+        // 포인트 부족, 선행 노드 잠김, 이미 해금된 노드에는 확인 팝업을 표시하지 않는다.
+        if (!node.CanUnlock(runtime.AvailablePoints))
+        {
+            return;
+        }
+
+        _unlockConfirmationView.Show(node);
+    }
+
+    private void HandleNodeUnlockConfirmed(int nodeId)
+    {
+        SkillTreeRuntime runtime = _playerManager ? _playerManager.SkillTreeRuntime : null;
+
         if (runtime == null || !runtime.TryGetNode(nodeId, out SkillTreeNodeRuntime node))
         {
             return;
         }
 
+        // 팝업이 열린 사이 포인트나 선행 노드 상태가 바뀌었을 가능성에 대비해 다시 검사한다.
         if (!node.CanUnlock(runtime.AvailablePoints))
         {
             return;

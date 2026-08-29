@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public enum PlayerTabType
 {
@@ -27,6 +28,7 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
     [SerializeField] private TabBinding[] _tabBindings;
     private PlayerManager _playerManager;
     [SerializeField] private GameObject _windowPanel;
+    [SerializeField] private InputActionReference _navigateAction;
 
     private PlayerTabType _currentTab;
     private bool _hasSelectedTab;
@@ -51,6 +53,11 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
             _playerManager.PlayerWindowRequested += ToggleWindow;
         }
 
+        if (_navigateAction)
+        {
+            _navigateAction.action.performed += HandleNavigate;
+        }
+
         SubscribeTabButtons();
         SelectTab(_hasSelectedTab ? _currentTab : _initialTab);
     }
@@ -60,6 +67,11 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
         if (_playerManager)
         {
             _playerManager.PlayerWindowRequested -= ToggleWindow;
+        }
+
+        if (_navigateAction)
+        {
+            _navigateAction.action.performed -= HandleNavigate;
         }
 
         UnsubscribeTabButtons();
@@ -108,6 +120,17 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
             // UI Cancel 입력으로 플레이어 창을 닫는다.
             SetWindowOpen(false);
         }
+    }
+
+    private void HandleNavigate(InputAction.CallbackContext context)
+    {
+        if (!IsOpen || !EventSystem.current || EventSystem.current.currentSelectedGameObject)
+        {
+            return;
+        }
+
+        // 배경 클릭으로 선택된 UI가 사라졌을 때 현재 탭에서 탐색을 다시 시작한다.
+        FocusCurrentTab();
     }
 
     private void FocusCurrentTab()

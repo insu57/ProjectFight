@@ -6,11 +6,12 @@ using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(RectTransform))]
-public sealed class SkillTreeNodeView : MonoBehaviour, IPointerEnterHandler, ISelectHandler
+public sealed class SkillTreeNodeView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler
 {
     [Header("기본 UI")]
     [SerializeField] private Button _button;
     [SerializeField] private Image _icon;
+    [SerializeField] private Image _focusImage;
 
     [Header("노드 타입")]
     [SerializeField] private GameObject _startVisual;
@@ -24,6 +25,8 @@ public sealed class SkillTreeNodeView : MonoBehaviour, IPointerEnterHandler, ISe
 
     private RectTransform _rectTransform;
     private SkillTreeNodeRuntime _node;
+    private bool _isFocused;
+    private bool _isPointerOver;
 
     public int NodeID => _node != null ? _node.NodeID : -1;
 
@@ -41,6 +44,8 @@ public sealed class SkillTreeNodeView : MonoBehaviour, IPointerEnterHandler, ISe
         {
             _button.onClick.AddListener(HandleClick);
         }
+
+        RefreshFocusVisual();
     }
 
     private void OnDisable()
@@ -49,6 +54,10 @@ public sealed class SkillTreeNodeView : MonoBehaviour, IPointerEnterHandler, ISe
         {
             _button.onClick.RemoveListener(HandleClick);
         }
+
+        _isFocused = false;
+        _isPointerOver = false;
+        RefreshFocusVisual();
     }
 
     public void Bind(SkillTreeNodeRuntime node)
@@ -90,12 +99,44 @@ public sealed class SkillTreeNodeView : MonoBehaviour, IPointerEnterHandler, ISe
 
     public void OnPointerEnter(PointerEventData eventData)
     {
+        _isPointerOver = true;
+        RefreshFocusVisual();
         NotifySelected();
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        _isPointerOver = false;
+        RefreshFocusVisual();
     }
 
     public void OnSelect(BaseEventData eventData)
     {
+        _isFocused = true;
+        RefreshFocusVisual();
         NotifySelected();
+    }
+
+    public void OnDeselect(BaseEventData eventData)
+    {
+        _isFocused = false;
+        RefreshFocusVisual();
+    }
+
+    private void RefreshFocusVisual()
+    {
+        if (!_focusImage)
+        {
+            return;
+        }
+
+        // 키보드·패드 선택 또는 포인터 호버 중이면 포커스 이미지를 표시한다.
+        bool shouldShow = _isFocused || _isPointerOver;
+
+        if (_focusImage.enabled != shouldShow)
+        {
+            _focusImage.enabled = shouldShow;
+        }
     }
 
     private void NotifySelected()

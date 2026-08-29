@@ -13,6 +13,7 @@ public class PlayerManager : MonoBehaviour
     private PlayerCamera _playerCamera;
     private PlayerLockOn _playerLockOn;
     private PlayerSkillTree _playerSkillTree;
+    private SkillTreeRuntime _subscribedSkillTreeRuntime;
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
@@ -45,13 +46,13 @@ public class PlayerManager : MonoBehaviour
             _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
         }
 
-        SkillTreeRuntime skillTreeRuntime = SkillTreeRuntime;
+        SubscribeSkillTreeRuntime();
+    }
 
-        if (skillTreeRuntime != null)
-        {
-            skillTreeRuntime.AvailablePointsChanged += HandleSkillPointsChanged;
-            skillTreeRuntime.NodeUnlocked += HandleSkillTreeNodeUnlocked;
-        }
+    private void Start()
+    {
+        // 모든 컴포넌트의 Awake가 끝난 뒤 생성된 스킬 트리 Runtime 구독을 보장한다.
+        SubscribeSkillTreeRuntime();
     }
 
     private void OnDisable()
@@ -65,14 +66,37 @@ public class PlayerManager : MonoBehaviour
             _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
         }
 
+        UnsubscribeSkillTreeRuntime();
+    }
+
+    private void SubscribeSkillTreeRuntime()
+    {
         SkillTreeRuntime skillTreeRuntime = SkillTreeRuntime;
 
-        if (skillTreeRuntime != null)
+        if (skillTreeRuntime == null || skillTreeRuntime == _subscribedSkillTreeRuntime)
         {
-            skillTreeRuntime.AvailablePointsChanged -= HandleSkillPointsChanged;
-            skillTreeRuntime.NodeUnlocked -= HandleSkillTreeNodeUnlocked;
+            return;
         }
+
+        UnsubscribeSkillTreeRuntime();
+
+        skillTreeRuntime.AvailablePointsChanged += HandleSkillPointsChanged;
+        skillTreeRuntime.NodeUnlocked += HandleSkillTreeNodeUnlocked;
+        _subscribedSkillTreeRuntime = skillTreeRuntime;
     }
+
+    private void UnsubscribeSkillTreeRuntime()
+    {
+        if (_subscribedSkillTreeRuntime == null)
+        {
+            return;
+        }
+
+        _subscribedSkillTreeRuntime.AvailablePointsChanged -= HandleSkillPointsChanged;
+        _subscribedSkillTreeRuntime.NodeUnlocked -= HandleSkillTreeNodeUnlocked;
+        _subscribedSkillTreeRuntime = null;
+    }
+
     private void Update()
     {
         if (_playerDodge)
