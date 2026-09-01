@@ -17,15 +17,17 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
     [Serializable]
     private sealed class TabBinding
     {
-        [SerializeField] private PlayerWindowTabButton _button;
+        [SerializeField] private PlayerTabType _tabType;
+        [SerializeField] private WindowTabButton _button;
         [SerializeField] private GameObject _content;
 
-        public PlayerWindowTabButton Button => _button;
+        public PlayerTabType TabType => _tabType;
+        public WindowTabButton Button => _button;
         public GameObject Content => _content;
     }
 
     [SerializeField] private PlayerTabType _initialTab = PlayerTabType.Inventory;
-    [SerializeField] private TabBinding[] _tabBindings;
+    [SerializeField] private TabBinding[] _tabBindings = Array.Empty<TabBinding>();
     private PlayerManager _playerManager;
     [SerializeField] private GameObject _windowPanel;
     [SerializeField] private InputActionReference _navigateAction;
@@ -144,7 +146,7 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
         {
             TabBinding binding = _tabBindings[i];
 
-            if (binding != null && binding.Button && binding.Button.TabType == _currentTab)
+            if (binding != null && binding.Button && binding.TabType == _currentTab)
             {
                 // 키보드와 게임패드 탐색이 현재 탭에서 시작되도록 한다.
                 EventSystem.current.SetSelectedGameObject(binding.Button.gameObject);
@@ -166,12 +168,22 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
 
     public void SelectTab(PlayerTabType tabType)
     {
-        if (!ContainsTab(tabType))
+        for (int i = 0; i < _tabBindings.Length; i++)
         {
-            Debug.LogWarning($"등록되지 않은 플레이어 창 탭입니다: {tabType}", this);
-            return;
+            TabBinding binding = _tabBindings[i];
+
+            if (binding != null && binding.Button && binding.TabType == tabType)
+            {
+                SelectBinding(binding);
+                return;
+            }
         }
 
+        Debug.LogWarning($"등록되지 않은 플레이어 창 탭입니다: {tabType}", this);
+    }
+
+    private void SelectBinding(TabBinding selectedBinding)
+    {
         for (int i = 0; i < _tabBindings.Length; i++)
         {
             TabBinding binding = _tabBindings[i];
@@ -181,7 +193,7 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
                 continue;
             }
 
-            bool isSelected = binding.Button.TabType == tabType;
+            bool isSelected = binding == selectedBinding;
             binding.Button.SetSelected(isSelected);
 
             if (binding.Content && binding.Content.activeSelf != isSelected)
@@ -190,41 +202,28 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
             }
         }
 
-        if (_hasSelectedTab && _currentTab == tabType)
+        PlayerTabType selectedTab = selectedBinding.TabType;
+
+        if (_hasSelectedTab && _currentTab == selectedTab)
         {
             return;
         }
 
-        _currentTab = tabType;
+        _currentTab = selectedTab;
         _hasSelectedTab = true;
         TabChanged?.Invoke(_currentTab);
-    }
-
-    private bool ContainsTab(PlayerTabType tabType)
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding != null && binding.Button && binding.Button.TabType == tabType)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private void SubscribeTabButtons()
     {
         for (int i = 0; i < _tabBindings.Length; i++)
         {
-            PlayerWindowTabButton button = _tabBindings[i]?.Button;
+            WindowTabButton button = _tabBindings[i]?.Button;
 
             if (button)
             {
                 // 버튼과 콘텐츠 사이의 호출은 창 Controller가 중개한다.
-                button.Selected += SelectTab;
+                button.Selected += HandleTabSelected;
             }
         }
     }
@@ -233,11 +232,25 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
     {
         for (int i = 0; i < _tabBindings.Length; i++)
         {
-            PlayerWindowTabButton button = _tabBindings[i]?.Button;
+            WindowTabButton button = _tabBindings[i]?.Button;
 
             if (button)
             {
-                button.Selected -= SelectTab;
+                button.Selected -= HandleTabSelected;
+            }
+        }
+    }
+
+    private void HandleTabSelected(WindowTabButton selectedButton)
+    {
+        for (int i = 0; i < _tabBindings.Length; i++)
+        {
+            TabBinding binding = _tabBindings[i];
+
+            if (binding != null && binding.Button == selectedButton)
+            {
+                SelectBinding(binding);
+                return;
             }
         }
     }

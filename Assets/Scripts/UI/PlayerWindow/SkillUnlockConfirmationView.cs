@@ -86,7 +86,7 @@ public sealed class SkillUnlockConfirmationView : MonoBehaviour, ICancelHandler,
 
         if (_costText)
         {
-            _costText.SetText("필요 포인트: {0}", node.Definition.RequiredPoints);
+            _costText.SetText("?꾩슂 ?ъ씤?? {0}", node.Definition.RequiredPoints);
         }
 
         SetPanelActive(true);

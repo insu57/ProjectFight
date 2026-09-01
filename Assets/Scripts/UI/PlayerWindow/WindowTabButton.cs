@@ -5,9 +5,8 @@ using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Button))]
-public sealed class PlayerWindowTabButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
+public sealed class WindowTabButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
 {
-    [SerializeField] private PlayerTabType _tabType;
     [SerializeField] private Button _button;
     [SerializeField] private GameObject _selectedVisual;
     [SerializeField] private Graphic _selectedVisualGraphic;
@@ -18,9 +17,7 @@ public sealed class PlayerWindowTabButton : MonoBehaviour, ISelectHandler, IDese
     private bool _isFocused;
     private bool _isPointerOver;
 
-    public PlayerTabType TabType => _tabType;
-
-    public event Action<PlayerTabType> Selected;
+    public event Action<WindowTabButton> Selected;
 
     private void Awake()
     {
@@ -94,7 +91,8 @@ public sealed class PlayerWindowTabButton : MonoBehaviour, ISelectHandler, IDese
 
     private void HandleClick()
     {
-        Selected?.Invoke(_tabType);
+        // 탭의 의미는 창 컨트롤러가 관리하고 버튼은 자신이 선택됐다는 사실만 전달한다.
+        Selected?.Invoke(this);
     }
 
     private void RefreshVisual()
@@ -105,6 +103,7 @@ public sealed class PlayerWindowTabButton : MonoBehaviour, ISelectHandler, IDese
         }
 
         // 키보드·패드 포커스와 포인터 호버를 동일한 포커스 표현으로 처리한다.
+
         bool hasFocus = _isFocused || _isPointerOver;
         bool shouldShow = _isSelected || hasFocus;
 
