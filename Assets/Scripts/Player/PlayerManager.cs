@@ -6,6 +6,7 @@ public class PlayerManager : MonoBehaviour
 {
     private PlayerControl _playerControl;
     private PlayerState _playerState;
+    private PlayerStat _playerStat;
     private PlayerMove _playerMove;
     private PlayerDodge _playerDodge;
     private PlayerAttack _playerAttack;
@@ -17,15 +18,18 @@ public class PlayerManager : MonoBehaviour
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
+    public event Action<PlayerStatSnapshot> PlayerStatsChanged;
     public event Action<int> SkillPointsChanged;
     public event Action<SkillTreeNodeRuntime> SkillTreeNodeUnlocked;
 
     public SkillTreeRuntime SkillTreeRuntime => _playerSkillTree ? _playerSkillTree.Runtime : null;
+    public PlayerStatSnapshot CurrentPlayerStats => _playerStat ? _playerStat.CurrentStats : default;
 
     private void Awake()
     {
         TryGetComponent(out _playerControl);
         TryGetComponent(out _playerState);
+        TryGetComponent(out _playerStat);
         TryGetComponent(out _playerMove);
         TryGetComponent(out _playerDodge);
         TryGetComponent(out _playerAttack);
@@ -46,6 +50,11 @@ public class PlayerManager : MonoBehaviour
             _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
         }
 
+        if (_playerStat)
+        {
+            _playerStat.StatsChanged += HandlePlayerStatsChanged;
+        }
+
         SubscribeSkillTreeRuntime();
     }
 
@@ -64,6 +73,11 @@ public class PlayerManager : MonoBehaviour
             _playerControl.AttackPressed -= HandleAttackPressed;
             _playerControl.GuardChanged -= HandleGuardChanged;
             _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
+        }
+
+        if (_playerStat)
+        {
+            _playerStat.StatsChanged -= HandlePlayerStatsChanged;
         }
 
         UnsubscribeSkillTreeRuntime();
@@ -349,6 +363,12 @@ public class PlayerManager : MonoBehaviour
     private void HandleSkillPointsChanged(int availablePoints)
     {
         SkillPointsChanged?.Invoke(availablePoints);
+    }
+
+    private void HandlePlayerStatsChanged(PlayerStatSnapshot stats)
+    {
+        // 플레이어 하위 컴포넌트의 변경 알림을 UI가 직접 구독하지 않도록 중개한다.
+        PlayerStatsChanged?.Invoke(stats);
     }
 
     private void HandleSkillTreeNodeUnlocked(SkillTreeNodeRuntime node)

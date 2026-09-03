@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
@@ -18,10 +17,10 @@ public enum OptionTabType
 }
 
 [DisallowMultipleComponent]
-public sealed class OptionWindowController : MonoBehaviour
+public sealed class OptionWindowController : TabbedWindowController<OptionTabType>
 {
     [Serializable]
-    private sealed class TabBinding
+    private sealed class TabBinding : IWindowTabBinding<OptionTabType>
     {
         [SerializeField] private OptionTabType _tabType;
         [SerializeField] private WindowTabButton _button;
@@ -32,62 +31,48 @@ public sealed class OptionWindowController : MonoBehaviour
         public GameObject Content => _content;
     }
 
-    [Header("Window")]
-    [SerializeField] private GameObject _windowPanel;
-
     [Header("Cancel")]
     [SerializeField] private InputActionReference _cancelAction;
     [SerializeField] private OptionWindowClosedCancelAction _closedCancelAction;
 
-    [Header("Navigation")]
-    [SerializeField] private InputActionReference _navigateAction;
-
     [Header("Tabs")]
     [SerializeField] private OptionTabType _initialTab = OptionTabType.Audio;
-    [SerializeField] private TabBinding[] _tabBindings;
+    [SerializeField] private TabBinding[] _tabBindings = Array.Empty<TabBinding>();
 
     [Header("Exit")]
     [SerializeField] private Button _exitButton;
 
     [Header("Stage")]
     [SerializeField] private bool _pauseGameplayWhileOpen;
-    private PlayerManager _playerManager;
 
     [Header("Title")]
     [SerializeField] private UnityEvent _backRequested;
 
-    private float _timeScaleBeforeOpen = 1f;
-    private bool _isTimeScalePaused;
     private bool _enabledCancelAction;
-    private OptionTabType _currentTab;
-    private bool _hasSelectedTab;
 
-    public bool IsOpen => _windowPanel && _windowPanel.activeSelf;
-    public OptionTabType CurrentTab => _currentTab;
+    protected override bool PauseGameplayWhileOpen => _pauseGameplayWhileOpen;
+    protected override OptionTabType InitialTab => _initialTab;
+    protected override int TabBindingCount => _tabBindings?.Length ?? 0;
 
-    public event Action<OptionTabType> TabChanged;
-
-    private void Awake()
+    protected override IWindowTabBinding<OptionTabType> GetTabBinding(int index)
     {
-        if (_windowPanel)
-        {
-            _windowPanel.SetActive(false);
-        }
-
-        _playerManager = FindFirstObjectByType<PlayerManager>();
+        return _tabBindings[index];
     }
 
-    private void OnEnable()
+    protected override void OnTabbedWindowEnabled()
     {
-        SubscribeTabButtons();
         SubscribeExitButton();
-        SelectTab(_hasSelectedTab ? _currentTab : _initialTab);
+        SubscribeCancelAction();
+    }
 
-        if (_navigateAction)
-        {
-            _navigateAction.action.performed += HandleNavigate;
-        }
+    protected override void OnTabbedWindowDisabled()
+    {
+        UnsubscribeExitButton();
+        UnsubscribeCancelAction();
+    }
 
+    private void SubscribeCancelAction()
+    {
         if (!_cancelAction)
         {
             return;
@@ -103,109 +88,21 @@ public sealed class OptionWindowController : MonoBehaviour
         }
     }
 
-    private void OnDisable()
+    private void UnsubscribeCancelAction()
     {
-        UnsubscribeTabButtons();
-        UnsubscribeExitButton();
-
-        if (_navigateAction)
-        {
-            _navigateAction.action.performed -= HandleNavigate;
-        }
-
-        if (_cancelAction)
-        {
-            InputAction cancelAction = _cancelAction.action;
-            cancelAction.performed -= HandleCancel;
-
-            if (_enabledCancelAction)
-            {
-                cancelAction.Disable();
-                _enabledCancelAction = false;
-            }
-        }
-
-        if (IsOpen)
-        {
-            SetWindowOpen(false);
-        }
-    }
-
-    public void OpenWindow()
-    {
-        SetWindowOpen(true);
-    }
-
-    public void CloseWindow()
-    {
-        SetWindowOpen(false);
-    }
-
-    public void SelectTab(OptionTabType tabType)
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding != null && binding.Button && binding.TabType == tabType)
-            {
-                SelectBinding(binding);
-                return;
-            }
-        }
-
-        Debug.LogWarning($"등록되지 않은 옵션 창 탭입니다: {tabType}", this);
-    }
-
-    private void SelectBinding(TabBinding selectedBinding)
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding == null || !binding.Button)
-            {
-                continue;
-            }
-
-            bool isSelected = binding == selectedBinding;
-            binding.Button.SetSelected(isSelected);
-
-            if (binding.Content && binding.Content.activeSelf != isSelected)
-            {
-                binding.Content.SetActive(isSelected);
-            }
-        }
-
-        OptionTabType selectedTab = selectedBinding.TabType;
-
-        if (_hasSelectedTab && _currentTab == selectedTab)
+        if (!_cancelAction)
         {
             return;
         }
 
-        _currentTab = selectedTab;
-        _hasSelectedTab = true;
-        TabChanged?.Invoke(_currentTab);
-    }
+        InputAction cancelAction = _cancelAction.action;
+        cancelAction.performed -= HandleCancel;
 
-    public void SetWindowOpen(bool isOpen)
-    {
-        if (!_windowPanel || IsOpen == isOpen)
+        if (_enabledCancelAction)
         {
-            return;
+            cancelAction.Disable();
+            _enabledCancelAction = false;
         }
-
-        _windowPanel.SetActive(isOpen);
-
-        if (isOpen)
-        {
-            BeginWindowState();
-            FocusCurrentTab();
-            return;
-        }
-
-        EndWindowState();
     }
 
     private void HandleCancel(InputAction.CallbackContext context)
@@ -222,60 +119,8 @@ public sealed class OptionWindowController : MonoBehaviour
             return;
         }
 
-        // 타이틀에서는 현재 메뉴가 처리할 뒤로가기 동작을 요청한다.
+        // 타이틀에서는 현재 메뉴가 처리할 수 있도록 뒤로 가기를 요청한다.
         _backRequested?.Invoke();
-    }
-
-    private void HandleNavigate(InputAction.CallbackContext context)
-    {
-        if (!IsOpen || !EventSystem.current || EventSystem.current.currentSelectedGameObject)
-        {
-            return;
-        }
-
-        // 배경 클릭으로 선택이 사라졌다면 현재 탭 버튼부터 탐색을 다시 시작한다.
-        FocusCurrentTab();
-    }
-
-    private void SubscribeTabButtons()
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            WindowTabButton button = _tabBindings[i]?.Button;
-
-            if (button)
-            {
-                // 탭 버튼과 콘텐츠 사이의 호출은 옵션 창 컨트롤러가 중개한다.
-                button.Selected += HandleTabSelected;
-            }
-        }
-    }
-
-    private void UnsubscribeTabButtons()
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            WindowTabButton button = _tabBindings[i]?.Button;
-
-            if (button)
-            {
-                button.Selected -= HandleTabSelected;
-            }
-        }
-    }
-
-    private void HandleTabSelected(WindowTabButton selectedButton)
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding != null && binding.Button == selectedButton)
-            {
-                SelectBinding(binding);
-                return;
-            }
-        }
     }
 
     private void SubscribeExitButton()
@@ -297,66 +142,9 @@ public sealed class OptionWindowController : MonoBehaviour
     private void ExitGame()
     {
 #if UNITY_EDITOR
-        // 에디터에서는 Application.Quit()이 동작하지 않으므로 플레이 모드를 종료한다.
         UnityEditor.EditorApplication.isPlaying = false;
 #else
         Application.Quit();
 #endif
-    }
-
-    private void BeginWindowState()
-    {
-        if (!_pauseGameplayWhileOpen)
-        {
-            return;
-        }
-
-        _playerManager?.SetGameplayInputEnabled(false);
-        _timeScaleBeforeOpen = Time.timeScale;
-        Time.timeScale = 0f;
-        _isTimeScalePaused = true;
-    }
-
-    private void EndWindowState()
-    {
-        EventSystem.current?.SetSelectedGameObject(null);
-
-        if (!_pauseGameplayWhileOpen)
-        {
-            return;
-        }
-
-        _playerManager?.SetGameplayInputEnabled(true);
-        RestoreTimeScale();
-    }
-
-    private void FocusCurrentTab()
-    {
-        if (!EventSystem.current)
-        {
-            return;
-        }
-
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding != null && binding.Button && binding.TabType == _currentTab)
-            {
-                EventSystem.current.SetSelectedGameObject(binding.Button.gameObject);
-                return;
-            }
-        }
-    }
-
-    private void RestoreTimeScale()
-    {
-        if (!_isTimeScalePaused)
-        {
-            return;
-        }
-
-        Time.timeScale = _timeScaleBeforeOpen;
-        _isTimeScalePaused = false;
     }
 }

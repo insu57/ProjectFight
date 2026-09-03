@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 8594237160845263102}
   - component: {fileID: 7894886072742760587}
   - component: {fileID: 8968012954492850399}
+  - component: {fileID: 112678730961460787}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -80,9 +81,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 788af14b21902894ebaf12b077ef3212, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimation
+  _locomotionStateName: Base Layer.Locomotion
+  _attackExitTransitionDuration: 0.1
   _movementDampTime: 0.1
   _movementThreshold: 0.001
-  _attackExitTransitionDuration: 0.1
 --- !u!114 &2948392299655174085
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -217,6 +219,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSkillTree
   _definition: {fileID: 11400000, guid: 325ab2c4fbf86bf47bab43cff99c1cc0, type: 2}
   _initialPoints: 10
+--- !u!114 &112678730961460787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4129976254972732029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98cda8bf454544c42959ad404e71abd8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStat
+  _level: 1
+  _currentExp: 0
+  _targetExp: 100
+  _maxHealth: 100
+  _currentHealth: 100
+  _baseAttackPower: 0
+  _baseDefensePower: 0
+  _baseMaxEnergy: 100
+  _currentEnergy: 0
 --- !u!1 &6316011570218284610
 GameObject:
   m_ObjectHideFlags: 0

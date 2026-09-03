@@ -20,9 +20,9 @@ MonoBehaviour:
   <ComboInputStartNormalizedTime>k__BackingField: 0.2
   <ComboTransitionNormalizedTime>k__BackingField: 0.55
   <ComboInputEndNormalizedTime>k__BackingField: 0.8
-  <AttackMoveDistance>k__BackingField: {x: 0, y: 0.5}
+  <AttackMoveDistance>k__BackingField: {x: 0, y: 0.3}
   <MoveStartNormalizedTime>k__BackingField: 0
-  <MoveEndNormalizedTime>k__BackingField: 1
+  <MoveEndNormalizedTime>k__BackingField: 0.8
   <MoveCurve>k__BackingField:
     serializedVersion: 2
     m_Curve:

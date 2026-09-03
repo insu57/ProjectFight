@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 
 public enum PlayerTabType
 {
@@ -10,12 +9,10 @@ public enum PlayerTabType
 }
 
 [DisallowMultipleComponent]
-public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
+public sealed class PlayerWindowController : TabbedWindowController<PlayerTabType>, ICancelHandler
 {
-    
-
     [Serializable]
-    private sealed class TabBinding
+    private sealed class TabBinding : IWindowTabBinding<PlayerTabType>
     {
         [SerializeField] private PlayerTabType _tabType;
         [SerializeField] private WindowTabButton _button;
@@ -26,232 +23,40 @@ public sealed class PlayerWindowController : MonoBehaviour, ICancelHandler
         public GameObject Content => _content;
     }
 
+    [Header("Tabs")]
     [SerializeField] private PlayerTabType _initialTab = PlayerTabType.Inventory;
     [SerializeField] private TabBinding[] _tabBindings = Array.Empty<TabBinding>();
-    private PlayerManager _playerManager;
-    [SerializeField] private GameObject _windowPanel;
-    [SerializeField] private InputActionReference _navigateAction;
 
-    private PlayerTabType _currentTab;
-    private bool _hasSelectedTab;
-    private float _timeScaleBeforeOpen = 1f;
-    private bool _isTimeScalePaused;
-
-    public PlayerTabType CurrentTab => _currentTab;
-    public bool IsOpen => _windowPanel && _windowPanel.activeSelf;
-
-    public event Action<PlayerTabType> TabChanged;
-
-    private void Awake()
-    {
-        _playerManager = FindFirstObjectByType<PlayerManager>();
-        _windowPanel.SetActive(false);
-    }
-
-    private void OnEnable()
-    {
-        if (_playerManager)
-        {
-            _playerManager.PlayerWindowRequested += ToggleWindow;
-        }
-
-        if (_navigateAction)
-        {
-            _navigateAction.action.performed += HandleNavigate;
-        }
-
-        SubscribeTabButtons();
-        SelectTab(_hasSelectedTab ? _currentTab : _initialTab);
-    }
-
-    private void OnDisable()
-    {
-        if (_playerManager)
-        {
-            _playerManager.PlayerWindowRequested -= ToggleWindow;
-        }
-
-        if (_navigateAction)
-        {
-            _navigateAction.action.performed -= HandleNavigate;
-        }
-
-        UnsubscribeTabButtons();
-
-        if (IsOpen)
-        {
-            SetWindowOpen(false);
-        }
-    }
-
-    public void ToggleWindow()
-    {
-        SetWindowOpen(!IsOpen);
-    }
-
-    public void SetWindowOpen(bool isOpen)
-    {
-        if (!_windowPanel || _windowPanel.activeSelf == isOpen)
-        {
-            return;
-        }
-
-        // 입력을 계속 받기 위해 Controller는 유지하고 표시 패널만 활성화한다.
-        _windowPanel.SetActive(isOpen);
-        _playerManager?.SetGameplayInputEnabled(!isOpen);
-
-        if (isOpen)
-        {
-            // 창을 닫을 때 원래 게임 속도로 돌아갈 수 있도록 기존 값을 보관한다.
-            _timeScaleBeforeOpen = Time.timeScale;
-            Time.timeScale = 0f;
-            _isTimeScalePaused = true;
-            FocusCurrentTab();
-            return;
-        }
-
-
-        EventSystem.current?.SetSelectedGameObject(null);
-        RestoreTimeScale();
-    }
+    protected override bool PauseGameplayWhileOpen => true;
+    protected override PlayerTabType InitialTab => _initialTab;
+    protected override int TabBindingCount => _tabBindings?.Length ?? 0;
 
     public void OnCancel(BaseEventData eventData)
     {
         if (IsOpen)
         {
-            // UI Cancel 입력으로 플레이어 창을 닫는다.
-            SetWindowOpen(false);
+            CloseWindow();
         }
     }
 
-    private void HandleNavigate(InputAction.CallbackContext context)
+    protected override IWindowTabBinding<PlayerTabType> GetTabBinding(int index)
     {
-        if (!IsOpen || !EventSystem.current || EventSystem.current.currentSelectedGameObject)
-        {
-            return;
-        }
-
-        // 배경 클릭으로 선택된 UI가 사라졌을 때 현재 탭에서 탐색을 다시 시작한다.
-        FocusCurrentTab();
+        return _tabBindings[index];
     }
 
-    private void FocusCurrentTab()
+    protected override void OnTabbedWindowEnabled()
     {
-        if (!EventSystem.current)
+        if (PlayerManager)
         {
-            return;
-        }
-
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding != null && binding.Button && binding.TabType == _currentTab)
-            {
-                // 키보드와 게임패드 탐색이 현재 탭에서 시작되도록 한다.
-                EventSystem.current.SetSelectedGameObject(binding.Button.gameObject);
-                return;
-            }
+            PlayerManager.PlayerWindowRequested += ToggleWindow;
         }
     }
 
-    private void RestoreTimeScale()
+    protected override void OnTabbedWindowDisabled()
     {
-        if (!_isTimeScalePaused)
+        if (PlayerManager)
         {
-            return;
-        }
-
-        Time.timeScale = _timeScaleBeforeOpen;
-        _isTimeScalePaused = false;
-    }
-
-    public void SelectTab(PlayerTabType tabType)
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding != null && binding.Button && binding.TabType == tabType)
-            {
-                SelectBinding(binding);
-                return;
-            }
-        }
-
-        Debug.LogWarning($"등록되지 않은 플레이어 창 탭입니다: {tabType}", this);
-    }
-
-    private void SelectBinding(TabBinding selectedBinding)
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding == null || !binding.Button)
-            {
-                continue;
-            }
-
-            bool isSelected = binding == selectedBinding;
-            binding.Button.SetSelected(isSelected);
-
-            if (binding.Content && binding.Content.activeSelf != isSelected)
-            {
-                binding.Content.SetActive(isSelected);
-            }
-        }
-
-        PlayerTabType selectedTab = selectedBinding.TabType;
-
-        if (_hasSelectedTab && _currentTab == selectedTab)
-        {
-            return;
-        }
-
-        _currentTab = selectedTab;
-        _hasSelectedTab = true;
-        TabChanged?.Invoke(_currentTab);
-    }
-
-    private void SubscribeTabButtons()
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            WindowTabButton button = _tabBindings[i]?.Button;
-
-            if (button)
-            {
-                // 버튼과 콘텐츠 사이의 호출은 창 Controller가 중개한다.
-                button.Selected += HandleTabSelected;
-            }
-        }
-    }
-
-    private void UnsubscribeTabButtons()
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            WindowTabButton button = _tabBindings[i]?.Button;
-
-            if (button)
-            {
-                button.Selected -= HandleTabSelected;
-            }
-        }
-    }
-
-    private void HandleTabSelected(WindowTabButton selectedButton)
-    {
-        for (int i = 0; i < _tabBindings.Length; i++)
-        {
-            TabBinding binding = _tabBindings[i];
-
-            if (binding != null && binding.Button == selectedButton)
-            {
-                SelectBinding(binding);
-                return;
-            }
+            PlayerManager.PlayerWindowRequested -= ToggleWindow;
         }
     }
 }
