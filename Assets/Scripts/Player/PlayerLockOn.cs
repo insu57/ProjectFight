@@ -77,9 +77,8 @@ public sealed class PlayerLockOn : MonoBehaviour
     {
         if (!_viewCamera) return null;
 
-        
-
-        int candidateCount = Physics.OverlapSphereNonAlloc(transform.position, _searchRange, _candidateBuffer, _targetLayerMask, QueryTriggerInteraction.Collide);
+        int candidateCount = Physics.OverlapSphereNonAlloc(transform.position, _searchRange,
+            _candidateBuffer, _targetLayerMask, QueryTriggerInteraction.Collide);
         LockOnTarget bestTarget = null;
         float bestScreenDistance = float.MaxValue;
 

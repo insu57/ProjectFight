@@ -27,11 +27,18 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
 
     private void Awake()
     {
-        _remainingCooldowns = new float[_patterns.Length];
+        //_remainingCooldowns = new float[_patterns.Length];
+    }
+
+    public void SetPatterns(EnemyPatternDefinition[] patterns)
+    {
+        _patterns = patterns;
+        _remainingCooldowns = new float[patterns.Length];
     }
 
     public void UpdateCooldowns(float deltaTime)
     {
+        if (_remainingCooldowns == null) return;
         for (int i = 0; i < _remainingCooldowns.Length; i++)
         {
             if (_remainingCooldowns[i] > 0f)

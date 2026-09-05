@@ -9,8 +9,8 @@ using UnityEngine;
 [RequireComponent(typeof(EnemyPatternExecutor))]
 public sealed class EnemyManager : MonoBehaviour
 {
-    [SerializeField] private Transform _target;
-
+    private Transform _target;
+    [field: SerializeField] private EnemyDefinition _enemyDefinition;
     private EnemyState _enemyState;
     private EnemyStat _enemyStat;
     private EnemyBrain _enemyBrain;
@@ -38,13 +38,7 @@ public sealed class EnemyManager : MonoBehaviour
 
     private void Start()
     {
-        if (_target)
-        {
-            return;
-        }
-
-        PlayerManager playerManager = FindFirstObjectByType<PlayerManager>();
-        _target = playerManager ? playerManager.transform : null;
+        _patternExecutor.SetPatterns(_enemyDefinition.Patterns);
     }
 
     private void OnDisable()
@@ -120,6 +114,11 @@ public sealed class EnemyManager : MonoBehaviour
         _target = target;
     }
 
+    public void SetEnemyDefinition(EnemyDefinition enemyDefinition)
+    {
+        _enemyDefinition = enemyDefinition;
+    }
+
     public void TakeDamage(float damage)
     {
         if (_enemyStat)
@@ -141,7 +140,8 @@ public sealed class EnemyManager : MonoBehaviour
             return;
         }
 
-        if (_enemyAnimation.TryGetAttackNormalizedTime(out float normalizedTime) && _patternExecutor.TryGetAttackMoveDisplacement(normalizedTime, out Vector2 localDisplacement))
+        if (_enemyAnimation.TryGetAttackNormalizedTime(out float normalizedTime)
+            && _patternExecutor.TryGetAttackMoveDisplacement(normalizedTime, out Vector2 localDisplacement))
         {
             _enemyMove.MoveAttack(localDisplacement, deltaTime);
         }
