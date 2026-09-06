@@ -10,6 +10,8 @@ public class PlayerManager : MonoBehaviour
     private PlayerMove _playerMove;
     private PlayerDodge _playerDodge;
     private PlayerAttack _playerAttack;
+    private AttackHitbox _attackHitbox;
+    private Hurtbox _hurtbox;
     private PlayerAnimation _playerAnimation;
     private PlayerCamera _playerCamera;
     private PlayerLockOn _playerLockOn;
@@ -37,10 +39,28 @@ public class PlayerManager : MonoBehaviour
         TryGetComponent(out _playerCamera);
         TryGetComponent(out _playerLockOn);
         TryGetComponent(out _playerSkillTree);
+
+        _attackHitbox = GetComponentInChildren<AttackHitbox>();
+        _hurtbox = GetComponentInChildren<Hurtbox>();
+
+        if (_attackHitbox)
+        {
+            _attackHitbox.Initialize(this);
+        }
+
+        if (_hurtbox)
+        {
+            _hurtbox.Initialize(this);
+        }
     }
 
     private void OnEnable()
     {
+        if (_hurtbox)
+        {
+            _hurtbox.DamageRequested += HandleDamageRequested;
+        }
+
         if (_playerControl)
         {
             _playerControl.LockOnPressed += HandleLockOnPressed;
@@ -66,6 +86,16 @@ public class PlayerManager : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_hurtbox)
+        {
+            _hurtbox.DamageRequested -= HandleDamageRequested;
+        }
+
+        if (_attackHitbox)
+        {
+            _attackHitbox.EndAttack();
+        }
+
         if (_playerControl)
         {
             _playerControl.LockOnPressed -= HandleLockOnPressed;
@@ -81,6 +111,40 @@ public class PlayerManager : MonoBehaviour
         }
 
         UnsubscribeSkillTreeRuntime();
+    }
+
+    private void HandleDamageRequested(DamageInfo damageInfo)
+    {
+        if (!isActiveAndEnabled || !_playerStat || !_playerState) return;
+        if (_playerState.ActionState == PlayerActionState.Dead) return;
+        if (_playerStat.CurrentStats.CurrentHealth <= 0) return;
+        if (damageInfo.Damage <= 0f) return;
+
+        // 현재 플레이어 체력 타입에 맞춰 양수 피해의 소수점을 올림한다.
+        int damage = Mathf.CeilToInt(damageInfo.Damage);
+        _playerStat.TakeDamage(damage);
+
+        if (_playerStat.CurrentStats.CurrentHealth > 0) return;
+
+        // 사망 시 진행 중인 공격과 가드를 종료하고 행동을 막는다.
+        if (_attackHitbox)
+        {
+            _attackHitbox.EndAttack();
+        }
+
+        if (_playerAttack)
+        {
+            _playerAttack.EndAttack();
+        }
+
+        if (_playerAnimation)
+        {
+            _playerAnimation.SetGuarding(false);
+            _playerAnimation.CompleteAttack();
+        }
+
+        _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
+        _playerState.SetActionState(PlayerActionState.Dead);
     }
 
     private void SubscribeSkillTreeRuntime()
@@ -122,6 +186,12 @@ public class PlayerManager : MonoBehaviour
         {
             // 락온 타깃이 유효하지 않게 되면 변경 사실을 전달한다.
             NotifyLockOnTargetChanged();
+        }
+
+        // 공격이 취소되거나 다른 행동 상태로 바뀌면 판정을 종료한다.
+        if (_attackHitbox && (!_playerState || _playerState.ActionState != PlayerActionState.Attacking))
+        {
+            _attackHitbox.EndAttack();
         }
 
         if (!_playerControl || !_playerState || !_playerMove || !_playerCamera) return;
@@ -267,6 +337,17 @@ public class PlayerManager : MonoBehaviour
 
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _playerState.SetActionState(PlayerActionState.Attacking);
+        BeginAttackPresentation(attackDefinition);
+    }
+
+    private void BeginAttackPresentation(AttackDefinition attackDefinition)
+    {
+        // 공격 설정을 판정 컴포넌트에 전달한 뒤 애니메이션을 시작한다.
+        if (_attackHitbox)
+        {
+            _attackHitbox.BeginAttack(attackDefinition);
+        }
+
         _playerAnimation.PlayAttack(attackDefinition);
     }
 
@@ -315,15 +396,28 @@ public class PlayerManager : MonoBehaviour
 
         if (hasNormalizedTime && _playerAttack.TryConsumeQueuedAttack(normalizedTime, out AttackDefinition nextAttack))
         {
-            _playerAnimation.PlayAttack(nextAttack);
+            // 다음 공격으로 전환하면서 이전 박스를 끄고 새 범위를 적용한다.
+            BeginAttackPresentation(nextAttack);
             return;
         }
 
-        if (!_playerAnimation.IsAttackFinished()) return;
+        if (_playerAnimation.IsAttackFinished())
+        {
+            if (_attackHitbox)
+            {
+                _attackHitbox.EndAttack();
+            }
 
-        _playerAttack.EndAttack();
-        _playerAnimation.CompleteAttack();
-        _playerState.SetActionState(PlayerActionState.Free);
+            _playerAttack.EndAttack();
+            _playerAnimation.CompleteAttack();
+            _playerState.SetActionState(PlayerActionState.Free);
+            return;
+        }
+
+        if (_attackHitbox)
+        {
+            _attackHitbox.UpdateHitbox(hasNormalizedTime, normalizedTime);
+        }
     }
 
     private void UpdateGuard()
