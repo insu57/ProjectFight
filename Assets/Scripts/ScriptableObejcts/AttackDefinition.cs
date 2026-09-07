@@ -7,6 +7,11 @@ public class AttackDefinition : ScriptableObject
     [field: SerializeField] public string AttackName { get; private set; }
     [field: SerializeField] public string AnimationStateName { get; private set; }
     [field: SerializeField] public float BaseDamage { get; private set; }
+    // 공격자 스탯과 아이템 보정을 적용하기 전의 강인도 감소량이다.
+    [field: SerializeField, Min(0f)] public float BasePoiseDamage { get; private set; }
+    [field: SerializeField, Min(0f)] public float BaseGuardPoiseDamage { get; private set; }
+    // 타격 성공 시 공격자와 피격자에게 동일하게 적용할 정지 시간이다.
+    [field: SerializeField, Min(0f)] public float HitStopDuration { get; private set; }
     [field: SerializeField, Min(0f)] public float TransitionDuration { get; private set; } = 0.1f;
     [field: SerializeField, Range(0f, 1f)] public float ComboInputStartNormalizedTime { get; private set; } = 0.2f;
     [field: SerializeField, Range(0f, 1f)] public float ComboTransitionNormalizedTime { get; private set; } = 0.55f;

@@ -5,11 +5,24 @@ public readonly struct DamageInfo
 {
     public MonoBehaviour Attacker { get; }
     public float Damage { get; }
+    public float HitStopDuration { get; }
 
-    public DamageInfo(MonoBehaviour attacker, float damage)
+    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f)
     {
         Attacker = attacker;
         Damage = damage;
+        HitStopDuration = hitStopDuration;
+    }
+
+    public void ApplyHitStop(IHitStopReceiver target)
+    {
+        // 유효한 피격으로 확정한 Manager에서만 호출한다.
+        target?.BeginHitStop(HitStopDuration);
+
+        if (Attacker && Attacker.isActiveAndEnabled && Attacker is IHitStopReceiver attacker)
+        {
+            attacker.BeginHitStop(HitStopDuration);
+        }
     }
 }
 

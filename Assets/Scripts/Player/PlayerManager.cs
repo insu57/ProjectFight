@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public class PlayerManager : MonoBehaviour
+public class PlayerManager : MonoBehaviour, IHitStopReceiver
 {
     private PlayerControl _playerControl;
     private PlayerState _playerState;
@@ -17,6 +17,9 @@ public class PlayerManager : MonoBehaviour
     private PlayerLockOn _playerLockOn;
     private PlayerSkillTree _playerSkillTree;
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
+    private bool _hasPendingGuardChange;
+
+    private bool IsHitStopped => _playerAnimation && _playerAnimation.IsHitStopped;
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
@@ -86,6 +89,13 @@ public class PlayerManager : MonoBehaviour
 
     private void OnDisable()
     {
+        _hasPendingGuardChange = false;
+
+        if (_playerAnimation)
+        {
+            _playerAnimation.ClearHitStop();
+        }
+
         if (_hurtbox)
         {
             _hurtbox.DamageRequested -= HandleDamageRequested;
@@ -113,12 +123,23 @@ public class PlayerManager : MonoBehaviour
         UnsubscribeSkillTreeRuntime();
     }
 
+    public void BeginHitStop(float duration)
+    {
+        if (!isActiveAndEnabled || !_playerAnimation) return;
+
+        // 하위 컴포넌트 호출은 PlayerManager가 중개한다.
+        _playerAnimation.BeginHitStop(duration);
+    }
+
     private void HandleDamageRequested(DamageInfo damageInfo)
     {
         if (!isActiveAndEnabled || !_playerStat || !_playerState) return;
         if (_playerState.ActionState == PlayerActionState.Dead) return;
         if (_playerStat.CurrentStats.CurrentHealth <= 0) return;
         if (damageInfo.Damage <= 0f) return;
+
+        // 유효한 피격을 확정했으므로 양쪽에 같은 정지 시간을 적용한다.
+        damageInfo.ApplyHitStop(this);
 
         // 현재 플레이어 체력 타입에 맞춰 양수 피해의 소수점을 올림한다.
         int damage = Mathf.CeilToInt(damageInfo.Damage);
@@ -177,7 +198,12 @@ public class PlayerManager : MonoBehaviour
 
     private void Update()
     {
-        if (_playerDodge)
+        if (_playerAnimation)
+        {
+            _playerAnimation.UpdateHitStop();
+        }
+
+        if (_playerDodge && !IsHitStopped)
         {
             _playerDodge.UpdateRecharge(Time.deltaTime);
         }
@@ -207,6 +233,16 @@ public class PlayerManager : MonoBehaviour
         else
         {
             _playerCamera.ClearLockOnTarget();
+        }
+
+        // 카메라 입력 전달은 유지하고 캐릭터 동작만 정지한다.
+        if (IsHitStopped) return;
+
+        // 정지 중 바뀐 가드 입력을 해제 후 반영한다.
+        if (_hasPendingGuardChange)
+        {
+            _hasPendingGuardChange = false;
+            HandleGuardChanged(_playerControl.IsGuardRequested);
         }
 
         UpdateLocomotionState();
@@ -301,6 +337,9 @@ public class PlayerManager : MonoBehaviour
 
     private void HandleDodgePressed()
     {
+        // 히트스탑 중에는 새 회피를 시작하지 않는다.
+        if (IsHitStopped) return;
+
         if (!_playerControl || !_playerState || !_playerMove || !_playerDodge || !_playerAnimation || !_playerCamera) return;
         if (!_playerState.CanDodge || !_playerDodge.CanDodge) return;
 
@@ -328,10 +367,12 @@ public class PlayerManager : MonoBehaviour
 
         if (_playerState.ActionState == PlayerActionState.Attacking)
         {
+            // 정지 중에도 기존 콤보 입력 허용 구간에서는 예약할 수 있다.
             QueueComboInput(inputType);
             return;
         }
 
+        if (IsHitStopped) return;
         if (!_playerState.CanUseNormalAttack) return;
         if (!_playerAttack.TryBeginAttack(inputType, out AttackDefinition attackDefinition)) return;
 
@@ -354,6 +395,13 @@ public class PlayerManager : MonoBehaviour
     private void HandleGuardChanged(bool isGuarding)
     {
         if (!_playerState || !_playerAnimation) return;
+
+        if (IsHitStopped)
+        {
+            // 정지 중에는 상태를 바꾸지 않고 해제 후 최종 입력 상태를 반영한다.
+            _hasPendingGuardChange = true;
+            return;
+        }
 
         if (isGuarding)
         {

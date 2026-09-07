@@ -7,7 +7,7 @@ using UnityEngine;
 [RequireComponent(typeof(EnemyMove))]
 [RequireComponent(typeof(EnemyAnimation))]
 [RequireComponent(typeof(EnemyPatternExecutor))]
-public sealed class EnemyManager : MonoBehaviour
+public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
 {
     private Transform _target;
     private AttackHitbox _attackHitbox;
@@ -19,6 +19,7 @@ public sealed class EnemyManager : MonoBehaviour
     private EnemyMove _enemyMove;
     private EnemyAnimation _enemyAnimation;
     private EnemyPatternExecutor _patternExecutor;
+    private bool _hasStarted;
 
     private void Awake()
     {
@@ -58,11 +59,21 @@ public sealed class EnemyManager : MonoBehaviour
 
     private void Start()
     {
+        _hasStarted = true;
+
+        if (!_enemyDefinition) return;
+
+        _enemyStat.InitializePoiseStats(_enemyDefinition);
         _patternExecutor.SetPatterns(_enemyDefinition.Patterns);
     }
 
     private void OnDisable()
     {
+        if (_enemyAnimation)
+        {
+            _enemyAnimation.ClearHitStop();
+        }
+
         if (_hurtbox)
         {
             _hurtbox.DamageRequested -= HandleDamageRequested;
@@ -89,6 +100,14 @@ public sealed class EnemyManager : MonoBehaviour
 
         if (!_enemyState || !_enemyBrain || !_enemyMove || !_enemyAnimation || !_patternExecutor)
         {
+            return;
+        }
+
+        _enemyAnimation.UpdateHitStop();
+
+        if (_enemyAnimation.IsHitStopped)
+        {
+            // 이동, 판단, 패턴 진행과 쿨다운을 함께 정지한다.
             return;
         }
 
@@ -153,6 +172,11 @@ public sealed class EnemyManager : MonoBehaviour
     public void SetEnemyDefinition(EnemyDefinition enemyDefinition)
     {
         _enemyDefinition = enemyDefinition;
+
+        // Start 이전에 전달된 설정은 Start에서 초기화한다.
+        if (!_hasStarted || !_enemyDefinition || !_enemyStat) return;
+
+        _enemyStat.InitializePoiseStats(_enemyDefinition);
     }
 
     public void TakeDamage(float damage)
@@ -163,11 +187,21 @@ public sealed class EnemyManager : MonoBehaviour
         }
     }
 
+    public void BeginHitStop(float duration)
+    {
+        if (!isActiveAndEnabled || !_enemyAnimation) return;
+
+        _enemyAnimation.BeginHitStop(duration);
+    }
+
     private void HandleDamageRequested(DamageInfo damageInfo)
     {
         if (!isActiveAndEnabled || !_enemyStat || !_enemyState) return;
         if (_enemyStat.IsDead || _enemyState.ActionState == EnemyActionState.Dead) return;
         if (damageInfo.Damage <= 0f) return;
+
+        // 유효한 피격을 확정했으므로 양쪽에 같은 정지 시간을 적용한다.
+        damageInfo.ApplyHitStop(this);
 
         // 체력 감소와 기존 Died 이벤트 처리를 재사용한다.
         TakeDamage(damageInfo.Damage);

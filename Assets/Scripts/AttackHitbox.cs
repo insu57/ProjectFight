@@ -108,7 +108,7 @@ public sealed class AttackHitbox : MonoBehaviour
 
         if (!_hitOwnerIds.Add(ownerId)) return;
 
-        DamageInfo damageInfo = new DamageInfo(_owner, _damage);
+        DamageInfo damageInfo = new DamageInfo(_owner, _damage, _currentAttack.HitStopDuration);
         hurtbox.ReceiveDamage(damageInfo);
     }
 }

@@ -13,6 +13,10 @@ public abstract class CharacterAnimation : MonoBehaviour
     private int _locomotionStateHash;
     private bool _isAttackRequested;
     private bool _hasEnteredAttackState;
+    private double _hitStopEndTime;
+    private float _speedBeforeHitStop;
+
+    public bool IsHitStopped { get; private set; }
 
     protected Animator CharacterAnimator { get; private set; }
 
@@ -21,6 +25,58 @@ public abstract class CharacterAnimation : MonoBehaviour
         CharacterAnimator = GetComponentInChildren<Animator>();
         _attackTagHash = Animator.StringToHash(AttackTagName);
         _locomotionStateHash = Animator.StringToHash(_locomotionStateName);
+    }
+
+    public void BeginHitStop(float duration)
+    {
+        if (!isActiveAndEnabled || !CharacterAnimator) return;
+        if (duration <= 0f) return;
+
+        double endTime = Time.unscaledTimeAsDouble + duration;
+
+        if (IsHitStopped)
+        {
+            // 중복 타격은 시간을 합산하지 않고 종료 시점만 연장한다.
+            if (endTime > _hitStopEndTime)
+            {
+                _hitStopEndTime = endTime;
+            }
+
+            return;
+        }
+
+        _speedBeforeHitStop = CharacterAnimator.speed;
+        _hitStopEndTime = endTime;
+        IsHitStopped = true;
+        CharacterAnimator.speed = 0f;
+    }
+
+    public void UpdateHitStop()
+    {
+        if (!IsHitStopped) return;
+        if (Time.unscaledTimeAsDouble < _hitStopEndTime) return;
+
+        ClearHitStop();
+    }
+
+    public void ClearHitStop()
+    {
+        if (!IsHitStopped) return;
+
+        if (CharacterAnimator)
+        {
+            // 히트스탑 이전 재생 속도를 복원한다.
+            CharacterAnimator.speed = _speedBeforeHitStop;
+        }
+
+        IsHitStopped = false;
+        _hitStopEndTime = 0d;
+    }
+
+    protected virtual void OnDisable()
+    {
+        // 비활성화 후 재사용할 때 정지 상태가 남지 않게 한다.
+        ClearHitStop();
     }
 
     public bool TryPlayAttack(AttackDefinition attackDefinition)

@@ -14,9 +14,35 @@ public sealed class EnemyStat : MonoBehaviour
     public float CurrentHealth => _currentHealth;
     public bool IsDead => _currentHealth <= 0f;
 
+    public float MaxPoise { get; private set; }
+    public float PoiseRecoveryDelay { get; private set; }
+    public float PoiseRecoveryRate { get; private set; }
+    public float StaggerDuration { get; private set; }
+
+    public float MaxGuardPoise { get; private set; }
+    public float GuardPoiseRecoveryDelay { get; private set; }
+    public float GuardPoiseRecoveryRate { get; private set; }
+    public float GuardBreakDuration { get; private set; }
+
     private void Awake()
     {
         _currentHealth = _baseMaxHealth;
+    }
+
+    public void InitializePoiseStats(EnemyDefinition definition)
+    {
+        if (!definition) return;
+
+        // 공유 에셋의 설정을 개별 적의 런타임 스탯으로 복사한다.
+        MaxPoise = Mathf.Max(0f, definition.MaxPoise);
+        PoiseRecoveryDelay = Mathf.Max(0f, definition.PoiseRecoveryDelay);
+        PoiseRecoveryRate = Mathf.Max(0f, definition.PoiseRecoveryRate);
+        StaggerDuration = Mathf.Max(0f, definition.StaggerDuration);
+
+        MaxGuardPoise = Mathf.Max(0f, definition.MaxGuardPoise);
+        GuardPoiseRecoveryDelay = Mathf.Max(0f, definition.GuardPoiseRecoveryDelay);
+        GuardPoiseRecoveryRate = Mathf.Max(0f, definition.GuardPoiseRecoveryRate);
+        GuardBreakDuration = Mathf.Max(0f, definition.GuardBreakDuration);
     }
 
     public void TakeDamage(float damage)
