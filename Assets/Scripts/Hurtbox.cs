@@ -6,12 +6,18 @@ public readonly struct DamageInfo
     public MonoBehaviour Attacker { get; }
     public float Damage { get; }
     public float HitStopDuration { get; }
+    public float PoiseDamage { get; }
+    public float GuardPoiseDamage { get; }
 
-    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f)
+    public bool HasDamage => Damage > 0f || PoiseDamage > 0f || GuardPoiseDamage > 0f;
+
+    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f)
     {
         Attacker = attacker;
-        Damage = damage;
+        Damage = Mathf.Max(0f, damage);
         HitStopDuration = hitStopDuration;
+        PoiseDamage = Mathf.Max(0f, poiseDamage);
+        GuardPoiseDamage = Mathf.Max(0f, guardPoiseDamage);
     }
 
     public void ApplyHitStop(IHitStopReceiver target)
@@ -54,7 +60,7 @@ public sealed class Hurtbox : MonoBehaviour
 
     public void ReceiveDamage(DamageInfo damageInfo)
     {
-        if (!CanReceiveDamage || damageInfo.Damage <= 0f) return;
+        if (!CanReceiveDamage || !damageInfo.HasDamage) return;
         if (damageInfo.Attacker == Owner) return;
 
         DamageRequested?.Invoke(damageInfo);

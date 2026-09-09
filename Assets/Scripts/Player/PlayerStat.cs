@@ -21,8 +21,10 @@ public readonly struct PlayerStatSnapshot
     public float GuardPoiseRecoveryDelay { get; }
     public float GuardPoiseRecoveryRate { get; }
     public float GuardBreakDuration { get; }
+    public float CurrentPoise { get; }
+    public float CurrentGuardPoise { get; }
 
-    public PlayerStatSnapshot(int level, int currentExp, int targetExp, int maxHealth, int currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration)
+    public PlayerStatSnapshot(int level, int currentExp, int targetExp, int maxHealth, int currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration, float currentPoise, float currentGuardPoise)
     {
         Level = level;
         CurrentExp = currentExp;
@@ -41,6 +43,8 @@ public readonly struct PlayerStatSnapshot
         GuardPoiseRecoveryDelay = guardPoiseRecoveryDelay;
         GuardPoiseRecoveryRate = guardPoiseRecoveryRate;
         GuardBreakDuration = guardBreakDuration;
+        CurrentPoise = currentPoise;
+        CurrentGuardPoise = currentGuardPoise;
     }
 }
 
@@ -72,12 +76,81 @@ public class PlayerStat : MonoBehaviour
 
     public event Action<PlayerStatSnapshot> StatsChanged;
 
-    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth, _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise, _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate, _guardBreakDuration);
+    public float CurrentPoise { get; private set; }
+    public float CurrentGuardPoise { get; private set; }
+
+    // 두 강인도는 마지막으로 피해를 받은 시점부터 각각 회복을 기다린다.
+    private float _poiseRecoveryRemaining;
+    private float _guardPoiseRecoveryRemaining;
+
+    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth, _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise, _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate, _guardBreakDuration, CurrentPoise, CurrentGuardPoise);
 
     private void Awake()
     {
         _currentHealth = _maxHealth;
         _currentEnergy = 0f;
+
+        CurrentPoise = Mathf.Max(0f, _maxPoise);
+        CurrentGuardPoise = Mathf.Max(0f, _maxGuardPoise);
+        _poiseRecoveryRemaining = 0f;
+        _guardPoiseRecoveryRemaining = 0f;
+    }
+
+    public void TakePoiseDamage(float amount)
+    {
+        if (amount <= 0f || _currentHealth <= 0) return;
+
+        // 이미 0이어도 추가 강인도 피해를 받으면 회복 대기를 다시 시작한다.
+        _poiseRecoveryRemaining = Mathf.Max(0f, _poiseRecoveryDelay);
+
+        float nextPoise = Mathf.Max(0f, CurrentPoise - amount);
+
+        if (nextPoise == CurrentPoise) return;
+
+        CurrentPoise = nextPoise;
+        NotifyStatsChanged();
+    }
+
+    public void TakeGuardPoiseDamage(float amount)
+    {
+        if (amount <= 0f || _currentHealth <= 0) return;
+
+        _guardPoiseRecoveryRemaining = Mathf.Max(0f, _guardPoiseRecoveryDelay);
+
+        float nextGuardPoise = Mathf.Max(0f, CurrentGuardPoise - amount);
+
+        if (nextGuardPoise == CurrentGuardPoise) return;
+
+        CurrentGuardPoise = nextGuardPoise;
+        NotifyStatsChanged();
+    }
+
+    public void UpdatePoiseRecovery(float deltaTime)
+    {
+        if (deltaTime <= 0f || _currentHealth <= 0) return;
+
+        float nextPoise = RecoverPoise(CurrentPoise, _maxPoise, _poiseRecoveryRate, ref _poiseRecoveryRemaining, deltaTime);
+        float nextGuardPoise = RecoverPoise(CurrentGuardPoise, _maxGuardPoise, _guardPoiseRecoveryRate, ref _guardPoiseRecoveryRemaining, deltaTime);
+
+        if (nextPoise == CurrentPoise && nextGuardPoise == CurrentGuardPoise) return;
+
+        CurrentPoise = nextPoise;
+        CurrentGuardPoise = nextGuardPoise;
+
+        // 두 수치가 같은 프레임에 회복되어도 변경 이벤트는 한 번만 보낸다.
+        NotifyStatsChanged();
+    }
+
+    private static float RecoverPoise(float current, float maximum, float recoveryRate, ref float recoveryRemaining, float deltaTime)
+    {
+        // 이번 프레임 중 대기 시간에 사용한 부분을 회복 시간에서 제외한다.
+        float waitTime = Mathf.Min(recoveryRemaining, deltaTime);
+        recoveryRemaining -= waitTime;
+
+        float recoveryTime = deltaTime - waitTime;
+        float recoveryAmount = Mathf.Max(0f, recoveryRate) * recoveryTime;
+
+        return Mathf.Clamp(current + recoveryAmount, 0f, Mathf.Max(0f, maximum));
     }
 
     public void AddExperience(int amount)

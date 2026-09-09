@@ -107,7 +107,7 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
 
         if (_enemyAnimation.IsHitStopped)
         {
-            // 이동, 판단, 패턴 진행과 쿨다운을 함께 정지한다.
+            // 이동, 판단, 패턴 진행, 쿨다운과 강인도 회복을 함께 정지한다.
             return;
         }
 
@@ -117,6 +117,11 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
         if (_enemyState.ActionState == EnemyActionState.Dead)
         {
             return;
+        }
+
+        if (_enemyStat)
+        {
+            _enemyStat.UpdatePoiseRecovery(deltaTime);
         }
 
         if (_enemyState.ActionState == EnemyActionState.Attacking)
@@ -198,10 +203,12 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
     {
         if (!isActiveAndEnabled || !_enemyStat || !_enemyState) return;
         if (_enemyStat.IsDead || _enemyState.ActionState == EnemyActionState.Dead) return;
-        if (damageInfo.Damage <= 0f) return;
+        // 현재 적은 가드하지 않으므로 일반 피격에 적용할 피해만 검사한다.
+        if (damageInfo.Damage <= 0f && damageInfo.PoiseDamage <= 0f) return;
 
-        // 유효한 피격을 확정했으므로 양쪽에 같은 정지 시간을 적용한다.
         damageInfo.ApplyHitStop(this);
+
+        _enemyStat.TakePoiseDamage(damageInfo.PoiseDamage);
 
         // 체력 감소와 기존 Died 이벤트 처리를 재사용한다.
         TakeDamage(damageInfo.Damage);

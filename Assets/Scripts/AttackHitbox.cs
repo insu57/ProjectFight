@@ -15,6 +15,8 @@ public sealed class AttackHitbox : MonoBehaviour
     private MonoBehaviour _owner;
     private AttackDefinition _currentAttack;
     private float _damage;
+    private float _poiseDamage;
+    private float _guardPoiseDamage;
 
     private void Awake()
     {
@@ -58,8 +60,10 @@ public sealed class AttackHitbox : MonoBehaviour
 
         _currentAttack = attackDefinition;
 
-        // 이번 공격의 피해량을 실행 정보로 보관한다.
+        // 공유 에셋의 피해 설정을 이번 공격의 실행 정보로 보관한다.
         _damage = Mathf.Max(0f, attackDefinition.BaseDamage);
+        _poiseDamage = Mathf.Max(0f, attackDefinition.BasePoiseDamage);
+        _guardPoiseDamage = Mathf.Max(0f, attackDefinition.BaseGuardPoiseDamage);
         _hitbox.size = attackDefinition.HitboxSize;
         _hitbox.center = attackDefinition.HitboxOffset;
     }
@@ -87,6 +91,8 @@ public sealed class AttackHitbox : MonoBehaviour
     {
         _currentAttack = null;
         _damage = 0f;
+        _poiseDamage = 0f;
+        _guardPoiseDamage = 0f;
         _hitOwnerIds.Clear();
 
         if (_hitbox)
@@ -98,17 +104,18 @@ public sealed class AttackHitbox : MonoBehaviour
     private void TryHit(Collider other)
     {
         if (!isActiveAndEnabled || !_hitbox || !_hitbox.enabled) return;
-        if (!_owner || !_owner.isActiveAndEnabled || !_currentAttack || _damage <= 0f) return;
+        if (!_owner || !_owner.isActiveAndEnabled || !_currentAttack) return;
+        if (_damage <= 0f && _poiseDamage <= 0f && _guardPoiseDamage <= 0f) return;
         if ((_targetLayers.value & (1 << other.gameObject.layer)) == 0) return;
         if (!other.TryGetComponent(out Hurtbox hurtbox)) return;
         if (!hurtbox.CanReceiveDamage || hurtbox.Owner == _owner) return;
 
-        // Collider가 여러 개여도 한 공격에서 캐릭터당 한 번만 요청한다.
+        // 가드로 막은 공격도 기록하여 같은 공격이 다시 적용되지 않게 한다.
         int ownerId = hurtbox.Owner.GetInstanceID();
 
         if (!_hitOwnerIds.Add(ownerId)) return;
 
-        DamageInfo damageInfo = new DamageInfo(_owner, _damage, _currentAttack.HitStopDuration);
+        DamageInfo damageInfo = new DamageInfo(_owner, _damage, _currentAttack.HitStopDuration, _poiseDamage, _guardPoiseDamage);
         hurtbox.ReceiveDamage(damageInfo);
     }
 }

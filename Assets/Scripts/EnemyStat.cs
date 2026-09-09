@@ -24,6 +24,13 @@ public sealed class EnemyStat : MonoBehaviour
     public float GuardPoiseRecoveryRate { get; private set; }
     public float GuardBreakDuration { get; private set; }
 
+    public float CurrentPoise { get; private set; }
+    public float CurrentGuardPoise { get; private set; }
+
+    // 일반 강인도와 가드 강인도의 회복 대기를 독립적으로 관리한다.
+    private float _poiseRecoveryRemaining;
+    private float _guardPoiseRecoveryRemaining;
+
     private void Awake()
     {
         _currentHealth = _baseMaxHealth;
@@ -43,6 +50,48 @@ public sealed class EnemyStat : MonoBehaviour
         GuardPoiseRecoveryDelay = Mathf.Max(0f, definition.GuardPoiseRecoveryDelay);
         GuardPoiseRecoveryRate = Mathf.Max(0f, definition.GuardPoiseRecoveryRate);
         GuardBreakDuration = Mathf.Max(0f, definition.GuardBreakDuration);
+
+        // 적 설정을 초기화할 때 현재 강인도도 최대치로 시작한다.
+        CurrentPoise = MaxPoise;
+        CurrentGuardPoise = MaxGuardPoise;
+        _poiseRecoveryRemaining = 0f;
+        _guardPoiseRecoveryRemaining = 0f;
+    }
+
+    public void TakePoiseDamage(float amount)
+    {
+        if (amount <= 0f || IsDead) return;
+
+        _poiseRecoveryRemaining = PoiseRecoveryDelay;
+        CurrentPoise = Mathf.Max(0f, CurrentPoise - amount);
+    }
+
+    public void TakeGuardPoiseDamage(float amount)
+    {
+        if (amount <= 0f || IsDead) return;
+
+        _guardPoiseRecoveryRemaining = GuardPoiseRecoveryDelay;
+        CurrentGuardPoise = Mathf.Max(0f, CurrentGuardPoise - amount);
+    }
+
+    public void UpdatePoiseRecovery(float deltaTime)
+    {
+        if (deltaTime <= 0f || IsDead) return;
+
+        CurrentPoise = RecoverPoise(CurrentPoise, MaxPoise, PoiseRecoveryRate, ref _poiseRecoveryRemaining, deltaTime);
+        CurrentGuardPoise = RecoverPoise(CurrentGuardPoise, MaxGuardPoise, GuardPoiseRecoveryRate, ref _guardPoiseRecoveryRemaining, deltaTime);
+    }
+
+    private static float RecoverPoise(float current, float maximum, float recoveryRate, ref float recoveryRemaining, float deltaTime)
+    {
+        // 이번 프레임 중 대기 시간에 사용한 부분을 회복 시간에서 제외한다.
+        float waitTime = Mathf.Min(recoveryRemaining, deltaTime);
+        recoveryRemaining -= waitTime;
+
+        float recoveryTime = deltaTime - waitTime;
+        float recoveryAmount = Mathf.Max(0f, recoveryRate) * recoveryTime;
+
+        return Mathf.Clamp(current + recoveryAmount, 0f, Mathf.Max(0f, maximum));
     }
 
     public void TakeDamage(float damage)

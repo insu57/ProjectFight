@@ -131,15 +131,56 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         _playerAnimation.BeginHitStop(duration);
     }
 
+    private bool CanBlock(DamageInfo damageInfo)
+    {
+        if (!_playerState || !_playerControl) return false;
+        if (_playerState.ActionState != PlayerActionState.Guarding) return false;
+
+        // 가드 종료 모션 중에는 Guarding 상태여도 공격을 막지 않는다.
+        if (!_playerControl.IsGuardRequested) return false;
+        if (!damageInfo.Attacker) return false;
+
+        // 높이 차이를 제외하고 피격 순간 공격자의 위치로 방향을 판단한다.
+        Vector3 toAttacker = damageInfo.Attacker.transform.position - transform.position;
+        toAttacker.y = 0f;
+
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+
+        // 수평 방향을 판단할 수 없는 경우에는 일반 피격으로 처리한다.
+        if (toAttacker.sqrMagnitude <= 0.0001f || forward.sqrMagnitude <= 0.0001f) return false;
+
+        // 내적의 부호만 사용하므로 정규화 없이 전방 180도를 판정한다.
+        // 정확히 측면인 경계와 후방의 공격은 막지 않는다.
+        return Vector3.Dot(forward, toAttacker) > 0f;
+    }
+
     private void HandleDamageRequested(DamageInfo damageInfo)
     {
         if (!isActiveAndEnabled || !_playerStat || !_playerState) return;
         if (_playerState.ActionState == PlayerActionState.Dead) return;
         if (_playerStat.CurrentStats.CurrentHealth <= 0) return;
-        if (damageInfo.Damage <= 0f) return;
+        if (!damageInfo.HasDamage) return;
 
-        // 유효한 피격을 확정했으므로 양쪽에 같은 정지 시간을 적용한다.
+        if (CanBlock(damageInfo))
+        {
+            // 가드 시 실제로 적용할 체력 피해나 가드 강인도 피해가 있는지 확인한다.
+            if (damageInfo.Damage <= 0f && damageInfo.GuardPoiseDamage <= 0f) return;
+
+            damageInfo.ApplyHitStop(this);
+
+            // 체력과 일반 강인도는 유지하고 가드 강인도만 감소시킨다.
+            _playerStat.TakeGuardPoiseDamage(damageInfo.GuardPoiseDamage);
+            return;
+        }
+
+        // 가드하지 않은 대상에게 가드 강인도 피해만 있는 공격은 적용하지 않는다.
+        if (damageInfo.Damage <= 0f && damageInfo.PoiseDamage <= 0f) return;
+
         damageInfo.ApplyHitStop(this);
+
+        // 강인도를 먼저 처리하여 치명타에서도 해당 공격의 감소량을 반영한다.
+        _playerStat.TakePoiseDamage(damageInfo.PoiseDamage);
 
         // 현재 플레이어 체력 타입에 맞춰 양수 피해의 소수점을 올림한다.
         int damage = Mathf.CeilToInt(damageInfo.Damage);
@@ -201,6 +242,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         if (_playerAnimation)
         {
             _playerAnimation.UpdateHitStop();
+        }
+
+        // 히트스톱 중에는 회복량과 회복 대기 시간 모두 진행하지 않는다.
+        if (_playerStat && _playerState && _playerState.ActionState != PlayerActionState.Dead && !IsHitStopped)
+        {
+            _playerStat.UpdatePoiseRecovery(Time.deltaTime);
         }
 
         if (_playerDodge && !IsHitStopped)
