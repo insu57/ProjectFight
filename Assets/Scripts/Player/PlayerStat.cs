@@ -24,7 +24,11 @@ public readonly struct PlayerStatSnapshot
     public float CurrentPoise { get; }
     public float CurrentGuardPoise { get; }
 
-    public PlayerStatSnapshot(int level, int currentExp, int targetExp, int maxHealth, int currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration, float currentPoise, float currentGuardPoise)
+    public PlayerStatSnapshot(int level, int currentExp, int targetExp, int maxHealth, int currentHealth,
+        float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise,
+        float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration,
+        float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration,
+        float currentPoise, float currentGuardPoise)
     {
         Level = level;
         CurrentExp = currentExp;
@@ -83,7 +87,10 @@ public class PlayerStat : MonoBehaviour
     private float _poiseRecoveryRemaining;
     private float _guardPoiseRecoveryRemaining;
 
-    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth, _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise, _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate, _guardBreakDuration, CurrentPoise, CurrentGuardPoise);
+    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth,
+        _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise,
+        _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate,
+        _guardBreakDuration, CurrentPoise, CurrentGuardPoise);
 
     private void Awake()
     {

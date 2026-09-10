@@ -1,12 +1,35 @@
 using System;
 using UnityEngine;
 
+public enum EnemyPatternStepType
+{
+    Attack = 0,
+    Guard = 1,
+    CircleTarget = 2
+}
+
+public enum EnemyCircleDirection
+{
+    Random = 0,
+    Left = 1,
+    Right = 2
+}
+
 [Serializable]
 public struct EnemyPatternStep
 {
+    // 기본값 0을 공격으로 유지하여 기존 패턴 에셋을 보존한다.
+    [field: SerializeField] public EnemyPatternStepType Type { get; private set; }
     [field: SerializeField] public AttackDefinition Attack { get; private set; }
     [field: SerializeField, Min(0f)] public float DelayBeforeAttack { get; private set; }
     [field: SerializeField, Min(0f)] public float DelayAfterAttack { get; private set; }
+
+    // 가드와 경계 단계는 공격 설정 대신 유지 시간을 사용한다.
+    [field: SerializeField, Min(0f)] public float Duration { get; private set; }
+    [field: SerializeField, Min(0f)] public float CircleSpeed { get; private set; }
+    [field: SerializeField, Min(0f)] public float CircleDistance { get; private set; }
+    [field: SerializeField, Min(0f)] public float CircleDistanceTolerance { get; private set; }
+    [field: SerializeField] public EnemyCircleDirection CircleDirection { get; private set; }
 }
 
 [CreateAssetMenu(fileName = "EnemyPatternDefinition", menuName = "Enemy/Pattern Definition")]

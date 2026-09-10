@@ -59,6 +59,51 @@ public sealed class EnemyMove : MonoBehaviour
         MoveAmount = 0f;
     }
 
+    public Vector2 MoveCircleTarget(Vector3 targetPosition, float speed, float desiredDistance, float distanceTolerance, float directionSign, float deltaTime)
+    {
+        if (deltaTime <= 0f) return Vector2.zero;
+
+        Vector3 toTarget = targetPosition - transform.position;
+        toTarget.y = 0f;
+
+        if (toTarget.sqrMagnitude <= 0.0001f)
+        {
+            MoveStationary(deltaTime);
+            return Vector2.zero;
+        }
+
+        float distance = toTarget.magnitude;
+        Vector3 radialDirection = toTarget / distance;
+        Vector3 tangentDirection = Vector3.Cross(Vector3.up, radialDirection) * directionSign;
+
+        // 목표 거리 근처에서는 앞뒤 보정을 생략하여 이동 방향의 떨림을 막는다.
+        float distanceError = distance - Mathf.Max(0f, desiredDistance);
+        float tolerance = Mathf.Max(0f, distanceTolerance);
+        float radialAmount = 0f;
+        if (Mathf.Abs(distanceError) > tolerance)
+        {
+            radialAmount = Mathf.Sign(distanceError) * Mathf.Clamp01(Mathf.Abs(distanceError) - tolerance);
+        }
+
+        Vector3 moveDirection = Vector3.ClampMagnitude(tangentDirection + radialDirection * radialAmount, 1f);
+        FaceTarget(targetPosition, deltaTime);
+        ApplyGravity(deltaTime);
+
+        Vector3 previousPosition = transform.position;
+        Vector3 displacement = moveDirection * (Mathf.Max(0f, speed) * deltaTime);
+        displacement.y = _verticalVelocity * deltaTime;
+        _characterController.Move(displacement);
+
+        // 충돌로 막힌 경우를 포함한 실제 이동량을 애니메이션과 막힘 판정에 전달한다.
+        Vector3 actualVelocity = (transform.position - previousPosition) / deltaTime;
+        actualVelocity.y = 0f;
+        Vector3 localVelocity = transform.InverseTransformDirection(actualVelocity);
+        float referenceSpeed = Mathf.Max(0.01f, _moveSpeed);
+        Vector2 localMovement = new Vector2(localVelocity.x, localVelocity.z) / referenceSpeed;
+        MoveAmount = Mathf.Clamp01(localMovement.magnitude);
+        return Vector2.ClampMagnitude(localMovement, 1f);
+    }
+
     public void FaceTarget(Vector3 targetPosition, float deltaTime)
     {
         Vector3 targetDirection = targetPosition - transform.position;

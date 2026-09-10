@@ -13,7 +13,11 @@ public enum EnemyActionState
     Free,
     Attacking,
     Stunned,
-    Dead
+    Dead,
+    PatternWaiting,
+    Guarding,
+    Circling,
+    GuardBroken
 }
 
 [DisallowMultipleComponent]

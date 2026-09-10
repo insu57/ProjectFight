@@ -6,9 +6,9 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
 {
     private enum ExecutionPhase
     {
-        DelayBeforeAttack,
-        Attacking,
-        DelayAfterAttack
+        BeforeStep,
+        Active,
+        AfterStep
     }
 
     [SerializeField] private EnemyPatternDefinition[] _patterns = Array.Empty<EnemyPatternDefinition>();
@@ -23,17 +23,22 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
     private float _previousAttackMoveProgress;
 
     public bool IsExecuting { get; private set; }
-    public bool IsAttackPlaying => IsExecuting && _phase == ExecutionPhase.Attacking;
+    public bool IsAttackPlaying => IsExecuting && _phase == ExecutionPhase.Active && CurrentStep.Type == EnemyPatternStepType.Attack;
+    public bool IsGuarding => IsExecuting && _phase == ExecutionPhase.Active && CurrentStep.Type == EnemyPatternStepType.Guard;
+    public bool IsCircling => IsExecuting && _phase == ExecutionPhase.Active && CurrentStep.Type == EnemyPatternStepType.CircleTarget;
+    public EnemyPatternStep CurrentStep => IsExecuting ? _currentPattern.Steps[_currentStepIndex] : default;
+    public float CircleDirectionSign { get; private set; }
 
     private void Awake()
     {
-        //_remainingCooldowns = new float[_patterns.Length];
+        SetPatterns(_patterns);
     }
 
     public void SetPatterns(EnemyPatternDefinition[] patterns)
     {
-        _patterns = patterns;
-        _remainingCooldowns = new float[patterns.Length];
+        CancelCurrentPattern(false);
+        _patterns = patterns ?? Array.Empty<EnemyPatternDefinition>();
+        _remainingCooldowns = new float[_patterns.Length];
     }
 
     public void UpdateCooldowns(float deltaTime)
@@ -58,52 +63,81 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
         _currentPatternIndex = patternIndex;
         _currentPattern = _patterns[patternIndex];
         _currentStepIndex = 0;
-        _phase = ExecutionPhase.DelayBeforeAttack;
-        _remainingDelay = _currentPattern.Steps[0].DelayBeforeAttack;
-        _previousAttackMoveProgress = 0f;
         IsExecuting = true;
+        PrepareCurrentStep();
         return true;
     }
 
-    public void UpdateExecution(float deltaTime, bool isAttackFinished, out AttackDefinition attackToPlay, out bool patternCompleted)
+    private void PrepareCurrentStep()
     {
-        attackToPlay = null;
+        EnemyPatternStep step = CurrentStep;
+        _phase = ExecutionPhase.BeforeStep;
+        _currentAttack = null;
+        _previousAttackMoveProgress = 0f;
+        _remainingDelay = step.Type == EnemyPatternStepType.Attack ? Mathf.Max(0f, step.DelayBeforeAttack) : 0f;
+        CircleDirectionSign = 0f;
+
+        if (step.Type != EnemyPatternStepType.CircleTarget) return;
+
+        // 방향은 단계 시작 시 한 번만 정하고 개별 적의 실행 상태에 보관한다.
+        CircleDirectionSign = step.CircleDirection switch
+        {
+            EnemyCircleDirection.Left => -1f,
+            EnemyCircleDirection.Right => 1f,
+            _ => UnityEngine.Random.value < 0.5f ? -1f : 1f
+        };
+    }
+
+    public void UpdateExecution(float deltaTime, bool isAnimationFinished, out bool stepStarted, out bool stepEnded, out bool patternCompleted)
+    {
+        stepStarted = false;
+        stepEnded = false;
         patternCompleted = false;
 
-        if (!IsExecuting)
+        if (!IsExecuting || deltaTime <= 0f)
         {
             return;
         }
 
-        EnemyPatternStep step = _currentPattern.Steps[_currentStepIndex];
+        EnemyPatternStep step = CurrentStep;
 
-        if (_phase == ExecutionPhase.DelayBeforeAttack)
+        if (_phase == ExecutionPhase.BeforeStep)
         {
             _remainingDelay -= deltaTime;
 
             if (_remainingDelay <= 0f)
             {
-                _currentAttack = step.Attack;
+                _currentAttack = step.Type == EnemyPatternStepType.Attack ? step.Attack : null;
                 _previousAttackMoveProgress = 0f;
-                _phase = ExecutionPhase.Attacking;
-                attackToPlay = _currentAttack;
+                _phase = ExecutionPhase.Active;
+                _remainingDelay = Mathf.Max(0f, step.Duration);
+                stepStarted = true;
             }
 
             return;
         }
 
-        if (_phase == ExecutionPhase.Attacking)
+        if (_phase == ExecutionPhase.Active)
         {
-            if (!isAttackFinished)
+            if (step.Type == EnemyPatternStepType.Attack)
             {
-                return;
+                if (!isAnimationFinished) return;
+            }
+            else
+            {
+                _remainingDelay -= deltaTime;
+                if (_remainingDelay > 0f) return;
             }
 
             _currentAttack = null;
-            _phase = ExecutionPhase.DelayAfterAttack;
-            _remainingDelay = step.DelayAfterAttack;
+            _phase = ExecutionPhase.AfterStep;
+            _remainingDelay = step.Type == EnemyPatternStepType.Attack ? Mathf.Max(0f, step.DelayAfterAttack) : 0f;
+            stepEnded = true;
             return;
         }
+
+        // 방어 판정 해제 후에도 가드 종료 모션이 끝날 때까지 패턴을 유지한다.
+        if (step.Type == EnemyPatternStepType.Guard && !isAnimationFinished) return;
 
         _remainingDelay -= deltaTime;
 
@@ -121,8 +155,7 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
             return;
         }
 
-        _phase = ExecutionPhase.DelayBeforeAttack;
-        _remainingDelay = _currentPattern.Steps[_currentStepIndex].DelayBeforeAttack;
+        PrepareCurrentStep();
     }
 
     public bool TryGetAttackMoveDisplacement(float normalizedTime, out Vector2 localDisplacement)
@@ -199,14 +232,30 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
     {
         EnemyPatternDefinition pattern = _patterns[patternIndex];
 
-        if (!pattern || !pattern.HasSteps || _remainingCooldowns[patternIndex] > 0f)
+        if (!pattern || !pattern.HasSteps || _remainingCooldowns[patternIndex] > 0f) //유효확인
         {
             return false;
         }
 
         float minimumRangeSqr = pattern.MinimumRange * pattern.MinimumRange;
-        float maximumRangeSqr = pattern.MaximumRange * pattern.MaximumRange;
-        return targetSqrDistance >= minimumRangeSqr && targetSqrDistance <= maximumRangeSqr;
+        float maximumRangeSqr = pattern.MaximumRange * pattern.MaximumRange;//거리체크
+        if (targetSqrDistance < minimumRangeSqr || targetSqrDistance > maximumRangeSqr) return false;
+
+        // 공격 설정이 없는 단계를 선택하여 완료를 영원히 기다리는 상황을 막는다.
+        for (int i = 0; i < pattern.Steps.Length; i++)
+        {
+            EnemyPatternStep step = pattern.Steps[i];
+            if (step.Type == EnemyPatternStepType.Attack)
+            {
+                if (!step.Attack) return false;
+            }
+            else if (step.Type != EnemyPatternStepType.Guard && step.Type != EnemyPatternStepType.CircleTarget)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void CompletePattern()
@@ -223,6 +272,7 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
         _currentStepIndex = 0;
         _remainingDelay = 0f;
         _previousAttackMoveProgress = 0f;
+        CircleDirectionSign = 0f;
         IsExecuting = false;
     }
 
