@@ -159,11 +159,13 @@ public abstract class CharacterAnimation : MonoBehaviour
 
     public void CompleteAttack()
     {
-        if (CharacterAnimator)
+        // 비활성화 중에는 애니메이션 전환을 요청하지 않는다.
+        if (CharacterAnimator && CharacterAnimator.isActiveAndEnabled)
         {
             CharacterAnimator.CrossFadeInFixedTime(_locomotionStateHash, _attackExitTransitionDuration, 0);
         }
 
+        // 활성 여부와 관계없이 공격 실행 상태는 초기화한다.
         ResetAttackState();
     }
 

@@ -18,14 +18,16 @@ public sealed class EnemyStat : MonoBehaviour
     public float PoiseRecoveryDelay { get; private set; }
     public float PoiseRecoveryRate { get; private set; }
     public float StaggerDuration { get; private set; }
+    public float StaggerMoveDistance { get; private set; }
 
     public float MaxGuardPoise { get; private set; }
     public float GuardPoiseRecoveryDelay { get; private set; }
     public float GuardPoiseRecoveryRate { get; private set; }
     public float GuardBreakDuration { get; private set; }
+    public float GuardBreakMoveDistance { get; private set; }
 
-    public float CurrentPoise { get; private set; }
-    public float CurrentGuardPoise { get; private set; }
+    [field: SerializeField] public float CurrentPoise { get; private set; }
+    [field: SerializeField] public float CurrentGuardPoise { get; private set; }
 
     // 일반 강인도와 가드 강인도의 회복 대기를 독립적으로 관리한다.
     private float _poiseRecoveryRemaining;
@@ -45,11 +47,13 @@ public sealed class EnemyStat : MonoBehaviour
         PoiseRecoveryDelay = Mathf.Max(0f, definition.PoiseRecoveryDelay);
         PoiseRecoveryRate = Mathf.Max(0f, definition.PoiseRecoveryRate);
         StaggerDuration = Mathf.Max(0f, definition.StaggerDuration);
+        StaggerMoveDistance = Mathf.Max(0f, definition.StaggerMoveDistance);
 
         MaxGuardPoise = Mathf.Max(0f, definition.MaxGuardPoise);
         GuardPoiseRecoveryDelay = Mathf.Max(0f, definition.GuardPoiseRecoveryDelay);
         GuardPoiseRecoveryRate = Mathf.Max(0f, definition.GuardPoiseRecoveryRate);
         GuardBreakDuration = Mathf.Max(0f, definition.GuardBreakDuration);
+        GuardBreakMoveDistance = Mathf.Max(0f, definition.GuardBreakMoveDistance);
 
         // 적 설정을 초기화할 때 현재 강인도도 최대치로 시작한다.
         CurrentPoise = MaxPoise;

@@ -16,7 +16,7 @@ public enum EnemyCircleDirection
 }
 
 [Serializable]
-public struct EnemyPatternStep
+public struct EnemyPatternStep //개선?
 {
     // 기본값 0을 공격으로 유지하여 기존 패턴 에셋을 보존한다.
     [field: SerializeField] public EnemyPatternStepType Type { get; private set; }
@@ -28,7 +28,7 @@ public struct EnemyPatternStep
     [field: SerializeField, Min(0f)] public float Duration { get; private set; }
     [field: SerializeField, Min(0f)] public float CircleSpeed { get; private set; }
     [field: SerializeField, Min(0f)] public float CircleDistance { get; private set; }
-    [field: SerializeField, Min(0f)] public float CircleDistanceTolerance { get; private set; }
+    [field: SerializeField, Min(0f), Tooltip("Default: 0.5")] public float CircleDistanceTolerance { get; private set; }
     [field: SerializeField] public EnemyCircleDirection CircleDirection { get; private set; }
 }
 

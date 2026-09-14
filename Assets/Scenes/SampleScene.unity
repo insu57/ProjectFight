@@ -2049,6 +2049,10 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 9a50d063a62e1e0429972f65dd2c01e4, type: 2}
+    - target: {fileID: 6335558019586855260, guid: d55cf21ea2324580b54f539402b3e4e9, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -6171,6 +6175,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyStat
   _baseMaxHealth: 100
   _currentHealth: 0
+  <CurrentPoise>k__BackingField: 0
+  <CurrentGuardPoise>k__BackingField: 0
 --- !u!114 &1635805990
 MonoBehaviour:
   m_ObjectHideFlags: 0

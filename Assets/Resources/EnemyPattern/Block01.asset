@@ -13,9 +13,18 @@ MonoBehaviour:
   m_Name: Block01
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPatternDefinition
   <PatternId>k__BackingField: 0
-  <PatternName>k__BackingField: 
+  <PatternName>k__BackingField: black01
   <MinimumRange>k__BackingField: 0
   <MaximumRange>k__BackingField: 2.5
   <Cooldown>k__BackingField: 1
   <SelectionWeight>k__BackingField: 1
-  <Steps>k__BackingField: []
+  <Steps>k__BackingField:
+  - <Type>k__BackingField: 1
+    <Attack>k__BackingField: {fileID: 0}
+    <DelayBeforeAttack>k__BackingField: 0
+    <DelayAfterAttack>k__BackingField: 0
+    <Duration>k__BackingField: 2
+    <CircleSpeed>k__BackingField: 0
+    <CircleDistance>k__BackingField: 0
+    <CircleDistanceTolerance>k__BackingField: 0
+    <CircleDirection>k__BackingField: 0

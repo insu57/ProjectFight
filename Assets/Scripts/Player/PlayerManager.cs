@@ -18,8 +18,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private PlayerSkillTree _playerSkillTree;
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
     private bool _hasPendingGuardChange;
+    private float _poiseReactionRemaining;
+    // 반응 시작 시 결정한 월드 방향과 속도를 유지한다.
+    private Vector3 _poiseReactionVelocity;
 
     private bool IsHitStopped => _playerAnimation && _playerAnimation.IsHitStopped;
+    private bool IsInPoiseReaction => _playerState && (_playerState.ActionState == PlayerActionState.Stunned || _playerState.ActionState == PlayerActionState.GuardBroken);
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
@@ -64,6 +68,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _hurtbox.DamageRequested += HandleDamageRequested;
         }
 
+        if (_playerState)
+        {
+            _playerState.ActionStateChanged += HandlePlayerActionStateChanged;
+
+            // 재활성화 시에도 현재 회피 상태에 맞춰 피격 허용 여부를 동기화한다.
+            HandlePlayerActionStateChanged(_playerState.ActionState);
+        }
+
         if (_playerControl)
         {
             _playerControl.LockOnPressed += HandleLockOnPressed;
@@ -99,6 +111,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         if (_hurtbox)
         {
             _hurtbox.DamageRequested -= HandleDamageRequested;
+
+            // Manager 비활성화 동안에는 피해 수신을 차단한다.
+            _hurtbox.SetDamageEnabled(false);
+        }
+
+        if (_playerState)
+        {
+            _playerState.ActionStateChanged -= HandlePlayerActionStateChanged;
         }
 
         if (_attackHitbox)
@@ -129,6 +149,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
         // 하위 컴포넌트 호출은 PlayerManager가 중개한다.
         _playerAnimation.BeginHitStop(duration);
+    }
+
+    private void HandlePlayerActionStateChanged(PlayerActionState actionState)
+    {
+        if (!_hurtbox) return;
+
+        // 회피 상태에서 벗어나면 종료 원인과 관계없이 피격을 다시 허용한다.
+        _hurtbox.SetDamageEnabled(actionState != PlayerActionState.Dodging);
     }
 
     private bool CanBlock(DamageInfo damageInfo)
@@ -171,6 +199,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
             // 체력과 일반 강인도는 유지하고 가드 강인도만 감소시킨다.
             _playerStat.TakeGuardPoiseDamage(damageInfo.GuardPoiseDamage);
+
+            if (damageInfo.GuardPoiseDamage > 0f && _playerStat.CurrentGuardPoise <= 0f)
+            {
+                BeginPoiseReaction(true, damageInfo.Attacker);
+            }
+
             return;
         }
 
@@ -186,7 +220,20 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         int damage = Mathf.CeilToInt(damageInfo.Damage);
         _playerStat.TakeDamage(damage);
 
-        if (_playerStat.CurrentStats.CurrentHealth > 0) return;
+        // 치명적인 공격에서는 경직보다 기존 사망 처리를 우선한다.
+        if (_playerStat.CurrentStats.CurrentHealth > 0)
+        {
+            if (damageInfo.PoiseDamage > 0f && _playerStat.CurrentPoise <= 0f)
+            {
+                BeginPoiseReaction(false, damageInfo.Attacker);
+            }
+
+            return;
+        }
+
+        _poiseReactionRemaining = 0f;
+        _poiseReactionVelocity = Vector3.zero;
+        _hasPendingGuardChange = false;
 
         // 사망 시 진행 중인 공격과 가드를 종료하고 행동을 막는다.
         if (_attackHitbox)
@@ -207,6 +254,95 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _playerState.SetActionState(PlayerActionState.Dead);
+    }
+
+    private void BeginPoiseReaction(bool isGuardBreak, MonoBehaviour attacker)
+    {
+        if (!_playerState || !_playerStat) return;
+        if (_playerState.ActionState == PlayerActionState.Dead || IsInPoiseReaction) return;
+
+        PlayerStatSnapshot stats = _playerStat.CurrentStats;
+        if (stats.CurrentHealth <= 0) return;
+
+        // 공격 판정과 콤보 예약을 함께 취소한다.
+        if (_attackHitbox)
+        {
+            _attackHitbox.EndAttack();
+        }
+
+        if (_playerAttack)
+        {
+            _playerAttack.EndAttack();
+        }
+
+        // 회피 이동을 중단하되 이미 소비한 회피 횟수는 반환하지 않는다.
+        if (_playerMove)
+        {
+            _playerMove.EndDodge();
+        }
+
+        _hasPendingGuardChange = false;
+        _poiseReactionRemaining = Mathf.Max(0f, isGuardBreak ? stats.GuardBreakDuration : stats.StaggerDuration);
+
+        float moveDistance = isGuardBreak ? stats.GuardBreakMoveDistance : stats.StaggerMoveDistance;
+
+        // 공격자 위치에서 피격자 위치로 향하는 방향으로 밀려난다.
+        Vector3 pushDirection = attacker ? transform.position - attacker.transform.position : -transform.forward;
+        pushDirection.y = 0f;
+
+        // 두 위치가 겹쳐 방향을 구할 수 없으면 피격자의 뒤쪽을 사용한다.
+        if (pushDirection.sqrMagnitude <= 0.0001f)
+        {
+            pushDirection = -transform.forward;
+            pushDirection.y = 0f;
+        }
+
+        pushDirection.Normalize();
+
+        // 시작 순간의 방향과 속도를 저장하여 공격자가 움직여도 그대로 유지한다.
+        _poiseReactionVelocity = _poiseReactionRemaining > 0f ? pushDirection * (Mathf.Max(0f, moveDistance) / _poiseReactionRemaining) : Vector3.zero;
+
+        _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
+        _playerState.SetActionState(isGuardBreak ? PlayerActionState.GuardBroken : PlayerActionState.Stunned);
+
+        // 애니메이션이 누락되어도 행동 제한과 복귀 타이머는 유지한다.
+        if (_playerAnimation && _playerAnimation.TryPlayPoiseReaction(isGuardBreak)) return;
+
+        if (_playerAnimation)
+        {
+            _playerAnimation.CompletePoiseReaction();
+        }
+
+        Debug.LogWarning("플레이어 Animator 또는 Stagger/GuardBreak 상태가 없습니다.", this);
+    }
+
+    private void UpdatePoiseReaction(float deltaTime)
+    {
+        // 마지막 프레임에서는 남은 반응 시간만큼만 이동하여 거리 초과를 막는다.
+        float movementDeltaTime = Mathf.Min(deltaTime, _poiseReactionRemaining);
+
+        if (_playerMove)
+        {
+            _playerMove.MovePoiseReaction(_poiseReactionVelocity * movementDeltaTime, deltaTime);
+        }
+
+        if (_playerAnimation)
+        {
+            _playerAnimation.SetSprinting(false);
+            _playerAnimation.SetMovement(Vector2.zero, deltaTime);
+        }
+
+        _poiseReactionRemaining = Mathf.Max(0f, _poiseReactionRemaining - deltaTime);
+        if (_poiseReactionRemaining > 0f) return;
+
+        _poiseReactionVelocity = Vector3.zero;
+
+        if (_playerAnimation)
+        {
+            _playerAnimation.CompletePoiseReaction();
+        }
+
+        _playerState.SetActionState(PlayerActionState.Free);
     }
 
     private void SubscribeSkillTreeRuntime()
@@ -244,8 +380,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerAnimation.UpdateHitStop();
         }
 
-        // 히트스톱 중에는 회복량과 회복 대기 시간 모두 진행하지 않는다.
-        if (_playerStat && _playerState && _playerState.ActionState != PlayerActionState.Dead && !IsHitStopped)
+        // 히트스톱과 피격 반응 중에는 회복량과 회복 대기 시간 모두 진행하지 않는다.
+        if (_playerStat && _playerState && _playerState.ActionState != PlayerActionState.Dead && !IsHitStopped && !IsInPoiseReaction)
         {
             _playerStat.UpdatePoiseRecovery(Time.deltaTime);
         }
@@ -284,6 +420,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
         // 카메라 입력 전달은 유지하고 캐릭터 동작만 정지한다.
         if (IsHitStopped) return;
+
+        // 피격 반응을 먼저 처리하여 기존 이동·공격·가드 갱신을 막는다.
+        if (IsInPoiseReaction)
+        {
+            UpdatePoiseReaction(Time.deltaTime);
+            return;
+        }
 
         // 정지 중 바뀐 가드 입력을 해제 후 반영한다.
         if (_hasPendingGuardChange)
@@ -442,6 +585,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private void HandleGuardChanged(bool isGuarding)
     {
         if (!_playerState || !_playerAnimation) return;
+
+        // 반응 중 가드 입력은 예약하지 않는다.
+        if (IsInPoiseReaction) return;
 
         if (IsHitStopped)
         {

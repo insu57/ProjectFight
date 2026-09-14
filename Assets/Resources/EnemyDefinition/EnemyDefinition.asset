@@ -16,12 +16,14 @@ MonoBehaviour:
   <EnemyID>k__BackingField: 0
   <Model>k__BackingField: {fileID: 0}
   <Patterns>k__BackingField:
-  - {fileID: 11400000, guid: a716367e797767245b685282c077b76a, type: 2}
+  - {fileID: 11400000, guid: 61d4888fc7d587947a5ff93f1de5ae0c, type: 2}
   <MaxPoise>k__BackingField: 30
   <PoiseRecoveryDelay>k__BackingField: 3
   <PoiseRecoveryRate>k__BackingField: 20
   <StaggerDuration>k__BackingField: 0.5
+  <StaggerMoveDistance>k__BackingField: 0.5
   <MaxGuardPoise>k__BackingField: 30
   <GuardPoiseRecoveryDelay>k__BackingField: 3
   <GuardPoiseRecoveryRate>k__BackingField: 20
   <GuardBreakDuration>k__BackingField: 1.5
+  <GuardBreakMoveDistance>k__BackingField: 1

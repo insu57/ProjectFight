@@ -41,7 +41,11 @@ public sealed class Hurtbox : MonoBehaviour
 
     public MonoBehaviour Owner { get; private set; }
 
+    // 소유 Manager가 회피 등으로 피격 허용 여부를 제어한다.
+    private bool _isDamageEnabled = true;
+
     public bool CanReceiveDamage => isActiveAndEnabled
+        && _isDamageEnabled
         && Owner
         && Owner.isActiveAndEnabled
         && DamageRequested != null;
@@ -56,6 +60,11 @@ public sealed class Hurtbox : MonoBehaviour
     {
         // 여러 피격 부위가 생겨도 같은 Manager를 소유자로 사용한다.
         Owner = owner;
+    }
+
+    public void SetDamageEnabled(bool isEnabled)
+    {
+        _isDamageEnabled = isEnabled;
     }
 
     public void ReceiveDamage(DamageInfo damageInfo)

@@ -11,6 +11,8 @@ public sealed class PlayerAnimation : CharacterAnimation
     private static readonly int _isSprintingHash = Animator.StringToHash("IsSprinting");
     private static readonly int _isGuardingHash = Animator.StringToHash("IsGuarding");
     private static readonly int _guardTagHash = Animator.StringToHash("Guard");
+    private static readonly int _staggerHash = Animator.StringToHash("Base Layer.Stagger");
+    private static readonly int _guardBreakHash = Animator.StringToHash("Base Layer.GuardBreak");
 
     [SerializeField, Min(0f)] private float _movementDampTime = 0.1f;
     [SerializeField, Min(0f)] private float _movementThreshold = 0.001f;
@@ -94,6 +96,33 @@ public sealed class PlayerAnimation : CharacterAnimation
 
         AnimatorStateInfo currentStateInfo = CharacterAnimator.GetCurrentAnimatorStateInfo(0);
         return currentStateInfo.tagHash != _guardTagHash;
+    }
+
+    public bool TryPlayPoiseReaction(bool isGuardBreak)
+    {
+        // 피격 모션으로 전환하기 전에 기존 행동의 애니메이션 요청을 정리한다.
+        SetGuarding(false);
+        ResetAttackState();
+
+        if (!CharacterAnimator) return false;
+
+        CharacterAnimator.ResetTrigger(_dodgeHash);
+        CharacterAnimator.SetBool(_isSprintingHash, false);
+        CharacterAnimator.SetFloat(_moveXHash, 0f);
+        CharacterAnimator.SetFloat(_moveYHash, 0f);
+
+        int stateHash = isGuardBreak ? _guardBreakHash : _staggerHash;
+        if (!CharacterAnimator.HasState(0, stateHash)) return false;
+
+        // 반응 타이머와 모션 시작을 맞추기 위해 즉시 전환한다.
+        CharacterAnimator.Play(stateHash, 0, 0f);
+        return true;
+    }
+
+    public void CompletePoiseReaction()
+    {
+        // 기존 공통 메서드의 Locomotion 복귀 처리를 재사용한다.
+        CompleteAttack();
     }
 
     public void SetSprinting(bool isSprinting)

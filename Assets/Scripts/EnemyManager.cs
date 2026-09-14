@@ -22,6 +22,8 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
     private bool _hasStarted;
     private float _circleBlockedTime;
     private float _poiseReactionRemaining;
+    // 반응 시작 시 결정한 월드 방향과 속도를 유지한다.
+    private Vector3 _poiseReactionVelocity;
 
     private bool IsInPoiseReaction => _enemyState.ActionState == EnemyActionState.Stunned || _enemyState.ActionState == EnemyActionState.GuardBroken;
 
@@ -75,6 +77,7 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
     {
         _patternExecutor?.CancelCurrentPattern(false);
         _poiseReactionRemaining = 0f;
+        _poiseReactionVelocity = Vector3.zero;
         _circleBlockedTime = 0f;
 
         if (_enemyAnimation)
@@ -235,7 +238,7 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
 
             if (damageInfo.GuardPoiseDamage > 0f && _enemyStat.CurrentGuardPoise <= 0f)
             {
-                BeginPoiseReaction(true);
+                BeginPoiseReaction(true, damageInfo.Attacker);
             }
 
             return;
@@ -254,7 +257,7 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
         // 사망은 기절보다 우선한다.
         if (!_enemyStat.IsDead && damageInfo.PoiseDamage > 0f && _enemyStat.CurrentPoise <= 0f)
         {
-            BeginPoiseReaction(false);
+            BeginPoiseReaction(false, damageInfo.Attacker);
         }
     }
 
@@ -343,7 +346,8 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
         if (_patternExecutor.IsCircling)
         {
             step = _patternExecutor.CurrentStep;
-            Vector2 movement = _enemyMove.MoveCircleTarget(_target.position, step.CircleSpeed, step.CircleDistance, step.CircleDistanceTolerance, _patternExecutor.CircleDirectionSign, deltaTime);
+            Vector2 movement = _enemyMove.MoveCircleTarget(_target.position, step.CircleSpeed, step.CircleDistance,
+                step.CircleDistanceTolerance, _patternExecutor.CircleDirectionSign, deltaTime);
             _enemyAnimation.SetMovement(movement, deltaTime);
 
             // 이동을 요청했는데 일정 시간 거의 움직이지 못하면 패턴을 종료한다.
@@ -403,7 +407,7 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
         _enemyState.SetActionState(EnemyActionState.Free);
     }
 
-    private void BeginPoiseReaction(bool isGuardBreak)
+    private void BeginPoiseReaction(bool isGuardBreak, MonoBehaviour attacker)
     {
         if (_enemyStat.IsDead || _enemyState.ActionState == EnemyActionState.Dead || IsInPoiseReaction) return;
 
@@ -411,7 +415,25 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
         _patternExecutor.CancelCurrentPattern(true);
         _enemyAnimation.CancelGuard();
         _circleBlockedTime = 0f;
-        _poiseReactionRemaining = isGuardBreak ? _enemyStat.GuardBreakDuration : _enemyStat.StaggerDuration;
+        _poiseReactionRemaining = Mathf.Max(0f, isGuardBreak ? _enemyStat.GuardBreakDuration : _enemyStat.StaggerDuration);
+
+        float moveDistance = isGuardBreak ? _enemyStat.GuardBreakMoveDistance : _enemyStat.StaggerMoveDistance;
+
+        // 공격자 위치에서 피격자 위치로 향하는 방향으로 밀려난다.
+        Vector3 pushDirection = attacker ? transform.position - attacker.transform.position : -transform.forward;
+        pushDirection.y = 0f;
+
+        // 두 위치가 겹쳐 방향을 구할 수 없으면 피격자의 뒤쪽을 사용한다.
+        if (pushDirection.sqrMagnitude <= 0.0001f)
+        {
+            pushDirection = -transform.forward;
+            pushDirection.y = 0f;
+        }
+
+        pushDirection.Normalize();
+
+        // 시작 순간의 방향과 속도를 저장하여 공격자가 움직여도 그대로 유지한다.
+        _poiseReactionVelocity = _poiseReactionRemaining > 0f ? pushDirection * (Mathf.Max(0f, moveDistance) / _poiseReactionRemaining) : Vector3.zero;
         _enemyState.SetActionState(isGuardBreak ? EnemyActionState.GuardBroken : EnemyActionState.Stunned);
 
         // 애니메이션 설정이 누락되어도 행동 제한과 복귀 타이머는 유지한다.
@@ -424,10 +446,15 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
 
     private void UpdatePoiseReaction(float deltaTime)
     {
-        UpdateStationary(deltaTime);
+        // 마지막 프레임에서도 남은 반응 시간만큼만 이동한다.
+        float movementDeltaTime = Mathf.Min(deltaTime, _poiseReactionRemaining);
+        _enemyMove.MovePoiseReaction(_poiseReactionVelocity * movementDeltaTime, deltaTime);
+        _enemyAnimation.SetMoveAmount(0f);
+
         _poiseReactionRemaining = Mathf.Max(0f, _poiseReactionRemaining - deltaTime);
         if (_poiseReactionRemaining > 0f) return;
 
+        _poiseReactionVelocity = Vector3.zero;
         _enemyAnimation.CompleteAttack();
         _enemyState.SetActionState(EnemyActionState.Free);
     }
@@ -447,6 +474,7 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
 
         _patternExecutor?.CancelCurrentPattern(false);
         _poiseReactionRemaining = 0f;
+        _poiseReactionVelocity = Vector3.zero;
         _circleBlockedTime = 0f;
         _enemyAnimation?.CancelGuard();
         _enemyAnimation?.CompleteAttack();

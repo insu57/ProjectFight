@@ -23,12 +23,10 @@ public readonly struct PlayerStatSnapshot
     public float GuardBreakDuration { get; }
     public float CurrentPoise { get; }
     public float CurrentGuardPoise { get; }
+    public float StaggerMoveDistance { get; }
+    public float GuardBreakMoveDistance { get; }
 
-    public PlayerStatSnapshot(int level, int currentExp, int targetExp, int maxHealth, int currentHealth,
-        float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise,
-        float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration,
-        float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration,
-        float currentPoise, float currentGuardPoise)
+    public PlayerStatSnapshot(int level, int currentExp, int targetExp, int maxHealth, int currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration, float currentPoise, float currentGuardPoise, float staggerMoveDistance, float guardBreakMoveDistance)
     {
         Level = level;
         CurrentExp = currentExp;
@@ -49,6 +47,8 @@ public readonly struct PlayerStatSnapshot
         GuardBreakDuration = guardBreakDuration;
         CurrentPoise = currentPoise;
         CurrentGuardPoise = currentGuardPoise;
+        StaggerMoveDistance = Mathf.Max(0f, staggerMoveDistance);
+        GuardBreakMoveDistance = Mathf.Max(0f, guardBreakMoveDistance);
     }
 }
 
@@ -71,12 +71,16 @@ public class PlayerStat : MonoBehaviour
     [SerializeField, Min(0f)] private float _poiseRecoveryDelay = 3f;
     [SerializeField, Min(0f)] private float _poiseRecoveryRate = 20f;
     [SerializeField, Min(0f)] private float _staggerDuration = 0.5f;
+    // 경직 시간 동안 밀려나는 총 거리이다.
+    [SerializeField, Min(0f)] private float _staggerMoveDistance = 0.5f;
 
     // 가드 강인도는 별도의 회복 설정과 가드 브레이크 시간을 사용한다.
     [SerializeField, Min(0f)] private float _maxGuardPoise = 100f;
     [SerializeField, Min(0f)] private float _guardPoiseRecoveryDelay = 3f;
     [SerializeField, Min(0f)] private float _guardPoiseRecoveryRate = 20f;
     [SerializeField, Min(0f)] private float _guardBreakDuration = 1.5f;
+    // 가드 브레이크 시간 동안 밀려나는 총 거리이다.
+    [SerializeField, Min(0f)] private float _guardBreakMoveDistance = 1f;
 
     public event Action<PlayerStatSnapshot> StatsChanged;
 
@@ -87,10 +91,7 @@ public class PlayerStat : MonoBehaviour
     private float _poiseRecoveryRemaining;
     private float _guardPoiseRecoveryRemaining;
 
-    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth,
-        _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise,
-        _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate,
-        _guardBreakDuration, CurrentPoise, CurrentGuardPoise);
+    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth, _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise, _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate, _guardBreakDuration, CurrentPoise, CurrentGuardPoise, _staggerMoveDistance, _guardBreakMoveDistance);
 
     private void Awake()
     {

@@ -249,10 +249,6 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
             {
                 if (!step.Attack) return false;
             }
-            else if (step.Type != EnemyPatternStepType.Guard && step.Type != EnemyPatternStepType.CircleTarget)
-            {
-                return false;
-            }
         }
 
         return true;

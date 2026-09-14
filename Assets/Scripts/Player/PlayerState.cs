@@ -8,7 +8,8 @@ public enum PlayerActionState
     Attacking,
     Guarding,
     Stunned,
-    Dead
+    Dead,
+    GuardBroken
 }
 
 public enum PlayerLocomotionState

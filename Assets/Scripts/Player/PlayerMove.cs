@@ -70,6 +70,20 @@ public class PlayerMove : MonoBehaviour
         _characterController.Move(displacement);
     }
 
+    public void MovePoiseReaction(Vector3 worldDisplacement, float deltaTime)
+    {
+        if (deltaTime <= 0f) return;
+
+        // 피격 이동을 걷기 애니메이션의 이동 입력으로 사용하지 않는다.
+        MoveAmount = 0f;
+        LocalMoveDirection = Vector2.zero;
+
+        // 수평 이동은 피격 설정을 사용하고 수직 이동은 기존 중력을 유지한다.
+        ApplyGravity(deltaTime);
+        worldDisplacement.y = _verticalVelocity * deltaTime;
+        _characterController.Move(worldDisplacement);
+    }
+
     public void MoveStationary(float deltaTime)
     {
         MoveAmount = 0f;
