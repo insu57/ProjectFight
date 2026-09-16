@@ -5,6 +5,8 @@ using Random = UnityEngine.Random;
 
 public class MapGenerator : MonoBehaviour
 {
+    private const int MinStoreDistance = 3;
+
     private static readonly DoorDirection[] _branchDirections =
     {
         DoorDirection.North,
@@ -45,6 +47,7 @@ public class MapGenerator : MonoBehaviour
     private Room _startRoom;
     private readonly List<Room> _battleRooms = new();
     private readonly List<Room> _rewardRooms = new();
+    private readonly List<Room> _storeRooms = new();
     private Room _bossRoom;
     private Room _nextRoom;
     
@@ -671,7 +674,156 @@ public class MapGenerator : MonoBehaviour
             node.SetRoomData(roomData);
         }
 
+        // 보상방과 기본 전투방 배치를 마친 후 가능한 전투방을 상점으로 교체한다.
+        AssignStoreRoomData(graph, normalNodes, mainNodes);
+
         return true;
+    }
+
+    private void AssignStoreRoomData(StageGraph graph, List<StageNode> normalNodes, List<StageNode> mainNodes)
+    {
+        RoomDefinition[] storeRoomData = _stageDefinition.StoreRoomsDef;
+
+        if (storeRoomData == null || storeRoomData.Length == 0) return;
+
+        // 같은 에셋이 여러 슬롯에 등록되어도 한 번만 사용한다.
+        var availableStoreData = new List<RoomDefinition>(storeRoomData.Length);
+
+        for (int index = 0; index < storeRoomData.Length; index++)
+        {
+            RoomDefinition roomData = storeRoomData[index];
+
+            if (!roomData || !roomData.RoomPrefab || roomData.RoomType != RoomType.Store)
+            {
+                continue;
+            }
+
+            if (!availableStoreData.Contains(roomData))
+            {
+                availableStoreData.Add(roomData);
+            }
+        }
+
+        if (availableStoreData.Count == 0) return;
+
+        // TryGenerateLinearGraph에서 첫 노드는 항상 시작방으로 생성한다.
+        StageNode startNode = graph.Nodes[0];
+        StageNode beforeBossNode = mainNodes.Count > 0 ? mainNodes[mainNodes.Count - 1] : null;
+        var candidates = new List<StageNode>(normalNodes.Count);
+
+        // 최단거리 계산에 사용할 버퍼는 이번 배치 동안 재사용한다.
+        var queue = new int[graph.Nodes.Count];
+        var distances = new int[graph.Nodes.Count];
+
+        for (int index = 0; index < normalNodes.Count; index++)
+        {
+            StageNode node = normalNodes[index];
+
+            // 보상방 및 보스 직전 전투방은 기존 배치를 유지한다.
+            if (node == beforeBossNode || node.RoomData.RoomType != RoomType.Battle)
+            {
+                continue;
+            }
+
+            int distance = graph.GetShortestDistance(startNode, node, queue, distances);
+
+            // 연결되지 않은 경우 반환되는 -1도 후보에서 제외된다.
+            if (distance >= MinStoreDistance)
+            {
+                candidates.Add(node);
+            }
+        }
+
+        if (candidates.Count == 0) return;
+
+        ShuffleNodes(candidates);
+
+        // 탐색 중 BFS를 반복하지 않도록 후보 간 거리 충돌을 미리 계산한다.
+        var conflicts = new bool[candidates.Count, candidates.Count];
+
+        for (int first = 0; first < candidates.Count; first++)
+        {
+            for (int second = first + 1; second < candidates.Count; second++)
+            {
+                int distance = graph.GetShortestDistance(candidates[first], candidates[second], queue, distances);
+                bool conflictsWithOther = distance < MinStoreDistance;
+                conflicts[first, second] = conflictsWithOther;
+                conflicts[second, first] = conflictsWithOther;
+            }
+        }
+
+        // 유효한 고유 상점 데이터와 후보 수를 넘겨 배치할 수는 없다.
+        int targetCount = Mathf.Min(availableStoreData.Count, candidates.Count);
+        var selectedIndices = new int[targetCount];
+        var bestIndices = new int[targetCount];
+        int bestCount = 0;
+
+        FindStoreNodes(conflicts, 0, targetCount, selectedIndices, 0, bestIndices, ref bestCount);
+
+        // 인덱스만 섞어 선택된 상점 데이터를 중복 없이 배정한다.
+        var definitionIndices = new int[availableStoreData.Count];
+
+        for (int index = 0; index < definitionIndices.Length; index++)
+        {
+            definitionIndices[index] = index;
+        }
+
+        ShuffleIndices(definitionIndices);
+
+        for (int index = 0; index < bestCount; index++)
+        {
+            StageNode node = candidates[bestIndices[index]];
+            RoomDefinition roomData = availableStoreData[definitionIndices[index]];
+            node.SetRoomData(roomData);
+        }
+
+        // 선택되지 않은 노드는 이미 배정된 전투방 데이터를 그대로 사용한다.
+    }
+
+    private static void FindStoreNodes(bool[,] conflicts, int startIndex, int targetCount, int[] selectedIndices, int selectedCount, int[] bestIndices, ref int bestCount)
+    {
+        if (selectedCount > bestCount)
+        {
+            bestCount = selectedCount;
+
+            // 최선의 배치는 별도 버퍼에 보존하여 되돌리기의 영향을 받지 않는다.
+            for (int index = 0; index < selectedCount; index++)
+            {
+                bestIndices[index] = selectedIndices[index];
+            }
+        }
+
+        if (bestCount == targetCount) return;
+
+        int candidateCount = conflicts.GetLength(0);
+
+        for (int candidateIndex = startIndex; candidateIndex < candidateCount; candidateIndex++)
+        {
+            // 남은 후보를 모두 골라도 최선의 개수를 넘지 못하면 탐색하지 않는다.
+            int maximumPossibleCount = selectedCount + candidateCount - candidateIndex;
+
+            if (maximumPossibleCount <= bestCount) return;
+
+            bool canSelect = true;
+
+            for (int selectedIndex = 0; selectedIndex < selectedCount; selectedIndex++)
+            {
+                if (conflicts[candidateIndex, selectedIndices[selectedIndex]])
+                {
+                    canSelect = false;
+                    break;
+                }
+            }
+
+            if (!canSelect) continue;
+
+            selectedIndices[selectedCount] = candidateIndex;
+            FindStoreNodes(conflicts, candidateIndex + 1, targetCount, selectedIndices, selectedCount + 1, bestIndices, ref bestCount);
+
+            if (bestCount == targetCount) return;
+
+            // selectedCount 이후의 값은 무시하므로 배열 삭제나 복사가 필요 없다.
+        }
     }
 
     private bool TrySelectRewardNodes(StageGraph graph, List<StageNode> candidates, int candidateIndex,
@@ -813,6 +965,7 @@ public class MapGenerator : MonoBehaviour
     {
         _battleRooms.Clear();
         _rewardRooms.Clear();
+        _storeRooms.Clear();
 
         for (int index = 0; index < graph.Nodes.Count; index++)
         {
@@ -830,6 +983,9 @@ public class MapGenerator : MonoBehaviour
                     break;
                 case RoomType.Reward:
                     _rewardRooms.Add(room);
+                    break;
+                case RoomType.Store:
+                    _storeRooms.Add(room);
                     break;
                 case RoomType.Boss:
                     _bossRoom = room;

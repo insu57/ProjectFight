@@ -6,8 +6,8 @@ public readonly struct PlayerStatSnapshot
     public int Level { get; }
     public int CurrentExp { get; }
     public int TargetExp { get; }
-    public int MaxHealth { get; }
-    public int CurrentHealth { get; }
+    public float MaxHealth { get; }
+    public float CurrentHealth { get; }
     public float AttackPower { get; }
     public float DefensePower { get; }
     public float MaxEnergy { get; }
@@ -26,7 +26,7 @@ public readonly struct PlayerStatSnapshot
     public float StaggerMoveDistance { get; }
     public float GuardBreakMoveDistance { get; }
 
-    public PlayerStatSnapshot(int level, int currentExp, int targetExp, int maxHealth, int currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration, float currentPoise, float currentGuardPoise, float staggerMoveDistance, float guardBreakMoveDistance)
+    public PlayerStatSnapshot(int level, int currentExp, int targetExp, float maxHealth, float currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration, float currentPoise, float currentGuardPoise, float staggerMoveDistance, float guardBreakMoveDistance)
     {
         Level = level;
         CurrentExp = currentExp;
@@ -58,8 +58,9 @@ public class PlayerStat : MonoBehaviour
     [SerializeField, Min(1)] private int _level = 1;
     [SerializeField, Min(0)] private int _currentExp;
     [SerializeField, Min(1)] private int _targetExp = 100; // 추후 계산식 적용
-    [SerializeField, Min(1)] private int _maxHealth = 100;
-    [SerializeField, Min(0)] private int _currentHealth = 100;
+    // 체력은 소수점 피해와 회복량을 그대로 보존한다.
+    [SerializeField, Min(1f)] private float _maxHealth = 100f;
+    [SerializeField, Min(0f)] private float _currentHealth = 100f;
 
     [SerializeField, Min(0f)] private float _baseAttackPower;
     [SerializeField, Min(0f)] private float _baseDefensePower;
@@ -106,7 +107,7 @@ public class PlayerStat : MonoBehaviour
 
     public void TakePoiseDamage(float amount)
     {
-        if (amount <= 0f || _currentHealth <= 0) return;
+        if (amount <= 0f || _currentHealth <= 0f) return;
 
         // 이미 0이어도 추가 강인도 피해를 받으면 회복 대기를 다시 시작한다.
         _poiseRecoveryRemaining = Mathf.Max(0f, _poiseRecoveryDelay);
@@ -121,7 +122,7 @@ public class PlayerStat : MonoBehaviour
 
     public void TakeGuardPoiseDamage(float amount)
     {
-        if (amount <= 0f || _currentHealth <= 0) return;
+        if (amount <= 0f || _currentHealth <= 0f) return;
 
         _guardPoiseRecoveryRemaining = Mathf.Max(0f, _guardPoiseRecoveryDelay);
 
@@ -135,7 +136,7 @@ public class PlayerStat : MonoBehaviour
 
     public void UpdatePoiseRecovery(float deltaTime)
     {
-        if (deltaTime <= 0f || _currentHealth <= 0) return;
+        if (deltaTime <= 0f || _currentHealth <= 0f) return;
 
         float nextPoise = RecoverPoise(CurrentPoise, _maxPoise, _poiseRecoveryRate, ref _poiseRecoveryRemaining, deltaTime);
         float nextGuardPoise = RecoverPoise(CurrentGuardPoise, _maxGuardPoise, _guardPoiseRecoveryRate, ref _guardPoiseRecoveryRemaining, deltaTime);
@@ -188,20 +189,20 @@ public class PlayerStat : MonoBehaviour
         NotifyStatsChanged();
     }
 
-    public void TakeDamage(int amount)
+    public void TakeDamage(float amount)
     {
-        if (amount <= 0 || _currentHealth <= 0)
+        if (amount <= 0f || _currentHealth <= 0f)
         {
             return;
         }
 
-        _currentHealth = Mathf.Max(0, _currentHealth - amount);
+        _currentHealth = Mathf.Max(0f, _currentHealth - amount);
         NotifyStatsChanged();
     }
 
-    public void RestoreHealth(int amount)
+    public void RestoreHealth(float amount)
     {
-        if (amount <= 0 || _currentHealth >= _maxHealth)
+        if (amount <= 0f || _currentHealth >= _maxHealth)
         {
             return;
         }
@@ -210,9 +211,9 @@ public class PlayerStat : MonoBehaviour
         NotifyStatsChanged();
     }
 
-    public void SetMaxHealth(int maxHealth)
+    public void SetMaxHealth(float maxHealth)
     {
-        int clampedMaxHealth = Mathf.Max(1, maxHealth);
+        float clampedMaxHealth = Mathf.Max(1f, maxHealth);
 
         if (_maxHealth == clampedMaxHealth)
         {

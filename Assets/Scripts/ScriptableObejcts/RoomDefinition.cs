@@ -5,7 +5,7 @@ public enum RoomType
 {
     Start,
     Battle, Reward , 
-    Boss, Next
+    Boss, Next, Store
 }
 
 [CreateAssetMenu(fileName = "RoomDefinition", menuName = "Scriptable Objects/RoomDefinition")]

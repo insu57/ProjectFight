@@ -10,6 +10,7 @@ public class StageDefinition : ScriptableObject
     [field: SerializeField] public RoomDefinition NextRoomDef { get; private set; }
     [field: SerializeField] public RoomDefinition[] BattleRoomsDef { get; private set; }
     [field: SerializeField] public RoomDefinition[] RewardRoomsDef { get; private set; }
+    [field: SerializeField] public RoomDefinition[] StoreRoomsDef { get; private set; }
     //추가: 상점 등 ...
 
     [Header("Modules")]

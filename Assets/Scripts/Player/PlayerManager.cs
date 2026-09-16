@@ -18,9 +18,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private PlayerSkillTree _playerSkillTree;
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
     private bool _hasPendingGuardChange;
-    private float _poiseReactionRemaining;
-    // 반응 시작 시 결정한 월드 방향과 속도를 유지한다.
-    private Vector3 _poiseReactionVelocity;
+    // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
+    private readonly PoiseReactionRuntime _poiseReaction = new();
 
     private bool IsHitStopped => _playerAnimation && _playerAnimation.IsHitStopped;
     private bool IsInPoiseReaction => _playerState && (_playerState.ActionState == PlayerActionState.Stunned || _playerState.ActionState == PlayerActionState.GuardBroken);
@@ -164,30 +163,17 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         if (!_playerState || !_playerControl) return false;
         if (_playerState.ActionState != PlayerActionState.Guarding) return false;
 
-        // 가드 종료 모션 중에는 Guarding 상태여도 공격을 막지 않는다.
-        if (!_playerControl.IsGuardRequested) return false;
-        if (!damageInfo.Attacker) return false;
+        // 가드 종료 모션 중에는 공격을 막지 않는다.
+        if (!_playerControl.IsGuardRequested || !damageInfo.Attacker) return false;
 
-        // 높이 차이를 제외하고 피격 순간 공격자의 위치로 방향을 판단한다.
-        Vector3 toAttacker = damageInfo.Attacker.transform.position - transform.position;
-        toAttacker.y = 0f;
-
-        Vector3 forward = transform.forward;
-        forward.y = 0f;
-
-        // 수평 방향을 판단할 수 없는 경우에는 일반 피격으로 처리한다.
-        if (toAttacker.sqrMagnitude <= 0.0001f || forward.sqrMagnitude <= 0.0001f) return false;
-
-        // 내적의 부호만 사용하므로 정규화 없이 전방 180도를 판정한다.
-        // 정확히 측면인 경계와 후방의 공격은 막지 않는다.
-        return Vector3.Dot(forward, toAttacker) > 0f;
+        return CombatUtility.IsAttackerInFront(transform, damageInfo.Attacker.transform);
     }
 
     private void HandleDamageRequested(DamageInfo damageInfo)
     {
         if (!isActiveAndEnabled || !_playerStat || !_playerState) return;
         if (_playerState.ActionState == PlayerActionState.Dead) return;
-        if (_playerStat.CurrentStats.CurrentHealth <= 0) return;
+        if (_playerStat.CurrentStats.CurrentHealth <= 0f) return;
         if (!damageInfo.HasDamage) return;
 
         if (CanBlock(damageInfo))
@@ -216,12 +202,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         // 강인도를 먼저 처리하여 치명타에서도 해당 공격의 감소량을 반영한다.
         _playerStat.TakePoiseDamage(damageInfo.PoiseDamage);
 
-        // 현재 플레이어 체력 타입에 맞춰 양수 피해의 소수점을 올림한다.
-        int damage = Mathf.CeilToInt(damageInfo.Damage);
-        _playerStat.TakeDamage(damage);
+        // 소수점 피해를 변환 없이 전달한다.
+        _playerStat.TakeDamage(damageInfo.Damage);
 
         // 치명적인 공격에서는 경직보다 기존 사망 처리를 우선한다.
-        if (_playerStat.CurrentStats.CurrentHealth > 0)
+        if (_playerStat.CurrentStats.CurrentHealth > 0f)
         {
             if (damageInfo.PoiseDamage > 0f && _playerStat.CurrentPoise <= 0f)
             {
@@ -231,8 +216,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             return;
         }
 
-        _poiseReactionRemaining = 0f;
-        _poiseReactionVelocity = Vector3.zero;
+        _poiseReaction.Reset();
         _hasPendingGuardChange = false;
 
         // 사망 시 진행 중인 공격과 가드를 종료하고 행동을 막는다.
@@ -262,7 +246,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         if (_playerState.ActionState == PlayerActionState.Dead || IsInPoiseReaction) return;
 
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
-        if (stats.CurrentHealth <= 0) return;
+        if (stats.CurrentHealth <= 0f) return;
 
         // 공격 판정과 콤보 예약을 함께 취소한다.
         if (_attackHitbox)
@@ -282,25 +266,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         }
 
         _hasPendingGuardChange = false;
-        _poiseReactionRemaining = Mathf.Max(0f, isGuardBreak ? stats.GuardBreakDuration : stats.StaggerDuration);
-
+        float duration = isGuardBreak ? stats.GuardBreakDuration : stats.StaggerDuration;
         float moveDistance = isGuardBreak ? stats.GuardBreakMoveDistance : stats.StaggerMoveDistance;
-
-        // 공격자 위치에서 피격자 위치로 향하는 방향으로 밀려난다.
-        Vector3 pushDirection = attacker ? transform.position - attacker.transform.position : -transform.forward;
-        pushDirection.y = 0f;
-
-        // 두 위치가 겹쳐 방향을 구할 수 없으면 피격자의 뒤쪽을 사용한다.
-        if (pushDirection.sqrMagnitude <= 0.0001f)
-        {
-            pushDirection = -transform.forward;
-            pushDirection.y = 0f;
-        }
-
-        pushDirection.Normalize();
-
-        // 시작 순간의 방향과 속도를 저장하여 공격자가 움직여도 그대로 유지한다.
-        _poiseReactionVelocity = _poiseReactionRemaining > 0f ? pushDirection * (Mathf.Max(0f, moveDistance) / _poiseReactionRemaining) : Vector3.zero;
+        _poiseReaction.Begin(transform, attacker?.transform, duration, moveDistance);
 
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _playerState.SetActionState(isGuardBreak ? PlayerActionState.GuardBroken : PlayerActionState.Stunned);
@@ -318,12 +286,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void UpdatePoiseReaction(float deltaTime)
     {
-        // 마지막 프레임에서는 남은 반응 시간만큼만 이동하여 거리 초과를 막는다.
-        float movementDeltaTime = Mathf.Min(deltaTime, _poiseReactionRemaining);
+        Vector3 displacement = _poiseReaction.Advance(deltaTime);
 
         if (_playerMove)
         {
-            _playerMove.MovePoiseReaction(_poiseReactionVelocity * movementDeltaTime, deltaTime);
+            _playerMove.MovePoiseReaction(displacement, deltaTime);
         }
 
         if (_playerAnimation)
@@ -332,10 +299,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerAnimation.SetMovement(Vector2.zero, deltaTime);
         }
 
-        _poiseReactionRemaining = Mathf.Max(0f, _poiseReactionRemaining - deltaTime);
-        if (_poiseReactionRemaining > 0f) return;
-
-        _poiseReactionVelocity = Vector3.zero;
+        if (_poiseReaction.IsRunning) return;
 
         if (_playerAnimation)
         {
