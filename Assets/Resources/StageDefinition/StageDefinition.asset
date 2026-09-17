@@ -22,6 +22,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9abe034251e4fb84b8bbe275c745c92a, type: 2}
   <RewardRoomsDef>k__BackingField:
   - {fileID: 11400000, guid: a482f9a3a3980644db4b3115a23b1965, type: 2}
+  <StoreRoomsDef>k__BackingField:
+  - {fileID: 11400000, guid: 74dc32a00021f90458bfa6f10734011a, type: 2}
   <RoomDistance>k__BackingField: 5
   <NormalCorridorModule>k__BackingField: {fileID: 2345354589709060967, guid: 1f9d860e7061821468d4b463d27687e6, type: 3}
   <HalfCorridorModule>k__BackingField: {fileID: 4572922992601898069, guid: 0fc99130375745a469464de8f0f09cec, type: 3}
@@ -40,3 +42,4 @@ MonoBehaviour:
   <MaxLoopCount>k__BackingField: 3
   <MinLoopGraphDistance>k__BackingField: 3
   <MaxLoopPerNode>k__BackingField: 2
+  <MaxStraightLoopGridDistance>k__BackingField: 2

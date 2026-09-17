@@ -50,16 +50,25 @@ public class MapGenerator : MonoBehaviour
     private readonly List<Room> _storeRooms = new();
     private Room _bossRoom;
     private Room _nextRoom;
+
+    public StageGraph CurrentGraph { get; private set; }
+
+    public event System.Action<StageGraph> GraphChanged;
     
 
     public void GenerateStage(StageDefinition stageDefinition)
     {
-        _stageDefinition = stageDefinition;
+        // 재생성 중에는 이전 지도가 남지 않도록 표시 데이터를 비운다.
+        CurrentGraph = null;
+        GraphChanged?.Invoke(null);
 
         if (!stageDefinition)
         {
-            Debug.LogError("StageDefinition: Error");
+            Debug.LogError("StageDefinition이 지정되지 않았습니다.", this);
+            return;
         }
+
+        _stageDefinition = stageDefinition;
 
         if (!TryGenerateLinearGraph(out StageGraph graph))
         {
@@ -69,7 +78,13 @@ public class MapGenerator : MonoBehaviour
 
         LayoutGraph(graph);
         InstantiateRooms(graph);
-        ConnectGraph(graph);
+        if (!ConnectGraph(graph))
+        {
+            return;
+        }
+
+        CurrentGraph = graph;
+        GraphChanged?.Invoke(graph);
     }
 
     private bool TryGenerateLinearGraph(out StageGraph graph)
@@ -780,7 +795,8 @@ public class MapGenerator : MonoBehaviour
         // 선택되지 않은 노드는 이미 배정된 전투방 데이터를 그대로 사용한다.
     }
 
-    private static void FindStoreNodes(bool[,] conflicts, int startIndex, int targetCount, int[] selectedIndices, int selectedCount, int[] bestIndices, ref int bestCount)
+    private static void FindStoreNodes(bool[,] conflicts, int startIndex, int targetCount, int[] selectedIndices,
+        int selectedCount, int[] bestIndices, ref int bestCount)
     {
         if (selectedCount > bestCount)
         {
@@ -997,7 +1013,7 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    private void ConnectGraph(StageGraph graph)
+    private bool ConnectGraph(StageGraph graph)
     {
         for (int index = 0; index < graph.Edges.Count; index++)
         {
@@ -1006,9 +1022,11 @@ public class MapGenerator : MonoBehaviour
             if (!TryConnectRooms(edge.From.RoomInstance, edge.FromDirection, edge.To.RoomInstance, edge.ToDirection))
             {
                 Debug.LogError($"스테이지 그래프의 {index}번 간선을 연결하지 못했습니다.", this);
-                return;
+                return false;
             }
         }
+
+        return true;
     }
 
     private bool TryConnectRooms(Room fromRoom, DoorDirection fromDirection, Room toRoom, DoorDirection toDirection)

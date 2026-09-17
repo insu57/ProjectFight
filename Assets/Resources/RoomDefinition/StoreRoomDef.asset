@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 981085486d8c95f47b012f180a2e49ae, type: 3}
+  m_Name: StoreRoomDef
+  m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
+  <RoomPrefab>k__BackingField: {fileID: 4572401307789787836, guid: f63511ec3f6269e4490dff96ff956502, type: 3}
+  <StageID>k__BackingField: 0
+  <RoomType>k__BackingField: 5
+  <RoomSpacing>k__BackingField: {x: 40, y: 40}

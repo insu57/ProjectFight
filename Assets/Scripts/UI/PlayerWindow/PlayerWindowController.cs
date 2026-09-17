@@ -5,7 +5,8 @@ using UnityEngine.EventSystems;
 public enum PlayerTabType
 {
     SkillTree,
-    Inventory
+    Inventory,
+    Map // 전체 지도 탭
 }
 
 [DisallowMultipleComponent]
