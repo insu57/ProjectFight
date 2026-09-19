@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(RectTransform))]
-public sealed class StageMapView : MonoBehaviour
+public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
 {
     [Header("References")]
     [SerializeField] private RectTransform _mapRoot;
@@ -17,6 +19,18 @@ public sealed class StageMapView : MonoBehaviour
     [SerializeField, Min(1f)] private float _corridorWidth = 8f;
     [SerializeField, Min(0f)] private float _padding = 24f;
 
+    [Header("Zoom")]
+    [SerializeField, Min(0.01f)] private float _minZoom = 1f;
+    [SerializeField, Min(0.01f)] private float _maxZoom = 3f;
+    [SerializeField, Min(0.01f)] private float _zoomStep = 0.15f;
+
+    [Header("Gamepad")]
+    [SerializeField] private InputActionReference _panAction;
+    [SerializeField] private InputActionReference _zoomInAction;
+    [SerializeField] private InputActionReference _zoomOutAction;
+    [SerializeField, Min(0f)] private float _gamepadPanSpeed = 600f;
+    [SerializeField, Min(0f)] private float _gamepadZoomSpeed = 1f;
+
     private readonly List<RectTransform> _roomPool = new();
     private readonly List<RectTransform> _corridorPool = new();
 
@@ -28,6 +42,8 @@ public sealed class StageMapView : MonoBehaviour
     private float _spacing;
     private float _roomLength;
     private float _lineWidth;
+    private float _fitScale = 1f;
+    private float _zoom = 1f;
     private int _usedCorridors;
 
     private void Awake()
@@ -37,7 +53,39 @@ public sealed class StageMapView : MonoBehaviour
 
     private void OnEnable()
     {
+        _panAction?.action.Enable();
+        _zoomInAction?.action.Enable();
+        _zoomOutAction?.action.Enable();
+
         BindMapGenerator();
+    }
+
+    private void Update()
+    {
+        if (!_viewport || !_mapRoot || _mapSize.x <= 0f || _mapSize.y <= 0f)
+        {
+            return;
+        }
+
+        // 지도 창이 게임을 일시 정지해도 입력에 따른 이동과 줌은 계속 처리한다.
+        float deltaTime = Time.unscaledDeltaTime;
+        float zoomIn = _zoomInAction ? _zoomInAction.action.ReadValue<float>() : 0f;
+        float zoomOut = _zoomOutAction ? _zoomOutAction.action.ReadValue<float>() : 0f;
+        float zoomInput = zoomIn - zoomOut;
+
+        if (!Mathf.Approximately(zoomInput, 0f))
+        {
+            ChangeZoom(zoomInput * _gamepadZoomSpeed * deltaTime);
+        }
+
+        Vector2 panInput = _panAction ? _panAction.action.ReadValue<Vector2>() : Vector2.zero;
+
+        if (panInput.sqrMagnitude > 0f)
+        {
+            // 스틱 방향으로 지도를 움직이고 기존 이동 범위를 적용한다.
+            _mapRoot.anchoredPosition += panInput * _gamepadPanSpeed * deltaTime;
+            ClampMapPosition();
+        }
     }
 
     public void SetMapGenerator(MapGenerator mapGenerator)
@@ -98,6 +146,10 @@ public sealed class StageMapView : MonoBehaviour
 
     private void OnDisable()
     {
+        _panAction?.action.Disable();
+        _zoomInAction?.action.Disable();
+        _zoomOutAction?.action.Disable();
+
         if (_mapGenerator)
         {
             _mapGenerator.GraphChanged -= RefreshMap;
@@ -109,6 +161,45 @@ public sealed class StageMapView : MonoBehaviour
         FitMap();
     }
 
+    public void OnScroll(PointerEventData eventData)
+    {
+        if (!_mapRoot || Mathf.Approximately(eventData.scrollDelta.y, 0f))
+        {
+            return;
+        }
+
+        float step = Mathf.Max(0.01f, _zoomStep);
+        ChangeZoom(Mathf.Sign(eventData.scrollDelta.y) * step);
+
+        // 상위 UI가 같은 스크롤 입력을 중복 처리하지 않도록 소비한다.
+        eventData.Use();
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (!_viewport || !_mapRoot || eventData.button != PointerEventData.InputButton.Left)
+        {
+            return;
+        }
+
+        // 화면 이동량을 뷰포트 좌표로 변환해 Canvas 배율에 맞춰 지도를 이동한다.
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_viewport, eventData.position, eventData.pressEventCamera,
+            out Vector2 currentPosition))
+        {
+            return;
+        }
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_viewport, eventData.position - eventData.delta, eventData.pressEventCamera,
+            out Vector2 previousPosition))
+        {
+            return;
+        }
+
+        _mapRoot.anchoredPosition += currentPosition - previousPosition;
+        ClampMapPosition();
+        eventData.Use();
+    }
+
     private void RefreshMap(StageGraph graph)
     {
         if (ReferenceEquals(_displayedGraph, graph))
@@ -118,6 +209,7 @@ public sealed class StageMapView : MonoBehaviour
         }
 
         _displayedGraph = graph;
+        _zoom = Mathf.Clamp(1f, _minZoom, Mathf.Max(_minZoom, _maxZoom));
         _usedCorridors = 0;
 
         if (graph == null || graph.Nodes.Count == 0)
@@ -287,6 +379,51 @@ public sealed class StageMapView : MonoBehaviour
         float scale = Mathf.Min(available.x / _mapSize.x, available.y / _mapSize.y);
 
         // 작은 지도는 원래 크기를 유지하고, 큰 지도만 패널에 맞춰 축소한다.
-        _mapRoot.localScale = Vector3.one * Mathf.Min(1f, scale);
+        _fitScale = Mathf.Min(1f, scale);
+        ApplyZoom();
+    }
+
+    private void ChangeZoom(float delta)
+    {
+        float maximum = Mathf.Max(_minZoom, _maxZoom);
+        float nextZoom = Mathf.Clamp(_zoom + delta, _minZoom, maximum);
+
+        // 한계 배율에서는 불필요한 Transform 갱신을 생략한다.
+        if (Mathf.Approximately(_zoom, nextZoom))
+        {
+            return;
+        }
+
+        _zoom = nextZoom;
+        ApplyZoom();
+    }
+
+    private void ApplyZoom()
+    {
+        if (_mapRoot)
+        {
+            _mapRoot.localScale = Vector3.one * (_fitScale * _zoom);
+            ClampMapPosition();
+        }
+    }
+
+    private void ClampMapPosition()
+    {
+        if (!_viewport || !_mapRoot || _mapSize.x <= 0f || _mapSize.y <= 0f)
+        {
+            return;
+        }
+
+        float scale = _fitScale * _zoom;
+        Vector2 availableSize = _viewport.rect.size - _padding * 2f * Vector2.one;
+        Vector2 scaledMapSize = _mapSize * scale;
+
+        // 화면보다 작은 축은 중앙에 고정하고, 큰 축은 지도 가장자리까지만 이동한다.
+        Vector2 movementLimit = Vector2.Max(Vector2.zero, scaledMapSize - availableSize) * 0.5f;
+        Vector2 position = _mapRoot.anchoredPosition;
+
+        position.x = Mathf.Clamp(position.x, -movementLimit.x, movementLimit.x);
+        position.y = Mathf.Clamp(position.y, -movementLimit.y, movementLimit.y);
+        _mapRoot.anchoredPosition = position;
     }
 }

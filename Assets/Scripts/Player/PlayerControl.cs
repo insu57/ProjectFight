@@ -29,6 +29,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public event Action<AttackInputType> AttackPressed;
     public event Action<bool> GuardChanged;
     public event Action PlayerWindowPressed;
+    public event Action OptionWindowPressed;
 
     private void Awake()
     {
@@ -218,5 +219,9 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
 
     public void OnOptionWindow(InputAction.CallbackContext context)
     {
+        if (context.performed)
+        {
+            OptionWindowPressed?.Invoke();
+        }
     }
 }

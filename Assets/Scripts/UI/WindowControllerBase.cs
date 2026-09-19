@@ -126,7 +126,11 @@ public abstract class WindowControllerBase : MonoBehaviour
             return;
         }
 
-        PlayerManager?.SetGameplayInputEnabled(false);
+        if (PlayerManager)
+        {
+            PlayerManager.SetGameplayInputEnabled(false);
+        }
+        
         _timeScaleBeforeOpen = Time.timeScale;
         Time.timeScale = 0f;
         _isTimeScalePaused = true;
@@ -141,7 +145,11 @@ public abstract class WindowControllerBase : MonoBehaviour
             return;
         }
 
-        PlayerManager?.SetGameplayInputEnabled(true);
+        if (PlayerManager)
+        {
+            PlayerManager.SetGameplayInputEnabled(true);
+        }
+       
         RestoreTimeScale();
     }
 

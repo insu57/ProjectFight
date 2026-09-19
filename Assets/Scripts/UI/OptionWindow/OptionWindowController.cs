@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public enum OptionWindowClosedCancelAction
@@ -32,7 +31,6 @@ public sealed class OptionWindowController : TabbedWindowController<OptionTabTyp
     }
 
     [Header("Cancel")]
-    [SerializeField] private InputActionReference _cancelAction;
     [SerializeField] private OptionWindowClosedCancelAction _closedCancelAction;
 
     [Header("Tabs")]
@@ -48,8 +46,6 @@ public sealed class OptionWindowController : TabbedWindowController<OptionTabTyp
     [Header("Title")]
     [SerializeField] private UnityEvent _backRequested;
 
-    private bool _enabledCancelAction;
-
     protected override bool PauseGameplayWhileOpen => _pauseGameplayWhileOpen;
     protected override OptionTabType InitialTab => _initialTab;
     protected override int TabBindingCount => _tabBindings?.Length ?? 0;
@@ -62,65 +58,20 @@ public sealed class OptionWindowController : TabbedWindowController<OptionTabTyp
     protected override void OnTabbedWindowEnabled()
     {
         SubscribeExitButton();
-        SubscribeCancelAction();
     }
 
     protected override void OnTabbedWindowDisabled()
     {
         UnsubscribeExitButton();
-        UnsubscribeCancelAction();
     }
 
-    private void SubscribeCancelAction()
+    public void RequestBackIfConfigured()
     {
-        if (!_cancelAction)
+        if (!IsOpen && _closedCancelAction == OptionWindowClosedCancelAction.RequestBack)
         {
-            return;
+            // 플레이어가 없는 타이틀에서는 기존 뒤로 가기 이벤트를 전달한다.
+            _backRequested?.Invoke();
         }
-
-        InputAction cancelAction = _cancelAction.action;
-        cancelAction.performed += HandleCancel;
-
-        if (!cancelAction.enabled)
-        {
-            cancelAction.Enable();
-            _enabledCancelAction = true;
-        }
-    }
-
-    private void UnsubscribeCancelAction()
-    {
-        if (!_cancelAction)
-        {
-            return;
-        }
-
-        InputAction cancelAction = _cancelAction.action;
-        cancelAction.performed -= HandleCancel;
-
-        if (_enabledCancelAction)
-        {
-            cancelAction.Disable();
-            _enabledCancelAction = false;
-        }
-    }
-
-    private void HandleCancel(InputAction.CallbackContext context)
-    {
-        if (IsOpen)
-        {
-            CloseWindow();
-            return;
-        }
-
-        if (_closedCancelAction == OptionWindowClosedCancelAction.OpenWindow)
-        {
-            OpenWindow();
-            return;
-        }
-
-        // 타이틀에서는 현재 메뉴가 처리할 수 있도록 뒤로 가기를 요청한다.
-        _backRequested?.Invoke();
     }
 
     private void SubscribeExitButton()

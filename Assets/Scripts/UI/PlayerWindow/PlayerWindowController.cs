@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 public enum PlayerTabType
 {
@@ -10,7 +9,7 @@ public enum PlayerTabType
 }
 
 [DisallowMultipleComponent]
-public sealed class PlayerWindowController : TabbedWindowController<PlayerTabType>, ICancelHandler
+public sealed class PlayerWindowController : TabbedWindowController<PlayerTabType>
 {
     [Serializable]
     private sealed class TabBinding : IWindowTabBinding<PlayerTabType>
@@ -32,32 +31,8 @@ public sealed class PlayerWindowController : TabbedWindowController<PlayerTabTyp
     protected override PlayerTabType InitialTab => _initialTab;
     protected override int TabBindingCount => _tabBindings?.Length ?? 0;
 
-    public void OnCancel(BaseEventData eventData)
-    {
-        if (IsOpen)
-        {
-            CloseWindow();
-        }
-    }
-
     protected override IWindowTabBinding<PlayerTabType> GetTabBinding(int index)
     {
         return _tabBindings[index];
-    }
-
-    protected override void OnTabbedWindowEnabled()
-    {
-        if (PlayerManager)
-        {
-            PlayerManager.PlayerWindowRequested += ToggleWindow;
-        }
-    }
-
-    protected override void OnTabbedWindowDisabled()
-    {
-        if (PlayerManager)
-        {
-            PlayerManager.PlayerWindowRequested -= ToggleWindow;
-        }
     }
 }

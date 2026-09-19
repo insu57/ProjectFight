@@ -26,6 +26,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
+    public event Action OptionWindowRequested;
     public event Action<PlayerStatSnapshot> PlayerStatsChanged;
     public event Action<int> SkillPointsChanged;
     public event Action<SkillTreeNodeRuntime> SkillTreeNodeUnlocked;
@@ -82,6 +83,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerControl.AttackPressed += HandleAttackPressed;
             _playerControl.GuardChanged += HandleGuardChanged;
             _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
+            _playerControl.OptionWindowPressed += HandleOptionWindowPressed;
         }
 
         if (_playerStat)
@@ -132,6 +134,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerControl.AttackPressed -= HandleAttackPressed;
             _playerControl.GuardChanged -= HandleGuardChanged;
             _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
+            _playerControl.OptionWindowPressed -= HandleOptionWindowPressed;
         }
 
         if (_playerStat)
@@ -481,6 +484,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
         _playerLockOn.ToggleTarget();
         NotifyLockOnTargetChanged();
+    }
+
+    private void HandleOptionWindowPressed()
+    {
+        // 하위 입력 컴포넌트의 요청을 UI 입력 조정자에게 중개한다.
+        OptionWindowRequested?.Invoke();
     }
 
     private void HandlePlayerWindowPressed()

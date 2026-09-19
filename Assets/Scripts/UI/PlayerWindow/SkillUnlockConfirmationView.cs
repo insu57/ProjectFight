@@ -2,18 +2,16 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
-public sealed class SkillUnlockConfirmationView : MonoBehaviour, ICancelHandler, IPointerDownHandler
+public sealed class SkillUnlockConfirmationView : MonoBehaviour, IPointerDownHandler
 {
     [SerializeField] private GameObject _panel;
     [SerializeField] private TMP_Text _skillNameText;
     [SerializeField] private TMP_Text _costText;
     [SerializeField] private Button _confirmButton;
     [SerializeField] private Button _cancelButton;
-    [SerializeField] private InputActionReference _cancelAction;
 
     private GameObject _previousSelectedObject;
     private int _pendingNodeId = -1;
@@ -38,11 +36,6 @@ public sealed class SkillUnlockConfirmationView : MonoBehaviour, ICancelHandler,
         {
             _cancelButton.onClick.AddListener(HandleCancel);
         }
-
-        if (_cancelAction)
-        {
-            _cancelAction.action.performed += HandleCancelInput;
-        }
     }
 
     private void OnDisable()
@@ -55,11 +48,6 @@ public sealed class SkillUnlockConfirmationView : MonoBehaviour, ICancelHandler,
         if (_cancelButton)
         {
             _cancelButton.onClick.RemoveListener(HandleCancel);
-        }
-
-        if (_cancelAction)
-        {
-            _cancelAction.action.performed -= HandleCancelInput;
         }
 
         Hide();
@@ -86,7 +74,7 @@ public sealed class SkillUnlockConfirmationView : MonoBehaviour, ICancelHandler,
 
         if (_costText)
         {
-            _costText.SetText("?꾩슂 ?ъ씤?? {0}", node.Definition.RequiredPoints);
+            _costText.SetText("요구 포인트 {0}", node.Definition.RequiredPoints);
         }
 
         SetPanelActive(true);
@@ -100,15 +88,13 @@ public sealed class SkillUnlockConfirmationView : MonoBehaviour, ICancelHandler,
         SetPanelActive(false);
     }
 
-    public void OnCancel(BaseEventData eventData)
+    public void Cancel()
     {
-        if (!IsOpen)
+        if (IsOpen)
         {
-            return;
+            // 기존 닫기 경로로 이전 선택 대상의 포커스도 복구한다.
+            Close();
         }
-
-        Close();
-        eventData.Use();
     }
 
     public void OnPointerDown(PointerEventData eventData)
@@ -134,19 +120,7 @@ public sealed class SkillUnlockConfirmationView : MonoBehaviour, ICancelHandler,
 
     private void HandleCancel()
     {
-        if (IsOpen)
-        {
-            Close();
-        }
-    }
-
-    private void HandleCancelInput(InputAction.CallbackContext context)
-    {
-        if (IsOpen)
-        {
-            // UI Cancel 입력 시 플레이어 창은 유지하고 확인 팝업만 닫는다.
-            Close();
-        }
+        Cancel();
     }
 
     private void Close()

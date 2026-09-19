@@ -578,6 +578,7 @@ GameObject:
   - component: {fileID: 146316868}
   - component: {fileID: 146316867}
   - component: {fileID: 146316866}
+  - component: {fileID: 146316870}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -670,6 +671,23 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &146316870
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 146316865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f04d17fa1cdb4dac90a0e15c0dab927e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WindowInputRouter
+  _playerManager: {fileID: 2100001300}
+  _playerWindow: {fileID: 1396907244}
+  _optionWindow: {fileID: 1753561784}
+  _skillConfirmation: {fileID: 1396907245}
+  _cancelAction: {fileID: 7727032971491509709, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!224 &163611851 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5094758092084800777, guid: f8cde741396aea34786fcb0aef811055, type: 3}
@@ -4548,7 +4566,7 @@ GameObject:
   - component: {fileID: 1396907244}
   - component: {fileID: 1396907245}
   m_Layer: 5
-  m_Name: PlayerWindow
+  m_Name: PlayerInfoWindow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4616,7 +4634,6 @@ MonoBehaviour:
   _costText: {fileID: 2011922439}
   _confirmButton: {fileID: 311636173}
   _cancelButton: {fileID: 1343839259}
-  _cancelAction: {fileID: 7727032971491509709, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!1 &1407497093
 GameObject:
   m_ObjectHideFlags: 0
@@ -6483,17 +6500,17 @@ MonoBehaviour:
   m_MoveRepeatDelay: 0.5
   m_MoveRepeatRate: 0.1
   m_XRTrackingOrigin: {fileID: 0}
-  m_ActionsAsset: {fileID: -944628639613478452, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_PointAction: {fileID: -1654692200621890270, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_MoveAction: {fileID: -8784545083839296357, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_SubmitAction: {fileID: 392368643174621059, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_CancelAction: {fileID: 7727032971491509709, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_LeftClickAction: {fileID: 3001919216989983466, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_MiddleClickAction: {fileID: -2185481485913320682, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_RightClickAction: {fileID: -4090225696740746782, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_ScrollWheelAction: {fileID: 6240969308177333660, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_TrackedDevicePositionAction: {fileID: 6564999863303420839, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
-  m_TrackedDeviceOrientationAction: {fileID: 7970375526676320489, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_ActionsAsset: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_PointAction: {fileID: -1654692200621890270, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_MoveAction: {fileID: -8784545083839296357, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_SubmitAction: {fileID: 392368643174621059, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_CancelAction: {fileID: 0}
+  m_LeftClickAction: {fileID: 3001919216989983466, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_MiddleClickAction: {fileID: -2185481485913320682, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_RightClickAction: {fileID: -4090225696740746782, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_ScrollWheelAction: {fileID: 6240969308177333660, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_TrackedDevicePositionAction: {fileID: 6564999863303420839, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_TrackedDeviceOrientationAction: {fileID: 7970375526676320489, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_DeselectOnBackgroundClick: 1
   m_PointerBehavior: 0
   m_CursorLockBehavior: 0
@@ -6654,7 +6671,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OptionWindowController
   _windowPanel: {fileID: 2088584785}
   _navigateAction: {fileID: -8784545083839296357, guid: 052faaac586de48259a63d0c4782560b, type: 3}
-  _cancelAction: {fileID: 7727032971491509709, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   _closedCancelAction: 0
   _initialTab: 0
   _tabBindings:
@@ -8140,6 +8156,7 @@ GameObject:
   - component: {fileID: 2100001001}
   - component: {fileID: 2100001003}
   - component: {fileID: 2100001002}
+  - component: {fileID: 2100001004}
   - component: {fileID: 2100001200}
   m_Layer: 5
   m_Name: MapContent
@@ -8182,7 +8199,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0, g: 0, b: 0, a: 0.39215687}
-  m_RaycastTarget: 0
+  m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -8206,6 +8223,20 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2100001000}
   m_CullTransparentMesh: 1
+--- !u!114 &2100001004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2100001000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3312d7739989d2b4e91e6319e9a96d76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RectMask2D
+  m_Padding: {x: 0, y: 0, z: 0, w: 0}
+  m_Softness: {x: 0, y: 0}
 --- !u!1001 &2100001100
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8342,6 +8373,14 @@ MonoBehaviour:
   _roomSize: 40
   _corridorWidth: 8
   _padding: 24
+  _minZoom: 1
+  _maxZoom: 3
+  _zoomStep: 0.15
+  _panAction: {fileID: 7412207280323191, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  _zoomInAction: {fileID: -4818671726932249256, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  _zoomOutAction: {fileID: -2484594475585876938, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  _gamepadPanSpeed: 600
+  _gamepadZoomSpeed: 1
 --- !u!1 &2100001201
 GameObject:
   m_ObjectHideFlags: 0
@@ -8377,6 +8416,17 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &2100001300 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3170524038165678232, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+  m_PrefabInstance: {fileID: 4425019432134814713}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5b90e838ea1d2a4ba19dcca0d56427f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerManager
 --- !u!1 &2144577787
 GameObject:
   m_ObjectHideFlags: 0
