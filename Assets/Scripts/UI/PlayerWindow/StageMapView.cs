@@ -19,6 +19,9 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
     [SerializeField, Min(1f)] private float _corridorWidth = 8f;
     [SerializeField, Min(0f)] private float _padding = 24f;
 
+    [Header("Interaction")]
+    [SerializeField] private bool _allowInteraction = true;
+
     [Header("Zoom")]
     [SerializeField, Min(0.01f)] private float _minZoom = 1f;
     [SerializeField, Min(0.01f)] private float _maxZoom = 3f;
@@ -34,7 +37,10 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
     private readonly List<RectTransform> _roomPool = new();
     private readonly List<RectTransform> _corridorPool = new();
 
-    private MapGenerator _mapGenerator;
+    private StageManager _stageManager;
+
+    // 한 간선이 사용하는 마지막 복도 이미지 다음 인덱스를 저장한다.
+    private readonly List<int> _edgeCorridorEnds = new();
     private RectTransform _viewport;
     private StageGraph _displayedGraph;
     private Vector2 _mapCenter;
@@ -53,15 +59,24 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
 
     private void OnEnable()
     {
-        _panAction?.action.Enable();
-        _zoomInAction?.action.Enable();
-        _zoomOutAction?.action.Enable();
+        // 표시 전용 미니맵은 지도 조작 액션을 활성화하지 않는다.
+        if (_allowInteraction)
+        {
+            _panAction?.action.Enable();
+            _zoomInAction?.action.Enable();
+            _zoomOutAction?.action.Enable();
+        }
 
-        BindMapGenerator();
+        BindStageManager();
     }
 
     private void Update()
     {
+        if (!_allowInteraction)
+        {
+            return;
+        }
+
         if (!_viewport || !_mapRoot || _mapSize.x <= 0f || _mapSize.y <= 0f)
         {
             return;
@@ -88,32 +103,32 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
         }
     }
 
-    public void SetMapGenerator(MapGenerator mapGenerator)
+    public void SetStageManager(StageManager stageManager)
     {
-        if (_mapGenerator == mapGenerator)
+        if (_stageManager == stageManager)
         {
             return;
         }
 
-        if (_mapGenerator)
+        if (_stageManager)
         {
-            _mapGenerator.GraphChanged -= RefreshMap;
+            _stageManager.MapChanged -= RefreshMap;
         }
 
-        _mapGenerator = mapGenerator;
+        _stageManager = stageManager;
 
         // 비활성 상태에서는 참조만 저장하고, 탭을 열 때 연결한다.
         if (isActiveAndEnabled)
         {
             RefreshMap(null);
-            BindMapGenerator();
+            BindStageManager();
         }
     }
 
-    private void BindMapGenerator()
+    private void BindStageManager()
     {
         // StageManager의 Awake보다 먼저 활성화되면 할당을 기다린다.
-        if (!_mapGenerator)
+        if (!_stageManager)
         {
             return;
         }
@@ -137,22 +152,26 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
         }
 
         // 할당과 활성화 순서에 관계없이 중복 구독을 방지한다.
-        _mapGenerator.GraphChanged -= RefreshMap;
-        _mapGenerator.GraphChanged += RefreshMap;
+        _stageManager.MapChanged -= RefreshMap;
+        _stageManager.MapChanged += RefreshMap;
 
         // 지도 탭이 닫혀 있을 때 생성된 그래프도 처음 열면 표시한다.
-        RefreshMap(_mapGenerator.CurrentGraph);
+        RefreshMap(_stageManager.CurrentGraph);
     }
 
     private void OnDisable()
     {
-        _panAction?.action.Disable();
-        _zoomInAction?.action.Disable();
-        _zoomOutAction?.action.Disable();
-
-        if (_mapGenerator)
+        // 미니맵을 숨길 때 다른 지도에서 사용하는 액션에 영향을 주지 않는다.
+        if (_allowInteraction)
         {
-            _mapGenerator.GraphChanged -= RefreshMap;
+            _panAction?.action.Disable();
+            _zoomInAction?.action.Disable();
+            _zoomOutAction?.action.Disable();
+        }
+
+        if (_stageManager)
+        {
+            _stageManager.MapChanged -= RefreshMap;
         }
     }
 
@@ -163,6 +182,11 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
 
     public void OnScroll(PointerEventData eventData)
     {
+        if (!_allowInteraction)
+        {
+            return;
+        }
+
         if (!_mapRoot || Mathf.Approximately(eventData.scrollDelta.y, 0f))
         {
             return;
@@ -177,6 +201,11 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
 
     public void OnDrag(PointerEventData eventData)
     {
+        if (!_allowInteraction)
+        {
+            return;
+        }
+
         if (!_viewport || !_mapRoot || eventData.button != PointerEventData.InputButton.Left)
         {
             return;
@@ -204,6 +233,8 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
     {
         if (ReferenceEquals(_displayedGraph, graph))
         {
+            // 방문 상태만 달라졌다면 이미지 배치와 사용자의 줌·이동을 유지한다.
+            RefreshExplorationVisibility();
             FitMap();
             return;
         }
@@ -211,6 +242,7 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
         _displayedGraph = graph;
         _zoom = Mathf.Clamp(1f, _minZoom, Mathf.Max(_minZoom, _maxZoom));
         _usedCorridors = 0;
+        _edgeCorridorEnds.Clear();
 
         if (graph == null || graph.Nodes.Count == 0)
         {
@@ -237,6 +269,8 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
         for (int index = 0; index < graph.Edges.Count; index++)
         {
             DrawEdge(graph.Edges[index]);
+            // ㄱ자 복도처럼 여러 이미지를 사용하는 간선의 범위도 기록한다.
+            _edgeCorridorEnds.Add(_usedCorridors);
         }
 
         for (int index = 0; index < graph.Nodes.Count; index++)
@@ -249,7 +283,51 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
 
         HideUnused(_roomPool, graph.Nodes.Count);
         HideUnused(_corridorPool, _usedCorridors);
+        RefreshExplorationVisibility();
         FitMap();
+    }
+
+    private void RefreshExplorationVisibility()
+    {
+        if (!_stageManager || _displayedGraph == null)
+        {
+            return;
+        }
+
+        for (int index = 0; index < _displayedGraph.Nodes.Count; index++)
+        {
+            StageNode node = _displayedGraph.Nodes[index];
+            bool visible = _stageManager.IsVisited(node);
+
+            SetMapItemVisible(_roomPool[index], visible);
+        }
+
+        int corridorStart = 0;
+
+        for (int index = 0; index < _displayedGraph.Edges.Count; index++)
+        {
+            StageEdge edge = _displayedGraph.Edges[index];
+
+            // 연결된 방 중 한쪽만 방문했어도 전체 연결 복도를 공개한다.
+            bool visible = _stageManager.IsVisited(edge.From) || _stageManager.IsVisited(edge.To);
+            int corridorEnd = _edgeCorridorEnds[index];
+
+            for (int corridorIndex = corridorStart; corridorIndex < corridorEnd; corridorIndex++)
+            {
+                SetMapItemVisible(_corridorPool[corridorIndex], visible);
+            }
+
+            corridorStart = corridorEnd;
+        }
+    }
+
+    private static void SetMapItemVisible(RectTransform item, bool visible)
+    {
+        // 이미 원하는 상태인 오브젝트는 다시 활성화하거나 비활성화하지 않는다.
+        if (item.gameObject.activeSelf != visible)
+        {
+            item.gameObject.SetActive(visible);
+        }
     }
 
     private void CalculateBounds(StageGraph graph)

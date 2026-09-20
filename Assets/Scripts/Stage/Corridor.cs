@@ -2,11 +2,11 @@ using UnityEngine;
 
 public static class Corridor
 {
-    private const float _moduleLength = 1f;
-    private const float _halfModuleLength = 0.5f;
-    private const float _cornerHalfSize = 1.5f;
-    private const float _distanceTolerance = 0.01f;
-    private const float _directionTolerance = 0.999f;
+    private const float ModuleLength = 1f;
+    private const float HalfModuleLength = 0.5f;
+    private const float CornerHalfSize = 1.5f;
+    private const float DistanceTolerance = 0.01f;
+    private const float DirectionTolerance = 0.999f;
 
     public static bool TryGenerate(GameObject normalModule, GameObject halfModule, GameObject cornerModule,
         Door fromDoor, Door toDoor, Transform corridorParent)
@@ -17,7 +17,7 @@ public static class Corridor
             return false;
         }
 
-        if (Mathf.Abs(fromDoor.transform.position.y - toDoor.transform.position.y) > _distanceTolerance)
+        if (Mathf.Abs(fromDoor.transform.position.y - toDoor.transform.position.y) > DistanceTolerance)
         {
             Debug.LogError("서로 다른 높이에 있는 문은 현재 복도 방식으로 연결할 수 없습니다.");
             return false;
@@ -45,7 +45,7 @@ public static class Corridor
         Vector3 corridorDirection = toPosition - fromPosition;
         float distance = corridorDirection.magnitude;
 
-        if (distance <= _distanceTolerance)
+        if (distance <= DistanceTolerance)
         {
             Debug.LogError("직선 복도를 생성하기에는 문 사이 거리가 너무 짧습니다.");
             return false;
@@ -57,8 +57,8 @@ public static class Corridor
         Vector3 toDirection = GetWorldDirection(toDoor.Direction);
 
         // 각 문의 바깥 방향이 상대 문을 향하는 경우에만 직선으로 연결한다.
-        if (Vector3.Dot(corridorDirection, fromDirection) < _directionTolerance ||
-            Vector3.Dot(-corridorDirection, toDirection) < _directionTolerance)
+        if (Vector3.Dot(corridorDirection, fromDirection) < DirectionTolerance ||
+            Vector3.Dot(-corridorDirection, toDirection) < DirectionTolerance)
         {
             Debug.LogError("두 문이 마주 보고 있지 않아 직선 복도를 생성할 수 없습니다.");
             return false;
@@ -103,8 +103,8 @@ public static class Corridor
         }
 
         // 3×3 모퉁이가 중심에서 각 방향으로 1.5유닛을 차지한다.
-        float fromStraightLength = fromDistance - _cornerHalfSize;
-        float toStraightLength = toDistance - _cornerHalfSize;
+        float fromStraightLength = fromDistance - CornerHalfSize;
+        float toStraightLength = toDistance - CornerHalfSize;
 
         if (!TryGetModuleLayout(fromStraightLength, out int fromNormalModuleCount, out bool fromRequiresHalfModule) ||
             !TryGetModuleLayout(toStraightLength, out int toNormalModuleCount, out bool toRequiresHalfModule))
@@ -139,7 +139,7 @@ public static class Corridor
         fromDistance = 0f;
         toDistance = 0f;
 
-        if (Mathf.Abs(denominator) <= _distanceTolerance) //평행인지 검사
+        if (Mathf.Abs(denominator) <= DistanceTolerance) //평행인지 검사
         {
             return false;
         }
@@ -148,8 +148,8 @@ public static class Corridor
         toDistance = CrossXZ(positionDifference, fromDirection) / denominator;
 
         // 모퉁이 중심은 양쪽 문에서 바깥 방향으로 최소 1.5유닛 떨어져야 한다.
-        if (fromDistance < _cornerHalfSize - _distanceTolerance ||
-            toDistance < _cornerHalfSize - _distanceTolerance)
+        if (fromDistance < CornerHalfSize - DistanceTolerance ||
+            toDistance < CornerHalfSize - DistanceTolerance)
         {
             return false;
         }
@@ -157,7 +157,7 @@ public static class Corridor
         Vector3 fromCornerPosition = fromPosition + fromDirection * fromDistance;
         Vector3 toCornerPosition = toPosition + toDirection * toDistance;
 
-        if ((fromCornerPosition - toCornerPosition).sqrMagnitude > _distanceTolerance * _distanceTolerance)
+        if ((fromCornerPosition - toCornerPosition).sqrMagnitude > DistanceTolerance * DistanceTolerance)
         {
             return false;
         }
@@ -171,15 +171,15 @@ public static class Corridor
         normalModuleCount = 0;
         requiresHalfModule = false;
 
-        if (length < -_distanceTolerance)
+        if (length < -DistanceTolerance)
         {
             return false;
         }
 
         float clampedLength = Mathf.Max(0f, length);
-        int halfUnitCount = Mathf.RoundToInt(clampedLength / _halfModuleLength);
+        int halfUnitCount = Mathf.RoundToInt(clampedLength / HalfModuleLength);
 
-        if (Mathf.Abs(clampedLength - halfUnitCount * _halfModuleLength) > _distanceTolerance)
+        if (Mathf.Abs(clampedLength - halfUnitCount * HalfModuleLength) > DistanceTolerance)
         {
             return false;
         }
@@ -197,7 +197,7 @@ public static class Corridor
         for (int index = 0; index < normalModuleCount; index++)
         {
             // 길이 1 모듈의 중심이 직선 구간을 빈틈없이 채우도록 0.5유닛부터 배치한다.
-            Vector3 modulePosition = startPosition + direction * ((index + 0.5f) * _moduleLength);
+            Vector3 modulePosition = startPosition + direction * ((index + 0.5f) * ModuleLength);
             Object.Instantiate(normalModule, modulePosition, rotation, corridorParent);
         }
 
@@ -207,14 +207,14 @@ public static class Corridor
         }
 
         // Half 모듈의 중심을 마지막 일반 모듈 이후의 0.25유닛 위치에 맞춘다.
-        float halfModuleCenterDistance = normalModuleCount * _moduleLength + _halfModuleLength * 0.5f;
+        float halfModuleCenterDistance = normalModuleCount * ModuleLength + HalfModuleLength * 0.5f;
         Vector3 halfModulePosition = startPosition + direction * halfModuleCenterDistance;
         Object.Instantiate(halfModule, halfModulePosition, rotation, corridorParent);
     }
 
     private static bool IsPerpendicular(DoorDirection first, DoorDirection second)
     {
-        return Mathf.Abs(Vector3.Dot(GetWorldDirection(first), GetWorldDirection(second))) <= _distanceTolerance;
+        return Mathf.Abs(Vector3.Dot(GetWorldDirection(first), GetWorldDirection(second))) <= DistanceTolerance;
     }
 
     private static float CrossXZ(Vector3 first, Vector3 second)

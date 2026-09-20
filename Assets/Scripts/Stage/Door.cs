@@ -15,6 +15,11 @@ public class Door : MonoBehaviour
     [SerializeField] private GameObject _normalWall;
     [SerializeField] private GameObject _doorWall;
 
+    [Header("입장 감지")]
+    [SerializeField] private RoomEntranceTrigger _entranceTrigger;
+
+    private Room _room;
+
     public Door ConnectedDoor { get; private set; }
     public bool IsConnected => ConnectedDoor != null;
 
@@ -22,6 +27,28 @@ public class Door : MonoBehaviour
     {
         // 스테이지를 다시 생성하더라도 소켓은 항상 닫힌 상태에서 시작한다.
         SetWallState(false);
+    }
+
+    public void Initialize(Room room)
+    {
+        _room = room;
+
+        // 계층 검색 대신 프리팹에 지정한 Trigger에 소유 문을 전달한다.
+        if (_entranceTrigger)
+        {
+            _entranceTrigger.Initialize(this);
+        }
+    }
+
+    public void NotifyPlayerEntered(PlayerManager player)
+    {
+        if (!isActiveAndEnabled || !IsConnected || !_room || !player)
+        {
+            return;
+        }
+
+        // 입장한 문 정보와 함께 소유 방에 알린다.
+        _room.NotifyPlayerEntered(this, player);
     }
 
     public bool TryConnect(Door otherDoor) //연결 시도
