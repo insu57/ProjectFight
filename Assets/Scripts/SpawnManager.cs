@@ -11,6 +11,25 @@ public class SpawnManager : MonoBehaviour
     {
         Player = FindFirstObjectByType<PlayerManager>();
     }
+    public EnemyManager SpawnEnemy(EnemyManager prefab, Vector3 position, Quaternion rotation)
+    {
+        PoolingManager poolingManager = PoolingManager.Instance;
+
+        if (!poolingManager || !Player)
+        {
+            return null;
+        }
+
+        EnemyManager enemy = poolingManager.Spawn(prefab, position, rotation);
+
+        if (enemy)
+        {
+            enemy.SetTarget(Player.transform);
+        }
+
+        return enemy;
+    }
+
     private void Start()
     {
         foreach (EnemyManager enemy in EnemyList)

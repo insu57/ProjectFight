@@ -36,9 +36,25 @@ public sealed class EnemyPatternExecutor : MonoBehaviour
 
     public void SetPatterns(EnemyPatternDefinition[] patterns)
     {
-        CancelCurrentPattern(false);
         _patterns = patterns ?? Array.Empty<EnemyPatternDefinition>();
-        _remainingCooldowns = new float[_patterns.Length];
+
+        // 같은 크기의 패턴 목록은 기존 쿨다운 배열을 재사용한다.
+        if (_remainingCooldowns == null || _remainingCooldowns.Length != _patterns.Length)
+        {
+            _remainingCooldowns = new float[_patterns.Length];
+        }
+
+        ResetForPool();
+    }
+
+    public void ResetForPool()
+    {
+        ClearCurrentPattern();
+
+        if (_remainingCooldowns != null)
+        {
+            Array.Clear(_remainingCooldowns, 0, _remainingCooldowns.Length);
+        }
     }
 
     public void UpdateCooldowns(float deltaTime)

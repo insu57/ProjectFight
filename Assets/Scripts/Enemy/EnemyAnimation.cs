@@ -17,6 +17,21 @@ public sealed class EnemyAnimation : CharacterAnimation
     private bool _isGuardRequested;
     private int _guardExitRequestFrame;
 
+    public void ResetForSpawn()
+    {
+        _isGuardRequested = false;
+        _guardExitRequestFrame = -1;
+
+        if (CharacterAnimator)
+        {
+            CharacterAnimator.SetBool(_isGuardingHash, false);
+            CharacterAnimator.SetFloat(_moveXHash, 0f);
+            CharacterAnimator.SetFloat(_moveYHash, 0f);
+        }
+
+        ResetLocomotionForPool();
+    }
+
     public void SetMoveAmount(float moveAmount)
     {
         SetMovement(new Vector2(0f, moveAmount), Time.deltaTime);

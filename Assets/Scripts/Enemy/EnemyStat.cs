@@ -38,6 +38,18 @@ public sealed class EnemyStat : MonoBehaviour
         _currentHealth = _baseMaxHealth;
     }
 
+    public void ResetForSpawn()
+    {
+        // 사망한 적도 재사용할 수 있도록 체력과 강인도를 직접 초기화한다.
+        _currentHealth = _baseMaxHealth;
+        CurrentPoise = MaxPoise;
+        CurrentGuardPoise = MaxGuardPoise;
+        _poiseRecoveryRemaining = 0f;
+        _guardPoiseRecoveryRemaining = 0f;
+
+        HealthChanged?.Invoke(_currentHealth, _baseMaxHealth);
+    }
+
     public void InitializePoiseStats(EnemyDefinition definition)
     {
         if (!definition) return;

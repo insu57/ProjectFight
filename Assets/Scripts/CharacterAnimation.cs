@@ -157,6 +157,18 @@ public abstract class CharacterAnimation : MonoBehaviour
         return _hasEnteredAttackState;
     }
 
+    protected void ResetLocomotionForPool()
+    {
+        ClearHitStop();
+        ResetAttackState();
+
+        // 이전 공격·기절 모션과 섞이지 않도록 기본 상태로 즉시 전환한다.
+        if (CharacterAnimator && CharacterAnimator.isActiveAndEnabled)
+        {
+            CharacterAnimator.Play(_locomotionStateHash, 0, 0f);
+        }
+    }
+
     public void CompleteAttack()
     {
         // 비활성화 중에는 애니메이션 전환을 요청하지 않는다.

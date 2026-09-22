@@ -22,6 +22,13 @@ public sealed class EnemyMove : MonoBehaviour
         TryGetComponent(out _characterController);
     }
 
+    public void ResetForSpawn()
+    {
+        // 이전 위치에서 누적된 낙하 속도를 제거한다.
+        _verticalVelocity = 0f;
+        MoveAmount = 0f;
+    }
+
     public void MoveTowards(Vector3 targetPosition, float deltaTime)
     {
         Vector3 moveDirection = targetPosition - transform.position;

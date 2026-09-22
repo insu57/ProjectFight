@@ -7,7 +7,7 @@ using UnityEngine;
 [RequireComponent(typeof(EnemyMove))]
 [RequireComponent(typeof(EnemyAnimation))]
 [RequireComponent(typeof(EnemyPatternExecutor))]
-public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
+public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 {
     private Transform _target;
     private AttackHitbox _attackHitbox;
@@ -64,12 +64,57 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
 
     private void Start()
     {
+        if (_hasStarted)
+        {
+            return;
+        }
+
         _hasStarted = true;
 
-        if (!_enemyDefinition) return;
+        if (!_enemyDefinition)
+        {
+            return;
+        }
 
         _enemyStat.InitializePoiseStats(_enemyDefinition);
         _patternExecutor.SetPatterns(_enemyDefinition.Patterns);
+    }
+
+    protected override void OnPoolSpawned()
+    {
+        _hasStarted = true;
+        _target = null;
+        _circleBlockedTime = 0f;
+        _poiseReaction.Reset();
+        _attackHitbox?.EndAttack();
+
+        if (_enemyDefinition)
+        {
+            _enemyStat.InitializePoiseStats(_enemyDefinition);
+            _patternExecutor.SetPatterns(_enemyDefinition.Patterns);
+        }
+        else
+        {
+            _patternExecutor.ResetForPool();
+        }
+
+        _enemyMove.ResetForSpawn();
+        _enemyAnimation.ResetForSpawn();
+
+        _enemyState.SetBehaviorState(EnemyBehaviorState.Idle);
+        _enemyState.SetActionState(EnemyActionState.Free);
+        _enemyStat.ResetForSpawn();
+    }
+
+    protected override void OnPoolDespawned()
+    {
+        _target = null;
+
+        // 이전 스폰에서 예약한 작업이 재사용 이후 실행되지 않도록 정리한다.
+        CancelInvoke();
+        StopAllCoroutines();
+
+        // 공격·패턴·히트스탑과 이벤트 구독은 기존 OnDisable에서 정리한다.
     }
 
     private void OnDisable()
@@ -446,12 +491,19 @@ public sealed class EnemyManager : MonoBehaviour, IHitStopReceiver
             _attackHitbox.EndAttack();
         }
 
-        _patternExecutor?.CancelCurrentPattern(false);
+        if (_patternExecutor)
+        {
+            _patternExecutor.CancelCurrentPattern(false);
+        }
+
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
         _enemyAnimation?.CancelGuard();
         _enemyAnimation?.CompleteAttack();
         _enemyState?.SetBehaviorState(EnemyBehaviorState.Idle);
         _enemyState?.SetActionState(EnemyActionState.Dead);
+
+        // 현재는 사망 즉시 반환한다. 사망 연출을 추가하면 완료 시점으로 이동한다.
+        ReturnToPool();
     }
 }

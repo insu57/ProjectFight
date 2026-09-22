@@ -17,7 +17,10 @@ public class StageManager : MonoBehaviour
 
     public StageGraph CurrentGraph { get; private set; }
 
-    // 그래프 생성 또는 새로운 방 방문 시 지도 갱신을 요청한다.
+    // 마지막으로 입장하거나 배치된 방을 현재 위치로 사용한다.
+    public StageNode CurrentRoom { get; private set; }
+
+    // 그래프 생성, 새로운 방 방문 또는 현재 방 변경 시 지도 갱신을 요청한다.
     public event Action<StageGraph> MapChanged;
 
     public event Action<StageNode, Door> RoomEntered;
@@ -71,12 +74,13 @@ public class StageManager : MonoBehaviour
 
     private void HandleGraphChanged(StageGraph graph)
     {
-        // 매니저를 다시 활성화한 경우에는 같은 그래프의 방문 기록을 유지한다.
+        // 매니저를 다시 활성화한 경우에는 같은 그래프의 방문 기록과 현재 방을 유지한다.
         bool graphChanged = !ReferenceEquals(CurrentGraph, graph);
 
         if (graphChanged)
         {
             CurrentGraph = graph;
+            CurrentRoom = null;
             _visitedRooms.Clear();
         }
 
@@ -105,6 +109,12 @@ public class StageManager : MonoBehaviour
             if (graphChanged && node.RoomData && node.RoomData.RoomType == RoomType.Start)
             {
                 _visitedRooms.Add(node);
+
+                // 현재 씬의 시작 배치에 맞춰 최초 위치를 시작 방으로 지정한다.
+                if (_playerManager && CurrentRoom == null)
+                {
+                    CurrentRoom = node;
+                }
             }
         }
 
@@ -128,11 +138,7 @@ public class StageManager : MonoBehaviour
             return;
         }
 
-        // 최초 방문에서만 공개 상태가 달라진다.
-        if (_visitedRooms.Add(node))
-        {
-            MapChanged?.Invoke(CurrentGraph);
-        }
+        UpdatePlayerRoom(node);
 
         // 재입장도 별도의 입장 사건이므로 기존 이벤트는 계속 전달한다.
         RoomEntered?.Invoke(node, entrance);
@@ -151,7 +157,19 @@ public class StageManager : MonoBehaviour
         }
 
         // 스폰·순간이동 담당자가 실제 배치한 방을 전달한다.
-        if (_visitedRooms.Add(node))
+        UpdatePlayerRoom(node);
+    }
+
+    private void UpdatePlayerRoom(StageNode node)
+    {
+        bool firstVisit = _visitedRooms.Add(node);
+        bool roomChanged = !ReferenceEquals(CurrentRoom, node);
+
+        // 지도 갱신 전에 현재 방을 저장해 모든 지도에 동일한 위치를 전달한다.
+        CurrentRoom = node;
+
+        // 이미 방문한 방으로 돌아왔을 때도 위치 강조를 갱신한다.
+        if (firstVisit || roomChanged)
         {
             MapChanged?.Invoke(CurrentGraph);
         }

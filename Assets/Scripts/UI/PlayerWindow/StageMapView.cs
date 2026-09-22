@@ -10,7 +10,7 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
 {
     [Header("References")]
     [SerializeField] private RectTransform _mapRoot;
-    [SerializeField] private Image _roomPrefab;
+    [SerializeField] private StageMapRoomView _roomPrefab;
     [SerializeField] private Image _corridorPrefab;
 
     [Header("Map Layout")]
@@ -34,7 +34,7 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
     [SerializeField, Min(0f)] private float _gamepadPanSpeed = 600f;
     [SerializeField, Min(0f)] private float _gamepadZoomSpeed = 1f;
 
-    private readonly List<RectTransform> _roomPool = new();
+    private readonly List<StageMapRoomView> _roomPool = new();
     private readonly List<RectTransform> _corridorPool = new();
 
     private StageManager _stageManager;
@@ -233,7 +233,7 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
     {
         if (ReferenceEquals(_displayedGraph, graph))
         {
-            // 방문 상태만 달라졌다면 이미지 배치와 사용자의 줌·이동을 유지한다.
+            // 방문 상태나 현재 방만 달라졌다면 이미지 배치와 사용자의 줌·이동을 유지한다.
             RefreshExplorationVisibility();
             FitMap();
             return;
@@ -275,10 +275,11 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
 
         for (int index = 0; index < graph.Nodes.Count; index++)
         {
-            RectTransform room = GetImage(_roomPool, index, _roomPrefab);
+            StageMapRoomView room = GetRoom(index);
             Vector2 position = GetMapPosition(graph.Nodes[index]);
 
-            SetRect(room, position, Vector2.one * _roomLength, 0f);
+            // 루트를 배치해 기본 이미지와 자식 표시 이미지가 함께 이동하도록 한다.
+            SetRect((RectTransform)room.transform, position, Vector2.one * _roomLength, 0f);
         }
 
         HideUnused(_roomPool, graph.Nodes.Count);
@@ -294,12 +295,18 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
             return;
         }
 
+        StageNode currentRoom = _stageManager.CurrentRoom;
+
         for (int index = 0; index < _displayedGraph.Nodes.Count; index++)
         {
             StageNode node = _displayedGraph.Nodes[index];
+            StageMapRoomView room = _roomPool[index];
             bool visible = _stageManager.IsVisited(node);
 
-            SetMapItemVisible(_roomPool[index], visible);
+            SetMapItemVisible(room, visible);
+
+            // 현재 방만 강조하고 다른 방의 이전 강조는 해제한다.
+            room.SetCurrentLocation(visible && ReferenceEquals(node, currentRoom));
         }
 
         int corridorStart = 0;
@@ -321,7 +328,7 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
         }
     }
 
-    private static void SetMapItemVisible(RectTransform item, bool visible)
+    private static void SetMapItemVisible(Component item, bool visible)
     {
         // 이미 원하는 상태인 오브젝트는 다시 활성화하거나 비활성화하지 않는다.
         if (item.gameObject.activeSelf != visible)
@@ -397,6 +404,23 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
         SetRect(corridor, (start + end) * 0.5f, size, angle);
     }
 
+    private StageMapRoomView GetRoom(int index)
+    {
+        if (index >= _roomPool.Count)
+        {
+            StageMapRoomView room = Instantiate(_roomPrefab, _mapRoot, false);
+            room.RoomImage.preserveAspect = false;
+            _roomPool.Add(room);
+        }
+
+        StageMapRoomView item = _roomPool[index];
+        SetMapItemVisible(item, true);
+
+        // 새 그래프의 방으로 재사용할 때 이전 강조 표시를 초기화한다.
+        item.ResetIndicators();
+        return item;
+    }
+
     private RectTransform GetImage(List<RectTransform> pool, int index, Image prefab)
     {
         if (index >= pool.Count)
@@ -429,7 +453,7 @@ public sealed class StageMapView : MonoBehaviour, IScrollHandler, IDragHandler
         item.SetAsLastSibling();
     }
 
-    private static void HideUnused(List<RectTransform> pool, int usedCount)
+    private static void HideUnused<T>(List<T> pool, int usedCount) where T : Component
     {
         for (int index = usedCount; index < pool.Count; index++)
         {
