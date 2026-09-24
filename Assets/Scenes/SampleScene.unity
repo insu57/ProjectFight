@@ -1717,6 +1717,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3473487168886198033, guid: a5f597ed3878a9e4aa0eab241e0a93ec, type: 3}
+      propertyPath: _maxZoom
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473487168886198033, guid: a5f597ed3878a9e4aa0eab241e0a93ec, type: 3}
+      propertyPath: _minZoom
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473487168886198033, guid: a5f597ed3878a9e4aa0eab241e0a93ec, type: 3}
+      propertyPath: _padding
+      value: 24
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473487168886198033, guid: a5f597ed3878a9e4aa0eab241e0a93ec, type: 3}
+      propertyPath: _allowInteraction
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -8570,6 +8586,10 @@ PrefabInstance:
     - target: {fileID: 2763954734200478094, guid: a5f597ed3878a9e4aa0eab241e0a93ec, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473487168886198033, guid: a5f597ed3878a9e4aa0eab241e0a93ec, type: 3}
+      propertyPath: _zoomStep
+      value: 0.4
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

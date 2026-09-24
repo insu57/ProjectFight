@@ -121,6 +121,19 @@ public class StageManager : MonoBehaviour
         MapChanged?.Invoke(graph);
     }
 
+    public bool TryGetPlayerPosition(out Vector3 position)
+    {
+        position = default;
+        if (!_playerManager)
+        {
+            return false;
+        }
+
+        // 지도는 플레이어 하위 컴포넌트를 직접 참조하지 않고 매니저를 통해 위치를 읽는다.
+        position = _playerManager.transform.position;
+        return true;
+    }
+
     public bool IsVisited(StageNode node)
     {
         return node != null && _visitedRooms.Contains(node);

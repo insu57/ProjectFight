@@ -1177,12 +1177,12 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": ""MapPan"",
-                    ""type"": ""Button"",
+                    ""type"": ""Value"",
                     ""id"": ""3a9971b1-bba1-4f73-a161-b3e5d0984d93"",
-                    ""expectedControlType"": """",
+                    ""expectedControlType"": ""Vector2"",
                     ""processors"": """",
                     ""interactions"": """",
-                    ""initialStateCheck"": false
+                    ""initialStateCheck"": true
                 }
             ],
             ""bindings"": [
