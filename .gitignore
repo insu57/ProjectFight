@@ -14,6 +14,7 @@
 /Assets/Plugins/Demigiant
 /Packages/com.arongranberg.astar
 /AGENTS.MD
+/Assets/MagicaCloth2
 *.log
 
 # MemoryCaptures can get excessive in size.

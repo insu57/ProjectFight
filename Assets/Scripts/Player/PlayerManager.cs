@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -18,6 +19,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private PlayerSkillTree _playerSkillTree;
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
     private bool _hasPendingGuardChange;
+    // 범위 진입/이탈 때만 갱신하고, 입력 시에만 가장 가까운 문을 선택한다.
+    private readonly List<DoorInteractionTrigger> _doorInteractionCandidates = new(4);
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
     private readonly PoiseReactionRuntime _poiseReaction = new();
 
@@ -84,6 +87,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerControl.GuardChanged += HandleGuardChanged;
             _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
             _playerControl.OptionWindowPressed += HandleOptionWindowPressed;
+            _playerControl.InteractPressed += HandleInteractPressed;
         }
 
         if (_playerStat)
@@ -103,6 +107,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private void OnDisable()
     {
         _hasPendingGuardChange = false;
+        _doorInteractionCandidates.Clear();
 
         if (_playerAnimation)
         {
@@ -135,6 +140,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerControl.GuardChanged -= HandleGuardChanged;
             _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
             _playerControl.OptionWindowPressed -= HandleOptionWindowPressed;
+            _playerControl.InteractPressed -= HandleInteractPressed;
         }
 
         if (_playerStat)
@@ -484,6 +490,55 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
         _playerLockOn.ToggleTarget();
         NotifyLockOnTargetChanged();
+    }
+
+    public void RegisterDoorInteraction(DoorInteractionTrigger trigger)
+    {
+        if (isActiveAndEnabled && trigger && !_doorInteractionCandidates.Contains(trigger))
+        {
+            Debug.Log("RegisterDoorInteraction");
+            _doorInteractionCandidates.Add(trigger);
+        }
+    }
+
+    public void UnregisterDoorInteraction(DoorInteractionTrigger trigger)
+    {
+        _doorInteractionCandidates.Remove(trigger);
+    }
+
+    private void HandleInteractPressed()
+    {
+        if (!isActiveAndEnabled || IsHitStopped || !_playerState || _playerState.ActionState != PlayerActionState.Free) return;
+
+        Door nearestDoor = null;
+        float nearestDistance = float.PositiveInfinity;
+
+        for (int index = _doorInteractionCandidates.Count - 1; index >= 0; index--)
+        {
+            DoorInteractionTrigger trigger = _doorInteractionCandidates[index];
+
+            // 순간이동이나 비활성화로 Exit를 놓친 후보도 입력 시 다시 검증한다.
+            if (!trigger || !trigger.IsPlayerInRange(this))
+            {
+                Debug.Log("DoorTrigger outofrange");
+                _doorInteractionCandidates.RemoveAt(index);
+                continue;
+            }
+
+            Door door = trigger.Door;
+            if (!door || !door.CanOpen) continue;
+
+            float distance = (door.transform.position - transform.position).sqrMagnitude;
+            if (distance >= nearestDistance) continue;
+
+            nearestDistance = distance;
+            nearestDoor = door;
+        }
+
+        if (nearestDoor)
+        {
+            nearestDoor.TryOpen();
+        }
     }
 
     private void HandleOptionWindowPressed()

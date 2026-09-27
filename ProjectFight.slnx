@@ -1,7 +1,9 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="AstarPathfindingProject.csproj" />
+  <Project Path="MagicaClothV2.csproj" />
   <Project Path="AstarPathfindingProjectEditor.csproj" />
+  <Project Path="MagicaClothV2.Editor.csproj" />
   <Project Path="com.unity.animations.springbone.csproj" />
   <Project Path="com.unity.animations.springbone.editor.csproj" />
   <Project Path="MotionWarping.Editor.csproj" />
@@ -11,6 +13,7 @@
   <Project Path="Assembly-CSharp-firstpass.csproj" />
   <Project Path="AstarPackageToolsEditor.csproj" />
   <Project Path="andywiecko.BurstTriangulator.csproj" />
+  <Project Path="MagicaCloth2Example.csproj" />
   <Project Path="PackageTools.csproj" />
   <Project Path="DrawingEditor.csproj" />
   <Project Path="DrawingPackageToolsEditor.csproj" />
