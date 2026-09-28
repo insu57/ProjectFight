@@ -15,8 +15,12 @@ MonoBehaviour:
   <AttackId>k__BackingField: 5
   <AttackName>k__BackingField: Heavy_01
   <AnimationStateName>k__BackingField: Heavy_01
+  <AnimationSpeed>k__BackingField: 1.5
   <BaseDamage>k__BackingField: 1
-  <TransitionDuration>k__BackingField: 0.1
+  <BasePoiseDamage>k__BackingField: 15
+  <BaseGuardPoiseDamage>k__BackingField: 15
+  <HitStopDuration>k__BackingField: 15
+  <TransitionDuration>k__BackingField: 0.2
   <ComboInputStartNormalizedTime>k__BackingField: 0.2
   <ComboTransitionNormalizedTime>k__BackingField: 0.55
   <ComboInputEndNormalizedTime>k__BackingField: 0.8

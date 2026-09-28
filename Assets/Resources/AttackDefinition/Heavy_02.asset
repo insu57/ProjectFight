@@ -15,8 +15,12 @@ MonoBehaviour:
   <AttackId>k__BackingField: 7
   <AttackName>k__BackingField: Heavy_02
   <AnimationStateName>k__BackingField: Heavy_02
+  <AnimationSpeed>k__BackingField: 0.7
   <BaseDamage>k__BackingField: 0
-  <TransitionDuration>k__BackingField: 0.1
+  <BasePoiseDamage>k__BackingField: 20
+  <BaseGuardPoiseDamage>k__BackingField: 20
+  <HitStopDuration>k__BackingField: 20
+  <TransitionDuration>k__BackingField: 0.2
   <ComboInputStartNormalizedTime>k__BackingField: 0.2
   <ComboTransitionNormalizedTime>k__BackingField: 0.55
   <ComboInputEndNormalizedTime>k__BackingField: 0.8
@@ -47,3 +51,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  <HitboxSize>k__BackingField: {x: 1, y: 1, z: 1}
+  <HitboxOffset>k__BackingField: {x: 0, y: 1, z: 1}
+  <HitStartNormalizedTime>k__BackingField: 0.2
+  <HitEndNormalizedTime>k__BackingField: 0.4

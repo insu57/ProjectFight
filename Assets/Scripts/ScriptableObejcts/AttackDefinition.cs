@@ -6,6 +6,8 @@ public class AttackDefinition : ScriptableObject
     [field: SerializeField] public int AttackId { get; private set; }
     [field: SerializeField] public string AttackName { get; private set; }
     [field: SerializeField] public string AnimationStateName { get; private set; }
+    // 공격 고유의 기본 배속이며, 캐릭터의 공격속도 배율은 재생할 때 별도로 곱한다.
+    [field: SerializeField, Min(0.01f)] public float AnimationSpeed { get; private set; } = 1f;
     [field: SerializeField] public float BaseDamage { get; private set; }
     // 공격자 스탯과 아이템 보정을 적용하기 전의 강인도 감소량이다.
     [field: SerializeField, Min(0f)] public float BasePoiseDamage { get; private set; }
@@ -36,6 +38,8 @@ public class AttackDefinition : ScriptableObject
 
     private void OnValidate()
     {
+        AnimationSpeed = Mathf.Max(0.01f, AnimationSpeed);
+
         // 입력 허용 시작, 연계 실행, 입력 허용 종료 순서가 뒤집히지 않도록 보정한다.
         ComboInputStartNormalizedTime = Mathf.Clamp01(ComboInputStartNormalizedTime);
         ComboInputEndNormalizedTime = Mathf.Clamp(ComboInputEndNormalizedTime, ComboInputStartNormalizedTime, 1f);

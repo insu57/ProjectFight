@@ -49,9 +49,10 @@ public sealed class PlayerAnimation : CharacterAnimation
         CharacterAnimator.SetFloat(_moveYHash, localMoveDirection.y, _movementDampTime, deltaTime);
     }
 
-    public void PlayAttack(AttackDefinition attackDefinition)
+    public void PlayAttack(AttackDefinition attackDefinition, float attackSpeedMultiplier = 1f)
     {
-        TryPlayAttack(attackDefinition);
+        // 추후 PlayerManager가 전달하는 패시브 배율을 공통 공격 재생에 반영한다.
+        TryPlayAttack(attackDefinition, attackSpeedMultiplier);
     }
 
     public void PlayDodge(Vector2 dodgeDirection)

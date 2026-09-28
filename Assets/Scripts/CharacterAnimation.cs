@@ -4,6 +4,7 @@ using UnityEngine;
 public abstract class CharacterAnimation : MonoBehaviour
 {
     private const string AttackTagName = "Attack";
+    private static readonly int _attackSpeedHash = Animator.StringToHash("AttackSpeed");
 
     [Header("공통 공격 애니메이션")]
     [SerializeField] private string _locomotionStateName = "Base Layer.Locomotion";
@@ -79,13 +80,16 @@ public abstract class CharacterAnimation : MonoBehaviour
         ClearHitStop();
     }
 
-    public bool TryPlayAttack(AttackDefinition attackDefinition)
+    public bool TryPlayAttack(AttackDefinition attackDefinition, float attackSpeedMultiplier = 1f)
     {
         if (!CharacterAnimator || !attackDefinition)
         {
             return false;
         }
 
+        // 공격 상태 전용 배속을 사용해 히트스탑의 Animator.speed 정지/복원과 분리한다.
+        float attackSpeed = attackDefinition.AnimationSpeed * attackSpeedMultiplier;
+        CharacterAnimator.SetFloat(_attackSpeedHash, attackSpeed);
         CharacterAnimator.CrossFadeInFixedTime(attackDefinition.AnimationStateHash, attackDefinition.TransitionDuration, 0);
         _isAttackRequested = true;
         _hasEnteredAttackState = false;
@@ -185,5 +189,11 @@ public abstract class CharacterAnimation : MonoBehaviour
     {
         _isAttackRequested = false;
         _hasEnteredAttackState = false;
+
+        // 공격 종료, 피격 중단, 풀 재사용 시 이전 공격의 배속을 정리한다.
+        if (CharacterAnimator)
+        {
+            CharacterAnimator.SetFloat(_attackSpeedHash, 1f);
+        }
     }
 }

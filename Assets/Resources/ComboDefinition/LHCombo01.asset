@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LHCombo01
   m_EditorClassIdentifier: Assembly-CSharp::ComboDefinitioon
   <ComboID>k__BackingField: 3
-  <ComboName>k__BackingField: "\uC57D\uAC15\uCF64\uBCF401"
+  <ComboName>k__BackingField: "\uC57D\uAC15"
   <ComboSteps>k__BackingField:
   - AttackDefinition: {fileID: 11400000, guid: 1b85b861fab31a24e81f85e01772e7f5, type: 2}
     AttackInputType: 0

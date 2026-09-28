@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: HeavyCombo
   m_EditorClassIdentifier: Assembly-CSharp::ComboDefinitioon
   <ComboID>k__BackingField: 2
-  <ComboName>k__BackingField: "\uAC15\uACF5\uCF64\uBCF4"
+  <ComboName>k__BackingField: "\uAC15\uAC15\uAC15"
   <ComboSteps>k__BackingField:
   - AttackDefinition: {fileID: 11400000, guid: 082a856532569b246b713a9209ae64e3, type: 2}
     AttackInputType: 1
