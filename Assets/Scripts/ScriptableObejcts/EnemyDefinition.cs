@@ -9,6 +9,15 @@ public class EnemyDefinition : ScriptableObject
     [field: SerializeField] public GameObject Model { get; private set; }
     [field: SerializeField] public EnemyPatternDefinition[] Patterns { get; private set; }
 
+    [Header("Base Stats")]
+    // 적 종류의 기본값이며 현재 체력 등 런타임 상태는 EnemyStat에서 관리한다.
+    [field: SerializeField, Min(1f)] public float MaxHealth { get; private set; } = 100f;
+    [field: SerializeField, Min(0f)] public float AttackPower { get; private set; }
+    [field: SerializeField, Min(0f)] public float DefensePower { get; private set; }
+    [field: SerializeField, Min(0f)] public float MoveSpeed { get; private set; } = 3.5f;
+    // 공격별 AnimationSpeed에 곱하는 배율이다. 이동과 피격 모션에는 적용하지 않는다.
+    [field: SerializeField, Min(0.01f)] public float AttackSpeed { get; private set; } = 1f;
+
     // 적 종류별 일반 강인도 설정이다.
     [field: SerializeField, Min(0f)] public float MaxPoise { get; private set; } = 100f;
     [field: SerializeField, Min(0f)] public float PoiseRecoveryDelay { get; private set; } = 3f;

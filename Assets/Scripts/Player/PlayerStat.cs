@@ -134,6 +134,25 @@ public class PlayerStat : MonoBehaviour
         NotifyStatsChanged();
     }
 
+    public void RestorePoiseAfterReaction(bool isGuardBreak)
+    {
+        if (_currentHealth <= 0f) return;
+
+        // 종료된 반응에 해당하는 강인도와 회복 대기만 초기화한다.
+        if (isGuardBreak)
+        {
+            CurrentGuardPoise = Mathf.Max(0f, _maxGuardPoise);
+            _guardPoiseRecoveryRemaining = 0f;
+        }
+        else
+        {
+            CurrentPoise = Mathf.Max(0f, _maxPoise);
+            _poiseRecoveryRemaining = 0f;
+        }
+
+        NotifyStatsChanged();
+    }
+
     public void UpdatePoiseRecovery(float deltaTime)
     {
         if (deltaTime <= 0f || _currentHealth <= 0f) return;

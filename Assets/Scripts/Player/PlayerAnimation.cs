@@ -12,6 +12,7 @@ public sealed class PlayerAnimation : CharacterAnimation
     private static readonly int _isGuardingHash = Animator.StringToHash("IsGuarding");
     private static readonly int _guardTagHash = Animator.StringToHash("Guard");
     private static readonly int _staggerHash = Animator.StringToHash("Base Layer.Stagger");
+    private static readonly int _staggerBackHash = Animator.StringToHash("Base Layer.StaggerBack");
     private static readonly int _guardBreakHash = Animator.StringToHash("Base Layer.GuardBreak");
 
     [SerializeField, Min(0f)] private float _movementDampTime = 0.1f;
@@ -99,7 +100,7 @@ public sealed class PlayerAnimation : CharacterAnimation
         return currentStateInfo.tagHash != _guardTagHash;
     }
 
-    public bool TryPlayPoiseReaction(bool isGuardBreak)
+    public bool TryPlayPoiseReaction(bool isGuardBreak, bool isHitFromBehind)
     {
         // 피격 모션으로 전환하기 전에 기존 행동의 애니메이션 요청을 정리한다.
         SetGuarding(false);
@@ -113,11 +114,31 @@ public sealed class PlayerAnimation : CharacterAnimation
         CharacterAnimator.SetFloat(_moveYHash, 0f);
 
         int stateHash = isGuardBreak ? _guardBreakHash : _staggerHash;
+        // 후방 상태가 없는 기존 Controller는 전방 경직으로 대체한다.
+        if (!isGuardBreak && isHitFromBehind && CharacterAnimator.HasState(0, _staggerBackHash))
+        {
+            stateHash = _staggerBackHash;
+        }
+
         if (!CharacterAnimator.HasState(0, stateHash)) return false;
 
         // 반응 타이머와 모션 시작을 맞추기 위해 즉시 전환한다.
         CharacterAnimator.Play(stateHash, 0, 0f);
         return true;
+    }
+
+    public override bool TryPlayDeath()
+    {
+        SetGuarding(false);
+        if (CharacterAnimator)
+        {
+            CharacterAnimator.ResetTrigger(_dodgeHash);
+            CharacterAnimator.SetBool(_isSprintingHash, false);
+            CharacterAnimator.SetFloat(_moveXHash, 0f);
+            CharacterAnimator.SetFloat(_moveYHash, 0f);
+        }
+
+        return base.TryPlayDeath();
     }
 
     public void CompletePoiseReaction()

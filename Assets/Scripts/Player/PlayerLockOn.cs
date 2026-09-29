@@ -62,7 +62,7 @@ public sealed class PlayerLockOn : MonoBehaviour
         return true;
     }
 
-    private void ReleaseTarget()
+    public void ReleaseTarget()
     {
         _currentTarget = null;
     }
@@ -86,7 +86,8 @@ public sealed class PlayerLockOn : MonoBehaviour
         {
             LockOnTarget candidate = _candidateBuffer[i].GetComponentInParent<LockOnTarget>();
 
-            if (!candidate) continue;
+            // 사망 연출 중인 적처럼 비활성화된 락온 대상은 새로 선택하지 않는다.
+            if (!candidate || !candidate.isActiveAndEnabled) continue;
 
             Vector3 viewportPosition = _viewCamera.WorldToViewportPoint(candidate.AimPosition);
 

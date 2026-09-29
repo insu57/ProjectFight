@@ -12,6 +12,9 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private Transform _target;
     private AttackHitbox _attackHitbox;
     private Hurtbox _hurtbox;
+    private LockOnTarget _lockOnTarget;
+    private bool _lockOnEnabledBeforeDeath;
+    private bool _deathPresentationStarted;
     [field: SerializeField] private EnemyDefinition _enemyDefinition;
     private EnemyState _enemyState;
     private EnemyStat _enemyStat;
@@ -37,6 +40,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _attackHitbox = GetComponentInChildren<AttackHitbox>();
         _hurtbox = GetComponentInChildren<Hurtbox>();
+        _lockOnTarget = GetComponentInChildren<LockOnTarget>(true);
 
         if (_attackHitbox)
         {
@@ -76,12 +80,17 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             return;
         }
 
-        _enemyStat.InitializePoiseStats(_enemyDefinition);
+        ApplyDefinitionStats();
+        _enemyStat.ResetForSpawn();
         _patternExecutor.SetPatterns(_enemyDefinition.Patterns);
     }
 
     protected override void OnPoolSpawned()
     {
+        // 사망 시 제외했던 피격과 락온을 이 적의 초기 설정으로 복구한다.
+        if (_deathPresentationStarted && _lockOnTarget) _lockOnTarget.enabled = _lockOnEnabledBeforeDeath;
+        _deathPresentationStarted = false;
+        if (_hurtbox) _hurtbox.SetDamageEnabled(true);
         _hasStarted = true;
         _target = null;
         _circleBlockedTime = 0f;
@@ -90,7 +99,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         if (_enemyDefinition)
         {
-            _enemyStat.InitializePoiseStats(_enemyDefinition);
+            ApplyDefinitionStats();
             _patternExecutor.SetPatterns(_enemyDefinition.Patterns);
         }
         else
@@ -154,6 +163,15 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void Update()
     {
+        if (_enemyStat && _enemyStat.IsDead && !_deathPresentationStarted) HandleDied();
+        if (!isActiveAndEnabled) return;
+        if (_enemyState && _enemyState.ActionState == EnemyActionState.Dead)
+        {
+            // 사망 중에는 AI와 쿨다운을 갱신하지 않고 연출 종료만 확인한다.
+            if (!_enemyAnimation || _enemyAnimation.IsDeathFinished()) FinishDeath();
+            return;
+        }
+
         // 공격 상태를 벗어나면 활성 판정이 남지 않도록 정리한다.
         if (_attackHitbox && (!_enemyState || _enemyState.ActionState != EnemyActionState.Attacking))
         {
@@ -175,11 +193,6 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         float deltaTime = Time.deltaTime;
         _patternExecutor.UpdateCooldowns(deltaTime);
-
-        if (_enemyState.ActionState == EnemyActionState.Dead)
-        {
-            return;
-        }
 
         if (_enemyStat)
         {
@@ -250,7 +263,13 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         // Start 이전에 전달된 설정은 Start에서 초기화한다.
         if (!_hasStarted || !_enemyDefinition || !_enemyStat) return;
 
-        _enemyStat.InitializePoiseStats(_enemyDefinition);
+        ApplyDefinitionStats();
+    }
+
+    private void ApplyDefinitionStats()
+    {
+        _enemyStat.InitializeStats(_enemyDefinition);
+        _enemyMove.SetMoveSpeed(_enemyStat.MoveSpeed);
     }
 
     public void TakeDamage(float damage)
@@ -416,7 +435,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         switch (step.Type)
         {
             case EnemyPatternStepType.Attack:
-                if (!_enemyAnimation.TryPlayAttack(step.Attack)) return false;
+                if (!_enemyAnimation.TryPlayAttack(step.Attack, _enemyStat.AttackSpeed)) return false;
                 _enemyState.SetActionState(EnemyActionState.Attacking);
                 _attackHitbox?.BeginAttack(step.Attack);
                 return true;
@@ -450,6 +469,9 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     {
         if (_enemyStat.IsDead || _enemyState.ActionState == EnemyActionState.Dead || IsInPoiseReaction) return;
 
+        // 경직 시작 시점의 방향만 전달하며, 반응 도중에는 모션을 바꾸지 않는다.
+        bool isHitFromBehind = !isGuardBreak && CombatUtility.IsAttackerBehind(transform, attacker ? attacker.transform : null);
+
         _attackHitbox?.EndAttack();
         _patternExecutor.CancelCurrentPattern(true);
         _enemyAnimation.CancelGuard();
@@ -460,7 +482,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _enemyState.SetActionState(isGuardBreak ? EnemyActionState.GuardBroken : EnemyActionState.Stunned);
 
         // 애니메이션 설정이 누락되어도 행동 제한과 복귀 타이머는 유지한다.
-        if (!_enemyAnimation.TryPlayPoiseReaction(isGuardBreak))
+        if (!_enemyAnimation.TryPlayPoiseReaction(isGuardBreak, isHitFromBehind))
         {
             _enemyAnimation.CompleteAttack();
             Debug.LogWarning("적 Animator에 Stagger 또는 GuardBreak 상태가 없습니다.", this);
@@ -474,6 +496,9 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _enemyAnimation.SetMoveAmount(0f);
 
         if (_poiseReaction.IsRunning) return;
+        // Free로 전환하기 전에 현재 반응 종류에 맞는 강인도를 복구한다.
+        _enemyStat.RestorePoiseAfterReaction(_enemyState.ActionState == EnemyActionState.GuardBroken);
+
         _enemyAnimation.CompleteAttack();
         _enemyState.SetActionState(EnemyActionState.Free);
     }
@@ -486,6 +511,18 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void HandleDied()
     {
+        if (_deathPresentationStarted) return;
+        _deathPresentationStarted = true;
+        _enemyState?.SetActionState(EnemyActionState.Dead);
+        _enemyState?.SetBehaviorState(EnemyBehaviorState.Idle);
+        _target = null;
+        if (_hurtbox) _hurtbox.SetDamageEnabled(false);
+        if (_lockOnTarget)
+        {
+            _lockOnEnabledBeforeDeath = _lockOnTarget.enabled;
+            _lockOnTarget.enabled = false;
+        }
+
         if (_attackHitbox)
         {
             _attackHitbox.EndAttack();
@@ -498,12 +535,16 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
-        _enemyAnimation?.CancelGuard();
-        _enemyAnimation?.CompleteAttack();
-        _enemyState?.SetBehaviorState(EnemyBehaviorState.Idle);
-        _enemyState?.SetActionState(EnemyActionState.Dead);
+        if (!_enemyAnimation || !_enemyAnimation.TryPlayDeath())
+        {
+            Debug.LogWarning("적 Animator의 Dead 상태 또는 사망 클립이 없어 사망 연출을 종료합니다.", this);
+            FinishDeath();
+        }
+    }
 
-        // 현재는 사망 즉시 반환한다. 사망 연출을 추가하면 완료 시점으로 이동한다.
-        ReturnToPool();
+    private void FinishDeath()
+    {
+        // 씬에 직접 배치되어 풀 소유자가 없는 적도 연출 후 비활성화한다.
+        if (!ReturnToPool()) gameObject.SetActive(false);
     }
 }

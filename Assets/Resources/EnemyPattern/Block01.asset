@@ -15,9 +15,9 @@ MonoBehaviour:
   <PatternId>k__BackingField: 0
   <PatternName>k__BackingField: black01
   <MinimumRange>k__BackingField: 0
-  <MaximumRange>k__BackingField: 2.5
+  <MaximumRange>k__BackingField: 1.5
   <Cooldown>k__BackingField: 1
-  <SelectionWeight>k__BackingField: 1
+  <SelectionWeight>k__BackingField: 0.8
   <Steps>k__BackingField:
   - <Type>k__BackingField: 1
     <Attack>k__BackingField: {fileID: 0}

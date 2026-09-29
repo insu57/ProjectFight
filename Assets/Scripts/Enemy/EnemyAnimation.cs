@@ -10,6 +10,7 @@ public sealed class EnemyAnimation : CharacterAnimation
     private static readonly int _guardStartHash = Animator.StringToHash("Base Layer.GuardStart");
     private static readonly int _guardEndHash = Animator.StringToHash("Base Layer.GuardEnd");
     private static readonly int _staggerHash = Animator.StringToHash("Base Layer.Stagger");
+    private static readonly int _staggerBackHash = Animator.StringToHash("Base Layer.StaggerBack");
     private static readonly int _guardBreakHash = Animator.StringToHash("Base Layer.GuardBreak");
 
     [SerializeField, Min(0f)] private float _movementDampTime = 0.1f;
@@ -35,6 +36,18 @@ public sealed class EnemyAnimation : CharacterAnimation
     public void SetMoveAmount(float moveAmount)
     {
         SetMovement(new Vector2(0f, moveAmount), Time.deltaTime);
+    }
+
+    public override bool TryPlayDeath()
+    {
+        CancelGuard();
+        if (CharacterAnimator)
+        {
+            CharacterAnimator.SetFloat(_moveXHash, 0f);
+            CharacterAnimator.SetFloat(_moveYHash, 0f);
+        }
+
+        return base.TryPlayDeath();
     }
 
     public void SetMovement(Vector2 localMovement, float deltaTime)
@@ -92,11 +105,17 @@ public sealed class EnemyAnimation : CharacterAnimation
         }
     }
 
-    public bool TryPlayPoiseReaction(bool isGuardBreak)
+    public bool TryPlayPoiseReaction(bool isGuardBreak, bool isHitFromBehind)
     {
         if (!CharacterAnimator) return false;
 
         int stateHash = isGuardBreak ? _guardBreakHash : _staggerHash;
+        // 후방 상태가 없는 기존 Controller는 전방 경직으로 대체한다.
+        if (!isGuardBreak && isHitFromBehind && CharacterAnimator.HasState(0, _staggerBackHash))
+        {
+            stateHash = _staggerBackHash;
+        }
+
         if (!CharacterAnimator.HasState(0, stateHash)) return false;
 
         CancelGuard();

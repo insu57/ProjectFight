@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "StageDefinition", menuName = "Scriptable Objects/StageDefinition")]
@@ -12,6 +13,12 @@ public class StageDefinition : ScriptableObject
     [field: SerializeField] public RoomDefinition[] RewardRoomsDef { get; private set; }
     [field: SerializeField] public RoomDefinition[] StoreRoomsDef { get; private set; }
     //추가: 상점 등 ...
+
+    [Header("Encounters")]
+    // 일반 전투방마다 선택할 수 있는 이 스테이지의 적 편성 후보들이다.
+    [field: SerializeField] public EncounterDefinition[] BattleEncounters { get; private set; } = Array.Empty<EncounterDefinition>();
+    // 보스방에서 사용할 적 편성이다.
+    [field: SerializeField] public EncounterDefinition BossEncounter { get; private set; }
 
     [Header("Modules")]
     [field: SerializeField] public float RoomDistance { get; private set; } = 5f;

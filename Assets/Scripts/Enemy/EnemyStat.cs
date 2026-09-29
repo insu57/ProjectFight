@@ -12,6 +12,10 @@ public sealed class EnemyStat : MonoBehaviour
 
     public float MaxHealth => _baseMaxHealth;
     public float CurrentHealth => _currentHealth;
+    public float AttackPower { get; private set; }
+    public float DefensePower { get; private set; }
+    public float MoveSpeed { get; private set; } = 3.5f;
+    public float AttackSpeed { get; private set; } = 1f;
     public bool IsDead => _currentHealth <= 0f;
 
     public float MaxPoise { get; private set; }
@@ -50,9 +54,18 @@ public sealed class EnemyStat : MonoBehaviour
         HealthChanged?.Invoke(_currentHealth, _baseMaxHealth);
     }
 
-    public void InitializePoiseStats(EnemyDefinition definition)
+    public void InitializeStats(EnemyDefinition definition)
     {
         if (!definition) return;
+
+        _baseMaxHealth = Mathf.Max(1f, definition.MaxHealth);
+        AttackPower = Mathf.Max(0f, definition.AttackPower);
+        DefensePower = Mathf.Max(0f, definition.DefensePower);
+        MoveSpeed = Mathf.Max(0f, definition.MoveSpeed);
+        AttackSpeed = Mathf.Max(0.01f, definition.AttackSpeed);
+
+        // 실행 중 Definition 변경은 회복이나 부활을 유발하지 않는다. 스폰 시에만 별도로 완충한다.
+        _currentHealth = Mathf.Clamp(_currentHealth, 0f, _baseMaxHealth);
 
         // 공유 에셋의 설정을 개별 적의 런타임 스탯으로 복사한다.
         MaxPoise = Mathf.Max(0f, definition.MaxPoise);
@@ -72,6 +85,7 @@ public sealed class EnemyStat : MonoBehaviour
         CurrentGuardPoise = MaxGuardPoise;
         _poiseRecoveryRemaining = 0f;
         _guardPoiseRecoveryRemaining = 0f;
+        HealthChanged?.Invoke(_currentHealth, _baseMaxHealth);
     }
 
     public void TakePoiseDamage(float amount)
@@ -88,6 +102,23 @@ public sealed class EnemyStat : MonoBehaviour
 
         _guardPoiseRecoveryRemaining = GuardPoiseRecoveryDelay;
         CurrentGuardPoise = Mathf.Max(0f, CurrentGuardPoise - amount);
+    }
+
+    public void RestorePoiseAfterReaction(bool isGuardBreak)
+    {
+        if (IsDead) return;
+
+        // 종료된 반응에 해당하는 강인도와 회복 대기만 초기화한다.
+        if (isGuardBreak)
+        {
+            CurrentGuardPoise = Mathf.Max(0f, MaxGuardPoise);
+            _guardPoiseRecoveryRemaining = 0f;
+        }
+        else
+        {
+            CurrentPoise = Mathf.Max(0f, MaxPoise);
+            _poiseRecoveryRemaining = 0f;
+        }
     }
 
     public void UpdatePoiseRecovery(float deltaTime)

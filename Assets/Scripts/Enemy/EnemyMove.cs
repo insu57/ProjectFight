@@ -29,6 +29,12 @@ public sealed class EnemyMove : MonoBehaviour
         MoveAmount = 0f;
     }
 
+    public void SetMoveSpeed(float moveSpeed)
+    {
+        // 하위 컴포넌트끼리 참조하지 않고 Manager가 스탯을 전달한다.
+        _moveSpeed = Mathf.Max(0f, moveSpeed);
+    }
+
     public void MoveTowards(Vector3 targetPosition, float deltaTime)
     {
         Vector3 moveDirection = targetPosition - transform.position;

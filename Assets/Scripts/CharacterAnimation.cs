@@ -5,6 +5,7 @@ public abstract class CharacterAnimation : MonoBehaviour
 {
     private const string AttackTagName = "Attack";
     private static readonly int _attackSpeedHash = Animator.StringToHash("AttackSpeed");
+    private static readonly int _deadHash = Animator.StringToHash("Base Layer.Dead");
 
     [Header("공통 공격 애니메이션")]
     [SerializeField] private string _locomotionStateName = "Base Layer.Locomotion";
@@ -16,6 +17,8 @@ public abstract class CharacterAnimation : MonoBehaviour
     private bool _hasEnteredAttackState;
     private double _hitStopEndTime;
     private float _speedBeforeHitStop;
+    private bool _isDeathPlaying;
+    private AnimatorCullingMode _cullingBeforeDeath;
 
     public bool IsHitStopped { get; private set; }
 
@@ -30,6 +33,7 @@ public abstract class CharacterAnimation : MonoBehaviour
 
     public void BeginHitStop(float duration)
     {
+        if (_isDeathPlaying) return;
         if (!isActiveAndEnabled || !CharacterAnimator) return;
         if (duration <= 0f) return;
 
@@ -78,6 +82,40 @@ public abstract class CharacterAnimation : MonoBehaviour
     {
         // 비활성화 후 재사용할 때 정지 상태가 남지 않게 한다.
         ClearHitStop();
+        ResetDeathState();
+    }
+
+    public virtual bool TryPlayDeath()
+    {
+        ClearHitStop();
+        ResetAttackState();
+        if (!CharacterAnimator || !CharacterAnimator.isActiveAndEnabled || !CharacterAnimator.HasState(0, _deadHash)) return false;
+
+        // 화면 밖에서도 사망 모션이 진행되어 적이 풀로 반환될 수 있어야 한다.
+        if (!_isDeathPlaying) _cullingBeforeDeath = CharacterAnimator.cullingMode;
+        _isDeathPlaying = true;
+        CharacterAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        CharacterAnimator.Play(_deadHash, 0, 0f);
+        CharacterAnimator.Update(0f);
+
+        // 상태만 있고 Motion이 비어 있는 설정은 재생 실패로 처리한다.
+        if (CharacterAnimator.GetCurrentAnimatorClipInfoCount(0) > 0) return true;
+        ResetDeathState();
+        return false;
+    }
+
+    public bool IsDeathFinished()
+    {
+        if (!_isDeathPlaying || !CharacterAnimator || !CharacterAnimator.isActiveAndEnabled) return true;
+
+        AnimatorStateInfo state = CharacterAnimator.GetCurrentAnimatorStateInfo(0);
+        return state.fullPathHash != _deadHash || state.normalizedTime >= 1f;
+    }
+
+    private void ResetDeathState()
+    {
+        if (_isDeathPlaying && CharacterAnimator) CharacterAnimator.cullingMode = _cullingBeforeDeath;
+        _isDeathPlaying = false;
     }
 
     public bool TryPlayAttack(AttackDefinition attackDefinition, float attackSpeedMultiplier = 1f)
@@ -163,6 +201,7 @@ public abstract class CharacterAnimation : MonoBehaviour
 
     protected void ResetLocomotionForPool()
     {
+        ResetDeathState();
         ClearHitStop();
         ResetAttackState();
 

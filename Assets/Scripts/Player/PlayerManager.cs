@@ -163,8 +163,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     {
         if (!_hurtbox) return;
 
-        // 회피 상태에서 벗어나면 종료 원인과 관계없이 피격을 다시 허용한다.
-        _hurtbox.SetDamageEnabled(actionState != PlayerActionState.Dodging);
+        // 사망 후에는 추가 타격과 히트스탑을 받지 않는다.
+        _hurtbox.SetDamageEnabled(actionState != PlayerActionState.Dodging && actionState != PlayerActionState.Dead);
     }
 
     private bool CanBlock(DamageInfo damageInfo)
@@ -225,10 +225,20 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             return;
         }
 
+        HandleDied();
+    }
+
+    private void HandleDied()
+    {
+        if (!_playerState || _playerState.ActionState == PlayerActionState.Dead) return;
+
+        // 체력 변경 알림과 피격 경로가 겹쳐도 사망은 한 번만 처리한다.
+        _playerState.SetActionState(PlayerActionState.Dead);
+        _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _poiseReaction.Reset();
         _hasPendingGuardChange = false;
+        _playerMove?.EndDodge();
 
-        // 사망 시 진행 중인 공격과 가드를 종료하고 행동을 막는다.
         if (_attackHitbox)
         {
             _attackHitbox.EndAttack();
@@ -239,14 +249,17 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerAttack.EndAttack();
         }
 
-        if (_playerAnimation)
+        if (_playerLockOn)
         {
-            _playerAnimation.SetGuarding(false);
-            _playerAnimation.CompleteAttack();
+            _playerLockOn.ReleaseTarget();
+            NotifyLockOnTargetChanged();
         }
 
-        _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
-        _playerState.SetActionState(PlayerActionState.Dead);
+        _playerCamera?.ClearLockOnTarget();
+        if (!_playerAnimation || !_playerAnimation.TryPlayDeath())
+        {
+            Debug.LogWarning("플레이어 Animator의 Dead 상태 또는 사망 클립이 없습니다.", this);
+        }
     }
 
     private void BeginPoiseReaction(bool isGuardBreak, MonoBehaviour attacker)
@@ -256,6 +269,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
         if (stats.CurrentHealth <= 0f) return;
+
+        // 경직 시작 시점의 방향만 전달하며, 반응 도중에는 모션을 바꾸지 않는다.
+        bool isHitFromBehind = !isGuardBreak && CombatUtility.IsAttackerBehind(transform, attacker ? attacker.transform : null);
 
         // 공격 판정과 콤보 예약을 함께 취소한다.
         if (_attackHitbox)
@@ -283,7 +299,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         _playerState.SetActionState(isGuardBreak ? PlayerActionState.GuardBroken : PlayerActionState.Stunned);
 
         // 애니메이션이 누락되어도 행동 제한과 복귀 타이머는 유지한다.
-        if (_playerAnimation && _playerAnimation.TryPlayPoiseReaction(isGuardBreak)) return;
+        if (_playerAnimation && _playerAnimation.TryPlayPoiseReaction(isGuardBreak, isHitFromBehind)) return;
 
         if (_playerAnimation)
         {
@@ -309,6 +325,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         }
 
         if (_poiseReaction.IsRunning) return;
+
+        // Free로 전환하기 전에 현재 반응 종류에 맞는 강인도를 복구한다.
+        _playerStat.RestorePoiseAfterReaction(_playerState.ActionState == PlayerActionState.GuardBroken);
 
         if (_playerAnimation)
         {
@@ -348,6 +367,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void Update()
     {
+        // 직접 체력 변경이나 재활성화 시에도 사망 상태를 보장한다.
+        if (_playerStat && _playerStat.CurrentStats.CurrentHealth <= 0f) HandleDied();
         if (_playerAnimation)
         {
             _playerAnimation.UpdateHitStop();
@@ -379,6 +400,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         if (!_playerControl || !_playerState || !_playerMove || !_playerCamera) return;
 
         _playerCamera.SetLookInput(_playerControl.LookInput, _playerControl.IsLookInputDelta);
+
+        // Look 입력은 계속 전달하고 사망 후 캐릭터 행동 갱신만 차단한다.
+        if (_playerState.ActionState == PlayerActionState.Dead)
+        {
+            _playerCamera.ClearLockOnTarget();
+            return;
+        }
 
         LockOnTarget lockOnTarget = _playerLockOn.CurrentTarget;
 
@@ -486,6 +514,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandleLockOnPressed()
     {
+        if (!_playerState || _playerState.ActionState == PlayerActionState.Dead) return;
         if (!_playerLockOn) return;
 
         _playerLockOn.ToggleTarget();
@@ -613,6 +642,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private void HandleGuardChanged(bool isGuarding)
     {
         if (!_playerState || !_playerAnimation) return;
+        if (_playerState.ActionState == PlayerActionState.Dead) return;
 
         // 반응 중 가드 입력은 예약하지 않는다.
         if (IsInPoiseReaction) return;
@@ -730,6 +760,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandlePlayerStatsChanged(PlayerStatSnapshot stats)
     {
+        if (stats.CurrentHealth <= 0f) HandleDied();
         // 플레이어 하위 컴포넌트의 변경 알림을 UI가 직접 구독하지 않도록 중개한다.
         PlayerStatsChanged?.Invoke(stats);
     }
