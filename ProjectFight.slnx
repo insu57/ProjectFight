@@ -7,6 +7,7 @@
   <Project Path="com.unity.animations.springbone.csproj" />
   <Project Path="com.unity.animations.springbone.editor.csproj" />
   <Project Path="MotionWarping.Editor.csproj" />
+  <Project Path="lilToon.Editor.csproj" />
   <Project Path="Drawing.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="MotionWarping.Runtime.csproj" />
@@ -17,4 +18,5 @@
   <Project Path="PackageTools.csproj" />
   <Project Path="DrawingEditor.csproj" />
   <Project Path="DrawingPackageToolsEditor.csproj" />
+  <Project Path="lilToon.Editor.External.csproj" />
 </Solution>

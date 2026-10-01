@@ -17,6 +17,9 @@ public class StageDefinition : ScriptableObject
     [Header("Encounters")]
     // 일반 전투방마다 선택할 수 있는 이 스테이지의 적 편성 후보들이다.
     [field: SerializeField] public EncounterDefinition[] BattleEncounters { get; private set; } = Array.Empty<EncounterDefinition>();
+    // 편성의 실제 스폰 수량과 별개로 일반 적 프리팹마다 준비할 비활성 대기 수량이다.
+    [field: SerializeField, Min(0), Tooltip("일반 전투에 사용하는 프리팹마다 미리 준비할 개수입니다. 0이면 사전 생성을 생략합니다.")]
+    public int EnemyPrewarmCountPerPrefab { get; private set; } = 20;
     // 보스방에서 사용할 적 편성이다.
     [field: SerializeField] public EncounterDefinition BossEncounter { get; private set; }
 

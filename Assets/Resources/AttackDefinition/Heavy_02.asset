@@ -19,7 +19,7 @@ MonoBehaviour:
   <BaseDamage>k__BackingField: 0
   <BasePoiseDamage>k__BackingField: 20
   <BaseGuardPoiseDamage>k__BackingField: 20
-  <HitStopDuration>k__BackingField: 20
+  <HitStopDuration>k__BackingField: 0.11
   <TransitionDuration>k__BackingField: 0.2
   <ComboInputStartNormalizedTime>k__BackingField: 0.2
   <ComboTransitionNormalizedTime>k__BackingField: 0.55

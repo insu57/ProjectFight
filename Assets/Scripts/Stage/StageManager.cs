@@ -10,6 +10,7 @@ public class StageManager : MonoBehaviour
 
     private MapGenerator _mapGenerator;
     private PlayerManager _playerManager;
+    private SpawnManager _spawnManager;
 
     // 현재 생성된 방만 등록해 이전 스테이지의 알림을 무시한다.
     private readonly Dictionary<Room, StageNode> _roomNodes = new();
@@ -34,6 +35,7 @@ public class StageManager : MonoBehaviour
         }
 
         _playerManager = FindFirstObjectByType<PlayerManager>();
+        _spawnManager = FindFirstObjectByType<SpawnManager>();
 
         // 닫힌 지도 탭까지 포함해 최초 초기화 시에만 찾는다.
         StageMapView[] mapViews = FindObjectsByType<StageMapView>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -190,6 +192,16 @@ public class StageManager : MonoBehaviour
 
     private void Start()
     {
+        // 모든 매니저의 Awake가 끝난 뒤, 방 생성 전에 일반 적의 비활성 풀을 준비한다.
+        if (_spawnManager)
+        {
+            _spawnManager.PrepareEnemyPools(_stageDefinition);
+        }
+        else if (_stageDefinition)
+        {
+            Debug.LogWarning("SpawnManager가 없어 일반 적의 사전 풀 준비를 건너뜁니다.", this);
+        }
+
         if (_mapGenerator)
         {
             _mapGenerator.GenerateStage(_stageDefinition);
