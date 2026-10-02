@@ -5,6 +5,7 @@ public class Room : MonoBehaviour
 {
     [field: SerializeField] public Door[] Doors { get; private set; }
     [field: SerializeField] public Transform CorridorParent { get; private set; }
+    [field: SerializeField] public BoxCollider[] SpawnAreas { get; private set; }
 
     private StageManager _stageManager;
 
@@ -36,6 +37,51 @@ public class Room : MonoBehaviour
 
         // 방은 입장 사실만 전달하고, 스테이지 진행 판단은 매니저가 담당한다.
         _stageManager.NotifyRoomEntered(this, entrance, player);
+    }
+
+    public bool TryGetRandomSpawnPosition(float radius, out Vector3 position)
+    {
+        position = default;
+        if (SpawnAreas == null) return false;
+
+        BoxCollider selectedArea = null;
+        int validAreaCount = 0;
+        float clearance = Mathf.Max(0f, radius);
+
+        // 유효한 바닥 영역 중 하나를 균등하게 고르며 임시 후보 배열은 만들지 않는다.
+        for (int index = 0; index < SpawnAreas.Length; index++)
+        {
+            BoxCollider area = SpawnAreas[index];
+            if (!area || !area.enabled || !area.gameObject.activeInHierarchy) continue;
+
+            Vector3 scale = area.transform.lossyScale;
+            float scaleX = Mathf.Abs(scale.x);
+            float scaleZ = Mathf.Abs(scale.z);
+            if (scaleX <= 0.0001f || scaleZ <= 0.0001f) continue;
+
+            // 수평 바닥의 Y축 회전과 스케일을 지원한다. 기울어진 영역에는 수직 캐릭터를 배치하지 않는다.
+            if (Vector3.Dot(area.transform.up, Vector3.up) < 0.999f) continue;
+            if (area.size.x * scaleX <= clearance * 2f || area.size.z * scaleZ <= clearance * 2f) continue;
+
+            validAreaCount++;
+            if (Random.Range(0, validAreaCount) == 0) selectedArea = area;
+        }
+
+        if (!selectedArea) return false;
+
+        Transform areaTransform = selectedArea.transform;
+        Vector3 halfSize = selectedArea.size * 0.5f;
+        Vector3 areaScale = areaTransform.lossyScale;
+        float halfX = halfSize.x - clearance / Mathf.Abs(areaScale.x);
+        float halfZ = halfSize.z - clearance / Mathf.Abs(areaScale.z);
+        Vector3 localPosition = selectedArea.center;
+        localPosition.x += Random.Range(-halfX, halfX);
+        localPosition.z += Random.Range(-halfZ, halfZ);
+
+        // SpawnAreas는 몸 전체를 감싸는 볼륨이 아니라 바닥 범위다. 아래 면을 발의 높이로 사용한다.
+        localPosition.y -= halfSize.y;
+        position = areaTransform.TransformPoint(localPosition);
+        return true;
     }
 
     public bool TryGetAvailableDoor(DoorDirection direction, out Door door) //해당 방향 문 탐색

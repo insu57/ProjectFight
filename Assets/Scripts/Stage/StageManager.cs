@@ -15,6 +15,8 @@ public class StageManager : MonoBehaviour
     // 현재 생성된 방만 등록해 이전 스테이지의 알림을 무시한다.
     private readonly Dictionary<Room, StageNode> _roomNodes = new();
     private readonly HashSet<StageNode> _visitedRooms = new();
+    // 방문 기록과 전투 시작 기록을 분리해 재입장이나 순간이동에도 편성을 다시 뽑지 않는다.
+    private readonly Dictionary<Room, RoomEncounterRuntime> _roomEncounters = new();
 
     public StageGraph CurrentGraph { get; private set; }
 
@@ -35,7 +37,12 @@ public class StageManager : MonoBehaviour
         }
 
         _playerManager = FindFirstObjectByType<PlayerManager>();
-        _spawnManager = FindFirstObjectByType<SpawnManager>();
+
+        // 같은 오브젝트의 스폰 담당 컴포넌트에 스테이지가 사용하는 플레이어를 전달한다.
+        if (TryGetComponent(out _spawnManager))
+        {
+            _spawnManager.Initialize(_playerManager);
+        }
 
         // 닫힌 지도 탭까지 포함해 최초 초기화 시에만 찾는다.
         StageMapView[] mapViews = FindObjectsByType<StageMapView>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -74,6 +81,33 @@ public class StageManager : MonoBehaviour
         _roomNodes.Clear();
     }
 
+    private void Update()
+    {
+        float deltaTime = Time.deltaTime;
+        if (deltaTime <= 0f) return;
+
+        // Dictionary의 값 형식 열거자를 사용하여 매 프레임 임시 컬렉션을 만들지 않는다.
+        foreach (KeyValuePair<Room, RoomEncounterRuntime> entry in _roomEncounters)
+        {
+            entry.Value.Tick(deltaTime);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        ClearEncounters();
+    }
+
+    private void ClearEncounters()
+    {
+        foreach (KeyValuePair<Room, RoomEncounterRuntime> entry in _roomEncounters)
+        {
+            entry.Value.Clear();
+        }
+
+        _roomEncounters.Clear();
+    }
+
     private void HandleGraphChanged(StageGraph graph)
     {
         // 매니저를 다시 활성화한 경우에는 같은 그래프의 방문 기록과 현재 방을 유지한다.
@@ -81,6 +115,7 @@ public class StageManager : MonoBehaviour
 
         if (graphChanged)
         {
+            ClearEncounters();
             CurrentGraph = graph;
             CurrentRoom = null;
             _visitedRooms.Clear();
@@ -155,6 +190,8 @@ public class StageManager : MonoBehaviour
 
         UpdatePlayerRoom(node);
 
+        TryStartBattleEncounter(node);
+
         // 재입장도 별도의 입장 사건이므로 기존 이벤트는 계속 전달한다.
         RoomEntered?.Invoke(node, entrance);
     }
@@ -173,6 +210,59 @@ public class StageManager : MonoBehaviour
 
         // 스폰·순간이동 담당자가 실제 배치한 방을 전달한다.
         UpdatePlayerRoom(node);
+        TryStartBattleEncounter(node);
+    }
+
+    private void TryStartBattleEncounter(StageNode node)
+    {
+        if (!node.RoomData || node.RoomData.RoomType != RoomType.Battle || !node.RoomInstance || !_spawnManager) return;
+        Room room = node.RoomInstance;
+        if (_roomEncounters.ContainsKey(room)) return;
+
+        EncounterDefinition[] candidates = _stageDefinition ? _stageDefinition.BattleEncounters : null;
+        EncounterDefinition selected = null;
+        int validCandidateCount = 0;
+        if (candidates != null)
+        {
+            // 후보 배열에는 순서나 가중치를 부여하지 않고 유효한 항목을 균등 무작위 선택한다.
+            for (int index = 0; index < candidates.Length; index++)
+            {
+                EncounterDefinition candidate = candidates[index];
+                if (!HasSpawnableEnemies(candidate)) continue;
+
+                validCandidateCount++;
+                if (UnityEngine.Random.Range(0, validCandidateCount) == 0) selected = candidate;
+            }
+        }
+
+        if (!selected)
+        {
+            Debug.LogWarning("전투방에 사용할 유효한 BattleEncounters 편성이 없습니다.", room);
+            return;
+        }
+
+        RoomEncounterRuntime encounter = new(room, _spawnManager, selected);
+        _roomEncounters.Add(room, encounter);
+        // 첫 그룹의 조건을 즉시 확인하되, 이후 대기와 재시도는 Update에서 이어간다.
+        encounter.Tick(0f);
+    }
+
+    private static bool HasSpawnableEnemies(EncounterDefinition encounter)
+    {
+        if (!encounter || encounter.Groups == null) return false;
+        for (int groupIndex = 0; groupIndex < encounter.Groups.Length; groupIndex++)
+        {
+            EncounterEnemyEntry[] entries = encounter.Groups[groupIndex]?.Enemies;
+            if (entries == null) continue;
+
+            for (int index = 0; index < entries.Length; index++)
+            {
+                EncounterEnemyEntry entry = entries[index];
+                if (entry != null && entry.Prefab && entry.Count > 0) return true;
+            }
+        }
+
+        return false;
     }
 
     private void UpdatePlayerRoom(StageNode node)

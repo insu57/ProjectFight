@@ -24,3 +24,14 @@ MonoBehaviour:
       <MaxAliveEnemies>k__BackingField: 0
       <EnemyCountScope>k__BackingField: 1
       <CombineMode>k__BackingField: 0
+  - <Enemies>k__BackingField:
+    - <Prefab>k__BackingField: {fileID: 2249281327280941157, guid: e092858c4004b5c458d8785bcd5ae868, type: 3}
+      <Definition>k__BackingField: {fileID: 11400000, guid: f6d0da68762f0fd41a637801e1d223e6, type: 2}
+      <Count>k__BackingField: 3
+    <SpawnCondition>k__BackingField:
+      <UseTime>k__BackingField: 1
+      <RequiredSeconds>k__BackingField: 10
+      <UseEnemyCount>k__BackingField: 0
+      <MaxAliveEnemies>k__BackingField: 0
+      <EnemyCountScope>k__BackingField: 1
+      <CombineMode>k__BackingField: 0

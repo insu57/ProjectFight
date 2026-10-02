@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -16,6 +17,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private bool _lockOnEnabledBeforeDeath;
     private bool _deathPresentationStarted;
     [field: SerializeField] private EnemyDefinition _enemyDefinition;
+    private EnemyDefinition _defaultEnemyDefinition;
     private EnemyState _enemyState;
     private EnemyStat _enemyStat;
     private EnemyBrain _enemyBrain;
@@ -27,10 +29,16 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
     private readonly PoiseReactionRuntime _poiseReaction = new();
 
+    // 풀 재사용 전의 방 기록이 같은 인스턴스의 새 생명주기를 참조하지 않도록 구분한다.
+    public uint SpawnVersion { get; private set; }
+    public bool IsDead => _enemyStat && _enemyStat.IsDead;
+    public event Action<EnemyManager> Died;
+
     private bool IsInPoiseReaction => _enemyState.ActionState == EnemyActionState.Stunned || _enemyState.ActionState == EnemyActionState.GuardBroken;
 
     private void Awake()
     {
+        _defaultEnemyDefinition = _enemyDefinition;
         TryGetComponent(out _enemyState);
         TryGetComponent(out _enemyStat);
         TryGetComponent(out _enemyBrain);
@@ -87,6 +95,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     protected override void OnPoolSpawned()
     {
+        SpawnVersion++;
         // 사망 시 제외했던 피격과 락온을 이 적의 초기 설정으로 복구한다.
         if (_deathPresentationStarted && _lockOnTarget) _lockOnTarget.enabled = _lockOnEnabledBeforeDeath;
         _deathPresentationStarted = false;
@@ -264,6 +273,21 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         if (!_hasStarted || !_enemyDefinition || !_enemyStat) return;
 
         ApplyDefinitionStats();
+    }
+
+    public void InitializeSpawn(EnemyDefinition enemyDefinition, Transform target)
+    {
+        // 편성에 별도 Definition이 없으면 프리팹의 원래 설정을 사용한다.
+        _enemyDefinition = enemyDefinition ? enemyDefinition : _defaultEnemyDefinition;
+        if (_enemyDefinition)
+        {
+            ApplyDefinitionStats();
+        }
+
+        // 실행 중 스탯 변경과 달리 새 스폰에서는 패턴, 체력, 강인도까지 초기화한다.
+        _patternExecutor.SetPatterns(_enemyDefinition ? _enemyDefinition.Patterns : null);
+        _enemyStat.ResetForSpawn();
+        _target = target;
     }
 
     private void ApplyDefinitionStats()
@@ -535,6 +559,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
+        // 생존 적 수는 사망 연출과 풀 반환을 기다리지 않고 실제 사망 시점에 감소한다.
+        Died?.Invoke(this);
         if (!_enemyAnimation || !_enemyAnimation.TryPlayDeath())
         {
             Debug.LogWarning("적 Animator의 Dead 상태 또는 사망 클립이 없어 사망 연출을 종료합니다.", this);

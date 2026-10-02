@@ -2,13 +2,18 @@ using UnityEngine;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(BoxCollider), typeof(Rigidbody))]
-public sealed class DoorInteractionTrigger : MonoBehaviour
+public sealed class DoorInteractionTrigger : MonoBehaviour, IInteractable
 {
+    [Header("상호작용 안내")]
+    [SerializeField] private string _interactionText = "상호작용"; //개선필요.
+
     private BoxCollider _range;
     private CharacterController _trackedController;
     private PlayerManager _trackedPlayer;
 
     public Door Door { get; private set; }
+    public Vector3 InteractionPosition => Door ? Door.transform.position : transform.position;
+    public string InteractionText => _interactionText;
 
     private void Awake()
     {
@@ -50,19 +55,31 @@ public sealed class DoorInteractionTrigger : MonoBehaviour
 
         if (_trackedPlayer)
         {
-            _trackedPlayer.RegisterDoorInteraction(this);
+            _trackedPlayer.RegisterInteraction(this);
         }
     }
 
     public bool IsPlayerInRange(PlayerManager player)
     {
-        if ( !player || !player.isActiveAndEnabled || player != _trackedPlayer) return false;
+        if (!isActiveAndEnabled || !_range || !_range.enabled || !_trackedController || !_trackedController.enabled) return false;
+        if (!player || !player.isActiveAndEnabled || player != _trackedPlayer) return false;
 
         // 문 앞뒤를 같은 Box 범위로 검사한다. 텔레포트 직후의 오래된 등록도 거른다.
         Vector3 playerCenter = _trackedController.transform.TransformPoint(_trackedController.center);
         Vector3 localCenter = transform.InverseTransformPoint(playerCenter) - _range.center;
         Vector3 halfSize = _range.size * 0.5f;
         return Mathf.Abs(localCenter.x) <= halfSize.x && Mathf.Abs(localCenter.y) <= halfSize.y && Mathf.Abs(localCenter.z) <= halfSize.z;
+    }
+
+    public bool CanInteract(PlayerManager player)
+    {
+        return IsPlayerInRange(player) && Door && Door.CanOpen;
+    }
+
+    public bool TryInteract(PlayerManager player)
+    {
+        // 안내 대상과 같은 조건을 실행 직전에도 확인한다.
+        return CanInteract(player) && Door.TryOpen();
     }
 
     private void OnTriggerExit(Collider other)
@@ -82,7 +99,7 @@ public sealed class DoorInteractionTrigger : MonoBehaviour
     {
         if (_trackedPlayer)
         {
-            _trackedPlayer.UnregisterDoorInteraction(this);
+            _trackedPlayer.UnregisterInteraction(this);
         }
 
         _trackedController = null;

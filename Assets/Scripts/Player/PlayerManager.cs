@@ -19,8 +19,10 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private PlayerSkillTree _playerSkillTree;
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
     private bool _hasPendingGuardChange;
-    // 범위 진입/이탈 때만 갱신하고, 입력 시에만 가장 가까운 문을 선택한다.
-    private readonly List<DoorInteractionTrigger> _doorInteractionCandidates = new(4);
+    // 범위 안의 후보는 유지하고, 표시와 입력에 사용할 가장 가까운 유효 대상을 공유한다.
+    private readonly List<IInteractable> _interactionCandidates = new(4);
+    private IInteractable _currentInteraction;
+    private bool _isGameplayInputEnabled = true;
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
     private readonly PoiseReactionRuntime _poiseReaction = new();
 
@@ -33,9 +35,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     public event Action<PlayerStatSnapshot> PlayerStatsChanged;
     public event Action<int> SkillPointsChanged;
     public event Action<SkillTreeNodeRuntime> SkillTreeNodeUnlocked;
+    public event Action<string> InteractionPromptChanged;
 
     public SkillTreeRuntime SkillTreeRuntime => _playerSkillTree ? _playerSkillTree.Runtime : null;
     public PlayerStatSnapshot CurrentPlayerStats => _playerStat ? _playerStat.CurrentStats : default;
+    public string CurrentInteractionText { get; private set; } = string.Empty;
 
     private void Awake()
     {
@@ -107,7 +111,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private void OnDisable()
     {
         _hasPendingGuardChange = false;
-        _doorInteractionCandidates.Clear();
+        _interactionCandidates.Clear();
+        SetInteractionTarget(null);
 
         if (_playerAnimation)
         {
@@ -157,10 +162,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
         // 하위 컴포넌트 호출은 PlayerManager가 중개한다.
         _playerAnimation.BeginHitStop(duration);
+        RefreshInteractionTarget();
     }
 
     private void HandlePlayerActionStateChanged(PlayerActionState actionState)
     {
+        RefreshInteractionTarget();
         if (!_hurtbox) return;
 
         // 사망 후에는 추가 타격과 히트스탑을 받지 않는다.
@@ -475,6 +482,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         }
     }
 
+    private void LateUpdate()
+    {
+        // 이동과 문 개방 갱신 뒤 다시 판정하므로 입력이 없어도 안내가 숨겨지거나 복구된다.
+        RefreshInteractionTarget();
+    }
+
     public void SetMaxDodgeCount(int maxDodgeCount)
     {
         if (_playerDodge)
@@ -486,11 +499,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     public void SetGameplayInputEnabled(bool isEnabled)
     {
+        _isGameplayInputEnabled = isEnabled;
         if (_playerControl)
         {
             // UI의 입력 제한 요청을 PlayerControl로 중개한다.
             _playerControl.SetGameplayInputEnabled(isEnabled);
         }
+
+        RefreshInteractionTarget();
     }
 
     public SkillTreeUnlockResult TryUnlockSkillTreeNode(int nodeId)
@@ -521,53 +537,73 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         NotifyLockOnTargetChanged();
     }
 
-    public void RegisterDoorInteraction(DoorInteractionTrigger trigger)
+    public void RegisterInteraction(IInteractable interaction)
     {
-        if (isActiveAndEnabled && trigger && !_doorInteractionCandidates.Contains(trigger))
-        {
-            Debug.Log("RegisterDoorInteraction");
-            _doorInteractionCandidates.Add(trigger);
-        }
+        if (!isActiveAndEnabled || !IsInteractionActive(interaction) || _interactionCandidates.Contains(interaction)) return;
+
+        _interactionCandidates.Add(interaction);
+        RefreshInteractionTarget();
     }
 
-    public void UnregisterDoorInteraction(DoorInteractionTrigger trigger)
+    public void UnregisterInteraction(IInteractable interaction)
     {
-        _doorInteractionCandidates.Remove(trigger);
+        if (_interactionCandidates.Remove(interaction)) RefreshInteractionTarget();
+    }
+
+    private void RefreshInteractionTarget()
+    {
+        bool canInteract = isActiveAndEnabled && _isGameplayInputEnabled;
+
+        IInteractable nearestInteraction = null;
+        float nearestDistance = float.PositiveInfinity;
+
+        for (int index = _interactionCandidates.Count - 1; index >= 0; index--)
+        {
+            IInteractable interaction = _interactionCandidates[index];
+
+            // 인터페이스 참조에서도 Unity의 파괴된 오브젝트와 놓친 범위 이탈을 검사한다.
+            if (!IsInteractionActive(interaction) || !interaction.IsPlayerInRange(this))
+            {
+                _interactionCandidates.RemoveAt(index);
+                continue;
+            }
+
+            if (!canInteract || !interaction.CanInteract(this)) continue;
+
+            float distance = (interaction.InteractionPosition - transform.position).sqrMagnitude;
+            if (distance >= nearestDistance) continue;
+
+            nearestDistance = distance;
+            nearestInteraction = interaction;
+        }
+
+        SetInteractionTarget(nearestInteraction);
+    }
+
+    private static bool IsInteractionActive(IInteractable interaction)
+    {
+        return interaction is MonoBehaviour component && component && component.isActiveAndEnabled;
+    }
+
+    private void SetInteractionTarget(IInteractable interaction)//?
+    {
+        _currentInteraction = interaction;
+        string interactionText = interaction != null ? interaction.InteractionText : string.Empty;
+        if (interaction != null && string.IsNullOrEmpty(interactionText)) interactionText = "상호작용";
+        if (string.Equals(CurrentInteractionText, interactionText, StringComparison.Ordinal)) return;
+
+        CurrentInteractionText = interactionText;
+        InteractionPromptChanged?.Invoke(interactionText);
     }
 
     private void HandleInteractPressed()
     {
-        if (!isActiveAndEnabled || IsHitStopped || !_playerState || _playerState.ActionState != PlayerActionState.Free) return;
+        // 입력 시에도 동일한 선택기를 사용하고, 실행 직후 변경된 가능 여부를 UI에 반영한다.
+        RefreshInteractionTarget();
+        if (_currentInteraction == null) return;
 
-        Door nearestDoor = null;
-        float nearestDistance = float.PositiveInfinity;
-
-        for (int index = _doorInteractionCandidates.Count - 1; index >= 0; index--)
-        {
-            DoorInteractionTrigger trigger = _doorInteractionCandidates[index];
-
-            // 순간이동이나 비활성화로 Exit를 놓친 후보도 입력 시 다시 검증한다.
-            if (!trigger || !trigger.IsPlayerInRange(this))
-            {
-                Debug.Log("DoorTrigger outofrange");
-                _doorInteractionCandidates.RemoveAt(index);
-                continue;
-            }
-
-            Door door = trigger.Door;
-            if (!door || !door.CanOpen) continue;
-
-            float distance = (door.transform.position - transform.position).sqrMagnitude;
-            if (distance >= nearestDistance) continue;
-
-            nearestDistance = distance;
-            nearestDoor = door;
-        }
-
-        if (nearestDoor)
-        {
-            nearestDoor.TryOpen();
-        }
+        _currentInteraction.TryInteract(this);
+        RefreshInteractionTarget();
     }
 
     private void HandleOptionWindowPressed()
