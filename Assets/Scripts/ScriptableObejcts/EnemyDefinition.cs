@@ -6,8 +6,10 @@ public class EnemyDefinition : ScriptableObject
 {
     [field: SerializeField] public string EnemyName { get; private set; }
     [field: SerializeField] public int EnemyID { get; private set; }
-    //[field: SerializeField] public GameObject Model { get; private set; }
     [field: SerializeField] public EnemyPatternDefinition[] Patterns { get; private set; }
+
+    // 이 적을 처치한 플레이어에게 한 번 지급하는 경험치이다.
+    [field: SerializeField, Min(0)] public int ExperienceReward { get; private set; } = 10;
 
     [Header("Base Stats")]
     // 적 종류의 기본값이며 현재 체력 등 런타임 상태는 EnemyStat에서 관리한다.

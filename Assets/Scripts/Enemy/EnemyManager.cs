@@ -16,7 +16,10 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private LockOnTarget _lockOnTarget;
     private bool _lockOnEnabledBeforeDeath;
     private bool _deathPresentationStarted;
+    private PlayerManager _experienceRecipient;
     [field: SerializeField] private EnemyDefinition _enemyDefinition;
+    [Header("이동 중 피격")]
+    [SerializeField, Min(0f)] private float _movementHitPauseDuration = 0.2f;
     private EnemyDefinition _defaultEnemyDefinition;
     private EnemyState _enemyState;
     private EnemyStat _enemyStat;
@@ -26,6 +29,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private EnemyPatternExecutor _patternExecutor;
     private bool _hasStarted;
     private float _circleBlockedTime;
+    private float _movementHitPauseRemaining;
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
     private readonly PoiseReactionRuntime _poiseReaction = new();
 
@@ -99,10 +103,12 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         // 사망 시 제외했던 피격과 락온을 이 적의 초기 설정으로 복구한다.
         if (_deathPresentationStarted && _lockOnTarget) _lockOnTarget.enabled = _lockOnEnabledBeforeDeath;
         _deathPresentationStarted = false;
+        _experienceRecipient = null;
         if (_hurtbox) _hurtbox.SetDamageEnabled(true);
         _hasStarted = true;
         _target = null;
         _circleBlockedTime = 0f;
+        _movementHitPauseRemaining = 0f;
         _poiseReaction.Reset();
         _attackHitbox?.EndAttack();
 
@@ -137,9 +143,11 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void OnDisable()
     {
+        _experienceRecipient = null;
         _patternExecutor?.CancelCurrentPattern(false);
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
+        _movementHitPauseRemaining = 0f;
 
         if (_enemyAnimation)
         {
@@ -201,6 +209,9 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         }
 
         float deltaTime = Time.deltaTime;
+        // 히트스톱 이후부터 정지 시간을 소비하며 마지막 정지 프레임도 이동하지 않는다.
+        bool isMovementHitPaused = _movementHitPauseRemaining > 0f;
+        _movementHitPauseRemaining -= deltaTime;
         _patternExecutor.UpdateCooldowns(deltaTime);
 
         if (_enemyStat)
@@ -217,7 +228,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         // 대기와 가드 종료 모션까지 실행 중인 패턴이 소유한다.
         if (_patternExecutor.IsExecuting)
         {
-            UpdatePattern(deltaTime);
+            UpdatePattern(deltaTime, isMovementHitPaused);
             return;
         }
 
@@ -250,6 +261,13 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         if (_enemyState.CanMove && _enemyBrain.ShouldChaseTarget(targetSqrDistance))
         {
             _enemyState.SetBehaviorState(EnemyBehaviorState.Chasing);
+            if (isMovementHitPaused)
+            {
+                _enemyMove.FaceTarget(_target.position, deltaTime);
+                UpdateStationary(deltaTime);
+                return;
+            }
+
             _enemyMove.MoveTowards(_target.position, deltaTime);
             _enemyAnimation.SetMoveAmount(_enemyMove.MoveAmount);
             return;
@@ -298,10 +316,18 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     public void TakeDamage(float damage)
     {
-        if (_enemyStat)
-        {
-            _enemyStat.TakeDamage(damage);
-        }
+        // 기존 직접 피해 요청은 처치자 정보가 없는 피해로 처리한다.
+        TakeDamage(damage, null);
+    }
+
+    private void TakeDamage(float damage, MonoBehaviour attacker)
+    {
+        if (!_enemyStat || _enemyStat.IsDead || damage <= 0f) return;
+
+        // 이번 체력 피해의 사망 이벤트에서만 처치자를 참조한다. 이전 타격의 보상 권한은 남기지 않는다.
+        _experienceRecipient = attacker as PlayerManager;
+        _enemyStat.TakeDamage(damage);
+        _experienceRecipient = null;
     }
 
     public void BeginHitStop(float duration)
@@ -337,14 +363,31 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _enemyStat.TakePoiseDamage(damageInfo.PoiseDamage);
 
-        // 체력 감소와 기존 Died 이벤트 처리를 재사용한다.
-        TakeDamage(damageInfo.Damage);
+        // 피격 시점의 방어력을 체력 피해에만 적용하고 기존 Died 이벤트 처리를 재사용한다.
+        float damage = CombatUtility.CalculateDamageAfterDefense(damageInfo.Damage, _enemyStat.DefensePower);
+        TakeDamage(damage, damageInfo.Attacker);
 
         // 사망은 기절보다 우선한다.
         if (!_enemyStat.IsDead && damageInfo.PoiseDamage > 0f && _enemyStat.CurrentPoise <= 0f)
         {
             BeginPoiseReaction(false, damageInfo.Attacker);
         }
+
+        TryBeginMovementHitPause();
+    }
+
+    private void TryBeginMovementHitPause()
+    {
+        // 연타로 정지 시간을 연장하지 않고, 공격·가드·강인도 경직은 기존 처리를 따른다.
+        if (_enemyStat.IsDead || IsInPoiseReaction || _movementHitPauseRemaining > 0f) return;
+        if (!_enemyMove || !_enemyAnimation || _enemyMove.MoveAmount <= 0f) return;
+
+        bool isChasing = _enemyState.CanMove && _enemyState.BehaviorState == EnemyBehaviorState.Chasing;
+        bool isCircling = _enemyState.ActionState == EnemyActionState.Circling && _patternExecutor && _patternExecutor.IsCircling;
+        if (!isChasing && !isCircling) return;
+
+        _movementHitPauseRemaining = _movementHitPauseDuration;
+        _enemyAnimation.StopMovement();
     }
 
     private bool CanBlock(DamageInfo damageInfo)
@@ -358,7 +401,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         return CombatUtility.IsAttackerInFront(transform, damageInfo.Attacker.transform);
     }
 
-    private void UpdatePattern(float deltaTime)
+    private void UpdatePattern(float deltaTime, bool isMovementHitPaused)
     {
         if (!_target || !_target.gameObject.activeInHierarchy)
         {
@@ -427,6 +470,15 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _attackHitbox?.EndAttack();
         if (_patternExecutor.IsCircling)
         {
+            if (isMovementHitPaused)
+            {
+                // Circle 시간은 위에서 갱신하되 의도적인 정지를 장애물 막힘으로 세지 않는다.
+                _circleBlockedTime = 0f;
+                _enemyMove.FaceTarget(_target.position, deltaTime);
+                UpdateStationary(deltaTime);
+                return;
+            }
+
             step = _patternExecutor.CurrentStep;
             Vector2 movement = _enemyMove.MoveCircleTarget(_target.position, step.CircleSpeed, step.CircleDistance,
                 step.CircleDistanceTolerance, _patternExecutor.CircleDirectionSign, deltaTime);
@@ -461,7 +513,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             case EnemyPatternStepType.Attack:
                 if (!_enemyAnimation.TryPlayAttack(step.Attack, _enemyStat.AttackSpeed)) return false;
                 _enemyState.SetActionState(EnemyActionState.Attacking);
-                _attackHitbox?.BeginAttack(step.Attack);
+                _attackHitbox?.BeginAttack(step.Attack, _enemyStat.AttackPower);
                 return true;
             case EnemyPatternStepType.Guard:
                 if (!_enemyAnimation.TryBeginGuard()) return false;
@@ -500,6 +552,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _patternExecutor.CancelCurrentPattern(true);
         _enemyAnimation.CancelGuard();
         _circleBlockedTime = 0f;
+        _movementHitPauseRemaining = 0f;
         float duration = isGuardBreak ? _enemyStat.GuardBreakDuration : _enemyStat.StaggerDuration;
         float moveDistance = isGuardBreak ? _enemyStat.GuardBreakMoveDistance : _enemyStat.StaggerMoveDistance;
         _poiseReaction.Begin(transform, attacker ? attacker.transform : null, duration, moveDistance);
@@ -537,8 +590,21 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     {
         if (_deathPresentationStarted) return;
         _deathPresentationStarted = true;
-        _enemyState?.SetActionState(EnemyActionState.Dead);
-        _enemyState?.SetBehaviorState(EnemyBehaviorState.Idle);
+        // 상태 변경이나 풀 반환으로 참조가 정리되기 전에 이번 생명주기의 보상을 확보한다.
+        PlayerManager experienceRecipient = _experienceRecipient;
+        _experienceRecipient = null;
+        int experienceReward = _enemyDefinition.ExperienceReward;
+
+        if (_enemyState != null)
+        {
+            _enemyState.SetActionState(EnemyActionState.Dead);
+        }
+
+        if (_enemyState != null)
+        {
+            _enemyState.SetBehaviorState(EnemyBehaviorState.Idle);
+        }
+
         _target = null;
         if (_hurtbox) _hurtbox.SetDamageEnabled(false);
         if (_lockOnTarget)
@@ -559,6 +625,9 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
+        _movementHitPauseRemaining = 0f;
+        // 사망 중복 방지 이후에 지급하므로 추가 피격이나 사망 알림으로 경험치가 중복되지 않는다.
+        if (experienceRecipient) experienceRecipient.AddExperience(experienceReward);
         // 생존 적 수는 사망 연출과 풀 반환을 기다리지 않고 실제 사망 시점에 감소한다.
         Died?.Invoke(this);
         if (!_enemyAnimation || !_enemyAnimation.TryPlayDeath())

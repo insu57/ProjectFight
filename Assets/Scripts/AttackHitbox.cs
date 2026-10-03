@@ -51,7 +51,7 @@ public sealed class AttackHitbox : MonoBehaviour
         _owner = owner;
     }
 
-    public void BeginAttack(AttackDefinition attackDefinition)
+    public void BeginAttack(AttackDefinition attackDefinition, float attackPower = 0f)
     {
         // 콤보 전환 시 이전 공격의 박스를 먼저 끈다.
         EndAttack();
@@ -60,8 +60,8 @@ public sealed class AttackHitbox : MonoBehaviour
 
         _currentAttack = attackDefinition;
 
-        // 공유 에셋의 피해 설정을 이번 공격의 실행 정보로 보관한다.
-        _damage = Mathf.Max(0f, attackDefinition.BaseDamage);
+        // 공유 에셋은 유지하고 공격 시작 시 전달받은 공격력을 이번 공격의 체력 피해에 더한다.
+        _damage = Mathf.Max(0f, attackDefinition.BaseDamage) + Mathf.Max(0f, attackPower);
         _poiseDamage = Mathf.Max(0f, attackDefinition.BasePoiseDamage);
         _guardPoiseDamage = Mathf.Max(0f, attackDefinition.BaseGuardPoiseDamage);
         _hitbox.size = attackDefinition.HitboxSize;

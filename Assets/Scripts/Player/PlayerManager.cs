@@ -218,8 +218,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         // 강인도를 먼저 처리하여 치명타에서도 해당 공격의 감소량을 반영한다.
         _playerStat.TakePoiseDamage(damageInfo.PoiseDamage);
 
-        // 소수점 피해를 변환 없이 전달한다.
-        _playerStat.TakeDamage(damageInfo.Damage);
+        // 피격 시점의 방어력을 체력 피해에만 적용한다.
+        float damage = CombatUtility.CalculateDamageAfterDefense(damageInfo.Damage, _playerStat.CurrentStats.DefensePower);
+        _playerStat.TakeDamage(damage);
 
         // 치명적인 공격에서는 경직보다 기존 사망 처리를 우선한다.
         if (_playerStat.CurrentStats.CurrentHealth > 0f)
@@ -519,6 +520,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         return _playerSkillTree.TryUnlockNode(nodeId);
     }
 
+    public void AddExperience(int amount)
+    {
+        if (!_playerStat) return;
+
+        // 처치 보상은 Manager를 통해 전달하고 기존 스탯 변경 알림으로 UI를 갱신한다.
+        _playerStat.AddExperience(amount);
+    }
+
     public void AddSkillPoints(int amount)
     {
         if (_playerSkillTree)
@@ -669,7 +678,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         // 공격 설정을 판정 컴포넌트에 전달한 뒤 애니메이션을 시작한다.
         if (_attackHitbox)
         {
-            _attackHitbox.BeginAttack(attackDefinition);
+            // 스탯은 Manager가 중개하며 콤보의 각 공격 시작 시 현재 공격력을 전달한다.
+            float attackPower = _playerStat ? _playerStat.CurrentStats.AttackPower : 0f;
+            _attackHitbox.BeginAttack(attackDefinition, attackPower);
         }
 
         _playerAnimation.PlayAttack(attackDefinition);

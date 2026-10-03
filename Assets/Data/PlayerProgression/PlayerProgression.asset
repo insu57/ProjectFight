@@ -1,0 +1,367 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23404550af4c4e96a92430983ad586d4, type: 3}
+  m_Name: PlayerProgression
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerProgressionDefinition
+  _levels:
+  - _level: 1
+    _targetExp: 100
+    _skillPointsOnReach: 1
+    _maxHealth: 100
+    _attackPower: 0
+    _defensePower: 0
+    _maxEnergy: 100
+  - _level: 2
+    _targetExp: 150
+    _skillPointsOnReach: 1
+    _maxHealth: 120
+    _attackPower: 10
+    _defensePower: 10
+    _maxEnergy: 105
+  - _level: 3
+    _targetExp: 200
+    _skillPointsOnReach: 1
+    _maxHealth: 140
+    _attackPower: 12
+    _defensePower: 12
+    _maxEnergy: 110
+  - _level: 4
+    _targetExp: 250
+    _skillPointsOnReach: 1
+    _maxHealth: 160
+    _attackPower: 14
+    _defensePower: 14
+    _maxEnergy: 115
+  - _level: 5
+    _targetExp: 300
+    _skillPointsOnReach: 2
+    _maxHealth: 180
+    _attackPower: 16
+    _defensePower: 16
+    _maxEnergy: 120
+  - _level: 6
+    _targetExp: 350
+    _skillPointsOnReach: 1
+    _maxHealth: 200
+    _attackPower: 18
+    _defensePower: 18
+    _maxEnergy: 125
+  - _level: 7
+    _targetExp: 400
+    _skillPointsOnReach: 1
+    _maxHealth: 220
+    _attackPower: 20
+    _defensePower: 20
+    _maxEnergy: 130
+  - _level: 8
+    _targetExp: 450
+    _skillPointsOnReach: 1
+    _maxHealth: 240
+    _attackPower: 22
+    _defensePower: 22
+    _maxEnergy: 135
+  - _level: 9
+    _targetExp: 500
+    _skillPointsOnReach: 1
+    _maxHealth: 260
+    _attackPower: 24
+    _defensePower: 24
+    _maxEnergy: 140
+  - _level: 10
+    _targetExp: 550
+    _skillPointsOnReach: 2
+    _maxHealth: 280
+    _attackPower: 26
+    _defensePower: 26
+    _maxEnergy: 145
+  - _level: 11
+    _targetExp: 600
+    _skillPointsOnReach: 1
+    _maxHealth: 300
+    _attackPower: 28
+    _defensePower: 28
+    _maxEnergy: 150
+  - _level: 12
+    _targetExp: 650
+    _skillPointsOnReach: 1
+    _maxHealth: 320
+    _attackPower: 30
+    _defensePower: 30
+    _maxEnergy: 155
+  - _level: 13
+    _targetExp: 700
+    _skillPointsOnReach: 1
+    _maxHealth: 340
+    _attackPower: 32
+    _defensePower: 32
+    _maxEnergy: 160
+  - _level: 14
+    _targetExp: 750
+    _skillPointsOnReach: 1
+    _maxHealth: 360
+    _attackPower: 34
+    _defensePower: 34
+    _maxEnergy: 165
+  - _level: 15
+    _targetExp: 800
+    _skillPointsOnReach: 2
+    _maxHealth: 380
+    _attackPower: 36
+    _defensePower: 36
+    _maxEnergy: 170
+  - _level: 16
+    _targetExp: 850
+    _skillPointsOnReach: 1
+    _maxHealth: 400
+    _attackPower: 38
+    _defensePower: 38
+    _maxEnergy: 175
+  - _level: 17
+    _targetExp: 900
+    _skillPointsOnReach: 1
+    _maxHealth: 420
+    _attackPower: 40
+    _defensePower: 40
+    _maxEnergy: 180
+  - _level: 18
+    _targetExp: 950
+    _skillPointsOnReach: 1
+    _maxHealth: 440
+    _attackPower: 42
+    _defensePower: 42
+    _maxEnergy: 185
+  - _level: 19
+    _targetExp: 1000
+    _skillPointsOnReach: 1
+    _maxHealth: 460
+    _attackPower: 44
+    _defensePower: 44
+    _maxEnergy: 190
+  - _level: 20
+    _targetExp: 1050
+    _skillPointsOnReach: 2
+    _maxHealth: 480
+    _attackPower: 46
+    _defensePower: 46
+    _maxEnergy: 195
+  - _level: 21
+    _targetExp: 1100
+    _skillPointsOnReach: 1
+    _maxHealth: 500
+    _attackPower: 48
+    _defensePower: 48
+    _maxEnergy: 200
+  - _level: 22
+    _targetExp: 1150
+    _skillPointsOnReach: 1
+    _maxHealth: 520
+    _attackPower: 50
+    _defensePower: 50
+    _maxEnergy: 205
+  - _level: 23
+    _targetExp: 1200
+    _skillPointsOnReach: 1
+    _maxHealth: 540
+    _attackPower: 52
+    _defensePower: 52
+    _maxEnergy: 210
+  - _level: 24
+    _targetExp: 1250
+    _skillPointsOnReach: 1
+    _maxHealth: 560
+    _attackPower: 54
+    _defensePower: 54
+    _maxEnergy: 215
+  - _level: 25
+    _targetExp: 1300
+    _skillPointsOnReach: 2
+    _maxHealth: 580
+    _attackPower: 56
+    _defensePower: 56
+    _maxEnergy: 220
+  - _level: 26
+    _targetExp: 1350
+    _skillPointsOnReach: 1
+    _maxHealth: 600
+    _attackPower: 58
+    _defensePower: 58
+    _maxEnergy: 225
+  - _level: 27
+    _targetExp: 1400
+    _skillPointsOnReach: 1
+    _maxHealth: 620
+    _attackPower: 60
+    _defensePower: 60
+    _maxEnergy: 230
+  - _level: 28
+    _targetExp: 1450
+    _skillPointsOnReach: 1
+    _maxHealth: 640
+    _attackPower: 62
+    _defensePower: 62
+    _maxEnergy: 235
+  - _level: 29
+    _targetExp: 1500
+    _skillPointsOnReach: 1
+    _maxHealth: 660
+    _attackPower: 64
+    _defensePower: 64
+    _maxEnergy: 240
+  - _level: 30
+    _targetExp: 1550
+    _skillPointsOnReach: 2
+    _maxHealth: 680
+    _attackPower: 66
+    _defensePower: 66
+    _maxEnergy: 245
+  - _level: 31
+    _targetExp: 1600
+    _skillPointsOnReach: 1
+    _maxHealth: 700
+    _attackPower: 68
+    _defensePower: 68
+    _maxEnergy: 250
+  - _level: 32
+    _targetExp: 1650
+    _skillPointsOnReach: 1
+    _maxHealth: 720
+    _attackPower: 70
+    _defensePower: 70
+    _maxEnergy: 255
+  - _level: 33
+    _targetExp: 1700
+    _skillPointsOnReach: 1
+    _maxHealth: 740
+    _attackPower: 72
+    _defensePower: 72
+    _maxEnergy: 260
+  - _level: 34
+    _targetExp: 1750
+    _skillPointsOnReach: 1
+    _maxHealth: 760
+    _attackPower: 74
+    _defensePower: 74
+    _maxEnergy: 265
+  - _level: 35
+    _targetExp: 1800
+    _skillPointsOnReach: 2
+    _maxHealth: 780
+    _attackPower: 76
+    _defensePower: 76
+    _maxEnergy: 270
+  - _level: 36
+    _targetExp: 1850
+    _skillPointsOnReach: 1
+    _maxHealth: 800
+    _attackPower: 78
+    _defensePower: 78
+    _maxEnergy: 275
+  - _level: 37
+    _targetExp: 1900
+    _skillPointsOnReach: 1
+    _maxHealth: 820
+    _attackPower: 80
+    _defensePower: 80
+    _maxEnergy: 280
+  - _level: 38
+    _targetExp: 1950
+    _skillPointsOnReach: 1
+    _maxHealth: 840
+    _attackPower: 82
+    _defensePower: 82
+    _maxEnergy: 285
+  - _level: 39
+    _targetExp: 2000
+    _skillPointsOnReach: 1
+    _maxHealth: 860
+    _attackPower: 84
+    _defensePower: 84
+    _maxEnergy: 290
+  - _level: 40
+    _targetExp: 2050
+    _skillPointsOnReach: 2
+    _maxHealth: 880
+    _attackPower: 86
+    _defensePower: 86
+    _maxEnergy: 295
+  - _level: 41
+    _targetExp: 2100
+    _skillPointsOnReach: 1
+    _maxHealth: 900
+    _attackPower: 88
+    _defensePower: 88
+    _maxEnergy: 300
+  - _level: 42
+    _targetExp: 2150
+    _skillPointsOnReach: 1
+    _maxHealth: 920
+    _attackPower: 90
+    _defensePower: 90
+    _maxEnergy: 305
+  - _level: 43
+    _targetExp: 2200
+    _skillPointsOnReach: 1
+    _maxHealth: 940
+    _attackPower: 92
+    _defensePower: 92
+    _maxEnergy: 310
+  - _level: 44
+    _targetExp: 2250
+    _skillPointsOnReach: 1
+    _maxHealth: 960
+    _attackPower: 94
+    _defensePower: 94
+    _maxEnergy: 315
+  - _level: 45
+    _targetExp: 2300
+    _skillPointsOnReach: 2
+    _maxHealth: 980
+    _attackPower: 96
+    _defensePower: 96
+    _maxEnergy: 320
+  - _level: 46
+    _targetExp: 2350
+    _skillPointsOnReach: 1
+    _maxHealth: 1000
+    _attackPower: 98
+    _defensePower: 98
+    _maxEnergy: 325
+  - _level: 47
+    _targetExp: 2400
+    _skillPointsOnReach: 1
+    _maxHealth: 1020
+    _attackPower: 100
+    _defensePower: 100
+    _maxEnergy: 330
+  - _level: 48
+    _targetExp: 2450
+    _skillPointsOnReach: 1
+    _maxHealth: 1040
+    _attackPower: 102
+    _defensePower: 102
+    _maxEnergy: 335
+  - _level: 49
+    _targetExp: 2500
+    _skillPointsOnReach: 1
+    _maxHealth: 1060
+    _attackPower: 104
+    _defensePower: 104
+    _maxEnergy: 340
+  - _level: 50
+    _targetExp: 0
+    _skillPointsOnReach: 2
+    _maxHealth: 1080
+    _attackPower: 106
+    _defensePower: 106
+    _maxEnergy: 345
+  _sourceCsvGuid: a36d953e013c431799e55d690a1d9f59
+  _sourceCsvHash: 89ae06ec8894b3b67c2a804e2509d345

@@ -59,6 +59,15 @@ public sealed class EnemyAnimation : CharacterAnimation
         CharacterAnimator.SetFloat(_moveYHash, localMovement.y, _movementDampTime, deltaTime);
     }
 
+    public void StopMovement()
+    {
+        if (!CharacterAnimator) return;
+
+        // 피격 정지는 보간 없이 이동 입력을 제거해 제자리 걸음을 방지한다.
+        CharacterAnimator.SetFloat(_moveXHash, 0f);
+        CharacterAnimator.SetFloat(_moveYHash, 0f);
+    }
+
     public bool TryBeginGuard()
     {
         if (!CharacterAnimator || !CharacterAnimator.HasState(0, _guardStartHash) || !CharacterAnimator.HasState(0, _guardEndHash)) return false;

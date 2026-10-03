@@ -22077,6 +22077,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyManager
   _enemyDefinition: {fileID: 11400000, guid: f6d0da68762f0fd41a637801e1d223e6, type: 2}
+  _movementHitPauseDuration: 0.5
 --- !u!114 &4003446771134710899
 MonoBehaviour:
   m_ObjectHideFlags: 0

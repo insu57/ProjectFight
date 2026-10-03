@@ -9054,6 +9054,14 @@ PrefabInstance:
       propertyPath: _baseAttackPower
       value: 50
       objectReference: {fileID: 0}
+    - target: {fileID: 112678730961460787, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+      propertyPath: _baseDefensePower
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 112678730961460787, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
+      propertyPath: _progressionDefinition
+      value: 
+      objectReference: {fileID: 11400000, guid: 453385d85b33a0445be659984ab66820, type: 2}
     - target: {fileID: 4129976254972732029, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
       propertyPath: m_Name
       value: Player

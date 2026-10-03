@@ -55,9 +55,11 @@ public readonly struct PlayerStatSnapshot
 [DisallowMultipleComponent]
 public class PlayerStat : MonoBehaviour
 {
+    // CSV에서 변환한 성장표이며 플레이어의 현재 상태는 이 컴포넌트에 보관한다.
+    [SerializeField] private PlayerProgressionDefinition _progressionDefinition;
     [SerializeField, Min(1)] private int _level = 1;
     [SerializeField, Min(0)] private int _currentExp;
-    [SerializeField, Min(1)] private int _targetExp = 100; // 추후 계산식 적용
+    [SerializeField, Min(0)] private int _targetExp = 100;
     // 체력은 소수점 피해와 회복량을 그대로 보존한다.
     [SerializeField, Min(1f)] private float _maxHealth = 100f;
     [SerializeField, Min(0f)] private float _currentHealth = 100f;
@@ -96,6 +98,12 @@ public class PlayerStat : MonoBehaviour
 
     private void Awake()
     {
+        if (TryGetProgressionLevel(_level, out PlayerLevelData levelData))
+        {
+            ApplyLevelData(levelData, false);
+            _currentExp = _targetExp > 0 ? Mathf.Clamp(_currentExp, 0, _targetExp - 1) : 0;
+        }
+
         _currentHealth = _maxHealth;
         _currentEnergy = 0f;
 
@@ -188,23 +196,100 @@ public class PlayerStat : MonoBehaviour
             return;
         }
 
-        _currentExp += amount;
+        if (TryGetProgressionLevel(_level, out PlayerLevelData currentLevel))
+        {
+            AddProgressionExperience(amount, currentLevel);
+            return;
+        }
+
+        _targetExp = Mathf.Max(1, _targetExp);
+
+        // 성장표가 연결되지 않은 기존 플레이어는 고정 요구 경험치 동작을 유지한다.
+        // 합산은 long으로 처리하여 큰 보상에서도 int 경험치가 음수로 넘치지 않게 한다.
+        long totalExperience = (long)_currentExp + amount;
+        long gainedLevels = totalExperience / _targetExp;
+        _level = (int)Math.Min(int.MaxValue, (long)Mathf.Max(1, _level) + gainedLevels);
+        _currentExp = (int)(totalExperience % _targetExp);
         NotifyStatsChanged();
     }
 
-    public void SetLevel(int level, int targetExp) //수정필.
+    private void AddProgressionExperience(int amount, PlayerLevelData currentLevel)
+    {
+        if (currentLevel.Level >= _progressionDefinition.MaxLevel || currentLevel.TargetExp <= 0) return;
+
+        // 각 레벨의 요구 경험치가 다르므로 차례대로 차감하고 다음 레벨의 스탯을 적용한다.
+        long totalExperience = (long)Mathf.Max(0, _currentExp) + amount;
+        _targetExp = currentLevel.TargetExp;
+
+        while (_targetExp > 0 && totalExperience >= _targetExp && _level < _progressionDefinition.MaxLevel)
+        {
+            if (!_progressionDefinition.TryGetLevel(_level + 1, out PlayerLevelData nextLevel)) break;
+
+            totalExperience -= _targetExp;
+            ApplyLevelData(nextLevel, true);
+        }
+
+        // 최대 레벨에서는 경험치를 남기지 않고 더 이상 레벨업하지 않는다.
+        _currentExp = _level >= _progressionDefinition.MaxLevel ? 0 : (int)Math.Min(totalExperience, int.MaxValue);
+        // 여러 레벨을 한 번에 올려도 완성된 최종 스냅샷만 한 번 전달한다.
+        NotifyStatsChanged();
+    }
+
+    private bool TryGetProgressionLevel(int level, out PlayerLevelData data)
+    {
+        if (!_progressionDefinition || _progressionDefinition.MaxLevel <= 0)
+        {
+            data = default;
+            return false;
+        }
+
+        int clampedLevel = Mathf.Clamp(level, 1, _progressionDefinition.MaxLevel);
+        return _progressionDefinition.TryGetLevel(clampedLevel, out data);
+    }
+
+    private void ApplyLevelData(PlayerLevelData data, bool restoreHealthIncrease)
+    {
+        float healthIncrease = Mathf.Max(0f, data.MaxHealth - _maxHealth);
+        _level = data.Level;
+        _targetExp = data.TargetExp;
+        _maxHealth = data.MaxHealth;
+        _baseAttackPower = data.AttackPower;
+        _baseDefensePower = data.DefensePower;
+        _baseMaxEnergy = data.MaxEnergy;
+
+        // 레벨업으로 늘어난 체력만 보충하고, 사망한 플레이어는 되살리지 않는다.
+        if (restoreHealthIncrease && _currentHealth > 0f) _currentHealth = Mathf.Min(_maxHealth, _currentHealth + healthIncrease);
+        else _currentHealth = Mathf.Min(_currentHealth, _maxHealth);
+
+        _currentEnergy = Mathf.Min(_currentEnergy, _baseMaxEnergy);
+    }
+
+    public void SetLevel(int level, int targetExp)
     {
         int clampedLevel = Mathf.Max(1, level);
         int clampedTargetExp = Mathf.Max(1, targetExp);
+        bool hasProgressionData = TryGetProgressionLevel(level, out PlayerLevelData levelData);
+
+        // 레벨 직접 지정 시에도 연결된 성장표의 레벨 범위와 요구 경험치를 사용한다.
+        if (hasProgressionData)
+        {
+            clampedLevel = levelData.Level;
+            clampedTargetExp = levelData.TargetExp;
+        }
 
         if (_level == clampedLevel && _targetExp == clampedTargetExp)
         {
             return;
         }
 
-        _level = clampedLevel;
-        _targetExp = clampedTargetExp;
-        _currentExp = Mathf.Min(_currentExp, _targetExp);
+        if (hasProgressionData) ApplyLevelData(levelData, false);
+        else
+        {
+            _level = clampedLevel;
+            _targetExp = clampedTargetExp;
+        }
+
+        _currentExp = hasProgressionData ? (_targetExp > 0 ? Mathf.Clamp(_currentExp, 0, _targetExp - 1) : 0) : Mathf.Min(_currentExp, _targetExp);
         NotifyStatsChanged();
     }
 

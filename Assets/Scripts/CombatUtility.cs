@@ -2,6 +2,15 @@ using UnityEngine;
 
 public static class CombatUtility
 {
+    // 이 값과 같은 방어력에서 받는 체력 피해가 절반이 된다.
+    private const float DefenseReferenceValue = 100f;
+
+    public static float CalculateDamageAfterDefense(float damage, float defensePower)
+    {
+        // 음수 스탯은 0으로 취급하고 소수점 피해를 그대로 보존한다.
+        return Mathf.Max(0f, damage) * (DefenseReferenceValue / (DefenseReferenceValue + Mathf.Max(0f, defensePower)));
+    }
+
     public static bool IsAttackerBehind(Transform defender, Transform attacker)
     {
         if (!defender || !attacker) return false;
