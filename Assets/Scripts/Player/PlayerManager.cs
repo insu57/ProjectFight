@@ -528,6 +528,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         _playerStat.AddExperience(amount);
     }
 
+    public void AddMoney(int amount)
+    {
+        if (!_playerStat) return;
+
+        // 외부 보상 요청은 Manager를 거쳐 PlayerStat의 보유 금액에 반영한다.
+        _playerStat.AddMoney(amount);
+    }
+
     public void AddSkillPoints(int amount)
     {
         if (_playerSkillTree)

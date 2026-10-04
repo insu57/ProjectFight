@@ -11,6 +11,10 @@ public class EnemyDefinition : ScriptableObject
     // 이 적을 처치한 플레이어에게 한 번 지급하는 경험치이다.
     [field: SerializeField, Min(0)] public int ExperienceReward { get; private set; } = 10;
 
+    // 적별 처치 금액 범위이며 최소값과 최대값을 모두 포함한다. 0~0이면 지급하지 않는다.
+    [field: SerializeField, Min(0)] public int MinMoneyReward { get; private set; }
+    [field: SerializeField, Min(0)] public int MaxMoneyReward { get; private set; }
+
     [Header("Base Stats")]
     // 적 종류의 기본값이며 현재 체력 등 런타임 상태는 EnemyStat에서 관리한다.
     [field: SerializeField, Min(1f)] public float MaxHealth { get; private set; } = 100f;
@@ -35,4 +39,14 @@ public class EnemyDefinition : ScriptableObject
     [field: SerializeField, Min(0f)] public float GuardBreakDuration { get; private set; } = 1.5f;
     // 가드 브레이크 시간 동안 밀려나는 총 거리이다.
     [field: SerializeField, Min(0f)] public float GuardBreakMoveDistance { get; private set; } = 1f;
+
+    public int GetMoneyReward()
+    {
+        int minimum = Mathf.Max(0, MinMoneyReward);
+        int maximum = Mathf.Max(minimum, MaxMoneyReward);
+        if (minimum == maximum) return minimum;
+
+        // 범위를 1만큼 내려 추첨하면 양 끝값을 포함하고 int.MaxValue 상한도 넘치지 않는다.
+        return Random.Range(minimum - 1, maximum) + 1;
+    }
 }

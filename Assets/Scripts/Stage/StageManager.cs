@@ -1,12 +1,19 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class StageManager : MonoBehaviour
 {
+    private const string ItemDefinitionResourcePath = "ItemDefinition";
+
     // 현재 스테이지 생성에 사용할 정의.
     [field: SerializeField] private StageDefinition _stageDefinition;
     //현재 스테이지 진행 정보...
+
+    [Header("보상 상자")]
+    // Inspector의 사전 지정 상자와 생성된 보상방의 상자를 같은 목록에서 관리한다.
+    [SerializeField] private List<RewardChest> _rewardChests = new();
 
     private MapGenerator _mapGenerator;
     private PlayerManager _playerManager;
@@ -17,6 +24,12 @@ public class StageManager : MonoBehaviour
     private readonly HashSet<StageNode> _visitedRooms = new();
     // 방문 기록과 전투 시작 기록을 분리해 재입장이나 순간이동에도 편성을 다시 뽑지 않는다.
     private readonly Dictionary<Room, RoomEncounterRuntime> _roomEncounters = new();
+    // 런타임에 추가한 항목만 추적하여 스테이지 갱신 시 사전 지정 상자를 보존한다.
+    private readonly List<RewardChest> _runtimeRewardChests = new();
+    // 소모품을 제외한 공용 후보를 한 번 준비하고 모든 상자의 추첨에 재사용한다.
+    private readonly List<ItemDefinition> _rewardItemCandidates = new();
+
+    public IReadOnlyList<RewardChest> RewardChests => _rewardChests;
 
     public StageGraph CurrentGraph { get; private set; }
 
@@ -30,6 +43,9 @@ public class StageManager : MonoBehaviour
 
     private void Awake()
     {
+        // 그래프가 없는 테스트 씬에서도 사전 지정한 상자에 보상을 주입할 수 있게 먼저 읽는다.
+        LoadRewardItems();
+
         if (!TryGetComponent(out _mapGenerator))
         {
             Debug.LogWarning("MapGenerator: NULL", this);
@@ -64,6 +80,8 @@ public class StageManager : MonoBehaviour
     {
         if (!_mapGenerator)
         {
+            // 그래프가 없는 테스트 씬에서도 Inspector에 지정한 상자는 등록한다.
+            ResetRewardChests();
             return;
         }
 
@@ -79,6 +97,7 @@ public class StageManager : MonoBehaviour
         }
 
         _roomNodes.Clear();
+        ClearRuntimeRewardChests();
     }
 
     private void Update()
@@ -108,6 +127,87 @@ public class StageManager : MonoBehaviour
         _roomEncounters.Clear();
     }
 
+    private void LoadRewardItems()
+    {
+        ItemDefinition[] definitions = Resources.LoadAll<ItemDefinition>(ItemDefinitionResourcePath);
+        _rewardItemCandidates.Clear();
+        _rewardItemCandidates.Capacity = definitions.Length;
+
+        for (int index = 0; index < definitions.Length; index++)
+        {
+            ItemDefinition definition = definitions[index];
+            if (!definition || (definition.ItemType != ItemType.Equipment && definition.ItemType != ItemType.Relic))
+            {
+                continue;
+            }
+
+            _rewardItemCandidates.Add(definition);
+        }
+
+        if (_rewardItemCandidates.Count == 0)
+        {
+            Debug.LogWarning("Resources/ItemDefinition에 보상 상자용 장비 또는 유물 아이템이 없습니다.", this);
+        }
+    }
+
+    private void AssignRewardItem(RewardChest chest)
+    {
+        if (!chest || chest.IsOpen || chest.RewardItem || _rewardItemCandidates.Count == 0)
+        {
+            return;
+        }
+
+        // 희귀도 가중치 없이 아이템별로 균등 추첨하며 같은 아이템의 중복 추첨도 허용한다.
+        int index = UnityEngine.Random.Range(0, _rewardItemCandidates.Count);
+        chest.SetRewardItem(_rewardItemCandidates[index]);
+    }
+
+    private void ResetRewardChests()
+    {
+        ClearRuntimeRewardChests();
+        if (_rewardChests == null)
+        {
+            _rewardChests = new();
+            return;
+        }
+
+        // 사전 지정한 목록에서 빈 참조와 중복만 제거하고 첫 번째 항목은 유지한다.
+        for (int index = _rewardChests.Count - 1; index >= 0; index--)
+        {
+            RewardChest chest = _rewardChests[index];
+            if (!chest || _rewardChests.IndexOf(chest) != index)
+            {
+                _rewardChests.RemoveAt(index);
+                continue;
+            }
+
+            AssignRewardItem(chest);
+        }
+    }
+
+    private void ClearRuntimeRewardChests()
+    {
+        for (int index = 0; index < _runtimeRewardChests.Count; index++)
+        {
+            _rewardChests?.Remove(_runtimeRewardChests[index]);
+        }
+
+        _runtimeRewardChests.Clear();
+    }
+
+    private void RegisterRewardChest(RewardChest chest)
+    {
+        // 사전 지정된 상자는 런타임 추가 항목으로 취급하지 않고 중복 등록을 막는다.
+        if (!chest || _rewardChests.Contains(chest))
+        {
+            return;
+        }
+
+        _rewardChests.Add(chest);
+        _runtimeRewardChests.Add(chest);
+        AssignRewardItem(chest);
+    }
+
     private void HandleGraphChanged(StageGraph graph)
     {
         // 매니저를 다시 활성화한 경우에는 같은 그래프의 방문 기록과 현재 방을 유지한다.
@@ -122,6 +222,7 @@ public class StageManager : MonoBehaviour
         }
 
         _roomNodes.Clear();
+        ResetRewardChests();
 
         if (graph == null)
         {
@@ -141,6 +242,11 @@ public class StageManager : MonoBehaviour
 
             _roomNodes[room] = node;
             room.Initialize(this);
+
+            if (node.RoomData && node.RoomData.RoomType == RoomType.Reward)
+            {
+                RegisterRewardChest(room.RewardChest);
+            }
 
             // 새 스테이지의 시작 방은 처음부터 지도에 공개한다.
             if (graphChanged && node.RoomData && node.RoomData.RoomType == RoomType.Start)

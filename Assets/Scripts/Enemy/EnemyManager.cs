@@ -16,7 +16,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private LockOnTarget _lockOnTarget;
     private bool _lockOnEnabledBeforeDeath;
     private bool _deathPresentationStarted;
-    private PlayerManager _experienceRecipient;
+    private PlayerManager _rewardRecipient;
     [field: SerializeField] private EnemyDefinition _enemyDefinition;
     [Header("이동 중 피격")]
     [SerializeField, Min(0f)] private float _movementHitPauseDuration = 0.2f;
@@ -103,7 +103,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         // 사망 시 제외했던 피격과 락온을 이 적의 초기 설정으로 복구한다.
         if (_deathPresentationStarted && _lockOnTarget) _lockOnTarget.enabled = _lockOnEnabledBeforeDeath;
         _deathPresentationStarted = false;
-        _experienceRecipient = null;
+        _rewardRecipient = null;
         if (_hurtbox) _hurtbox.SetDamageEnabled(true);
         _hasStarted = true;
         _target = null;
@@ -143,7 +143,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void OnDisable()
     {
-        _experienceRecipient = null;
+        _rewardRecipient = null;
         _patternExecutor?.CancelCurrentPattern(false);
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
@@ -325,9 +325,9 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         if (!_enemyStat || _enemyStat.IsDead || damage <= 0f) return;
 
         // 이번 체력 피해의 사망 이벤트에서만 처치자를 참조한다. 이전 타격의 보상 권한은 남기지 않는다.
-        _experienceRecipient = attacker as PlayerManager;
+        _rewardRecipient = attacker as PlayerManager;
         _enemyStat.TakeDamage(damage);
-        _experienceRecipient = null;
+        _rewardRecipient = null;
     }
 
     public void BeginHitStop(float duration)
@@ -591,9 +591,11 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         if (_deathPresentationStarted) return;
         _deathPresentationStarted = true;
         // 상태 변경이나 풀 반환으로 참조가 정리되기 전에 이번 생명주기의 보상을 확보한다.
-        PlayerManager experienceRecipient = _experienceRecipient;
-        _experienceRecipient = null;
-        int experienceReward = _enemyDefinition.ExperienceReward;
+        PlayerManager rewardRecipient = _rewardRecipient;
+        _rewardRecipient = null;
+        // Definition이 없는 적도 사망 처리를 마치며, 지급할 보상만 0으로 처리한다.
+        int experienceReward = _enemyDefinition ? _enemyDefinition.ExperienceReward : 0;
+        int moneyReward = rewardRecipient && _enemyDefinition ? _enemyDefinition.GetMoneyReward() : 0;
 
         if (_enemyState != null)
         {
@@ -626,8 +628,12 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
         _movementHitPauseRemaining = 0f;
-        // 사망 중복 방지 이후에 지급하므로 추가 피격이나 사망 알림으로 경험치가 중복되지 않는다.
-        if (experienceRecipient) experienceRecipient.AddExperience(experienceReward);
+        // 사망 중복 방지 이후에 지급하므로 추가 피격이나 사망 알림으로 보상이 중복되지 않는다.
+        if (rewardRecipient)
+        {
+            rewardRecipient.AddExperience(experienceReward);
+            rewardRecipient.AddMoney(moneyReward);
+        }
         // 생존 적 수는 사망 연출과 풀 반환을 기다리지 않고 실제 사망 시점에 감소한다.
         Died?.Invoke(this);
         if (!_enemyAnimation || !_enemyAnimation.TryPlayDeath())

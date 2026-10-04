@@ -19,6 +19,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f4e8d487e4f9d0a40b552465e17a7144, type: 2}
   - {fileID: 11400000, guid: a716367e797767245b685282c077b76a, type: 2}
   <ExperienceReward>k__BackingField: 100
+  <MinMoneyReward>k__BackingField: 20
+  <MaxMoneyReward>k__BackingField: 40
   <MaxHealth>k__BackingField: 50
   <AttackPower>k__BackingField: 0
   <DefensePower>k__BackingField: 0

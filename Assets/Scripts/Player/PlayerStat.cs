@@ -25,8 +25,9 @@ public readonly struct PlayerStatSnapshot
     public float CurrentGuardPoise { get; }
     public float StaggerMoveDistance { get; }
     public float GuardBreakMoveDistance { get; }
+    public int Money { get; }
 
-    public PlayerStatSnapshot(int level, int currentExp, int targetExp, float maxHealth, float currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration, float currentPoise, float currentGuardPoise, float staggerMoveDistance, float guardBreakMoveDistance)
+    public PlayerStatSnapshot(int level, int currentExp, int targetExp, float maxHealth, float currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration, float currentPoise, float currentGuardPoise, float staggerMoveDistance, float guardBreakMoveDistance, int money)
     {
         Level = level;
         CurrentExp = currentExp;
@@ -49,6 +50,7 @@ public readonly struct PlayerStatSnapshot
         CurrentGuardPoise = currentGuardPoise;
         StaggerMoveDistance = Mathf.Max(0f, staggerMoveDistance);
         GuardBreakMoveDistance = Mathf.Max(0f, guardBreakMoveDistance);
+        Money = money;
     }
 }
 
@@ -60,6 +62,8 @@ public class PlayerStat : MonoBehaviour
     [SerializeField, Min(1)] private int _level = 1;
     [SerializeField, Min(0)] private int _currentExp;
     [SerializeField, Min(0)] private int _targetExp = 100;
+    // 보유 금액은 성장표와 별도로 유지하며 처치 보상으로 누적한다.
+    [SerializeField, Min(0)] private int _money;
     // 체력은 소수점 피해와 회복량을 그대로 보존한다.
     [SerializeField, Min(1f)] private float _maxHealth = 100f;
     [SerializeField, Min(0f)] private float _currentHealth = 100f;
@@ -89,12 +93,13 @@ public class PlayerStat : MonoBehaviour
 
     public float CurrentPoise { get; private set; }
     public float CurrentGuardPoise { get; private set; }
+    public int Money => _money;
 
     // 두 강인도는 마지막으로 피해를 받은 시점부터 각각 회복을 기다린다.
     private float _poiseRecoveryRemaining;
     private float _guardPoiseRecoveryRemaining;
 
-    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth, _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise, _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate, _guardBreakDuration, CurrentPoise, CurrentGuardPoise, _staggerMoveDistance, _guardBreakMoveDistance);
+    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth, _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise, _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate, _guardBreakDuration, CurrentPoise, CurrentGuardPoise, _staggerMoveDistance, _guardBreakMoveDistance, _money);
 
     private void Awake()
     {
@@ -106,6 +111,7 @@ public class PlayerStat : MonoBehaviour
 
         _currentHealth = _maxHealth;
         _currentEnergy = 0f;
+        _money = Mathf.Max(0, _money);
 
         CurrentPoise = Mathf.Max(0f, _maxPoise);
         CurrentGuardPoise = Mathf.Max(0f, _maxGuardPoise);
@@ -187,6 +193,15 @@ public class PlayerStat : MonoBehaviour
         float recoveryAmount = Mathf.Max(0f, recoveryRate) * recoveryTime;
 
         return Mathf.Clamp(current + recoveryAmount, 0f, Mathf.Max(0f, maximum));
+    }
+
+    public void AddMoney(int amount)
+    {
+        if (amount <= 0 || _money == int.MaxValue) return;
+
+        // 큰 보상에서도 음수로 넘치지 않게 int 상한까지만 누적한다.
+        _money = (int)Math.Min(int.MaxValue, (long)_money + amount);
+        NotifyStatsChanged();
     }
 
     public void AddExperience(int amount)

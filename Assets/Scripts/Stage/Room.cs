@@ -6,6 +6,8 @@ public class Room : MonoBehaviour
     [field: SerializeField] public Door[] Doors { get; private set; }
     [field: SerializeField] public Transform CorridorParent { get; private set; }
     [field: SerializeField] public BoxCollider[] SpawnAreas { get; private set; }
+    // 보상방 프리팹이 소유한 상자를 직접 지정하고 런타임 계층 검색은 하지 않는다.
+    [field: SerializeField] public RewardChest RewardChest { get; private set; }
 
     private StageManager _stageManager;
 
