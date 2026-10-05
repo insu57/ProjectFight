@@ -12,11 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d218ea65a584c84adab3f4653d65972, type: 3}
   m_Name: Relic01
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  <ItemID>k__BackingField: 0
+  <ItemID>k__BackingField: 2001
   <ItemName>k__BackingField: "\uC720\uBB3C1\uBC88"
-  <ItemDescription>k__BackingField: 
-  <ItemIcon>k__BackingField: {fileID: 0}
-  <ItemType>k__BackingField: 0
+  <ItemDescription>k__BackingField: "\uC544\uB2C8\uC2A4 \uD3EC\uD1A0 \uCE74\uB4DC"
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 087e862a02ea5d843a69db2b5a25f37b, type: 3}
+  <ItemType>k__BackingField: 2
+  <EquipmentSlot>k__BackingField: 0
   <Rarity>k__BackingField: 0
   <BasePrice>k__BackingField: 0
   _maxStackCount: 1

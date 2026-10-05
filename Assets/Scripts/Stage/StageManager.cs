@@ -15,6 +15,10 @@ public class StageManager : MonoBehaviour
     // Inspector의 사전 지정 상자와 생성된 보상방의 상자를 같은 목록에서 관리한다.
     [SerializeField] private List<RewardChest> _rewardChests = new();
 
+    [Header("상점")]
+    // Inspector의 사전 지정 상점과 생성된 상점방의 상점을 같은 목록에서 관리한다.
+    [SerializeField] private List<Store> _stores = new();
+
     private MapGenerator _mapGenerator;
     private PlayerManager _playerManager;
     private SpawnManager _spawnManager;
@@ -26,10 +30,16 @@ public class StageManager : MonoBehaviour
     private readonly Dictionary<Room, RoomEncounterRuntime> _roomEncounters = new();
     // 런타임에 추가한 항목만 추적하여 스테이지 갱신 시 사전 지정 상자를 보존한다.
     private readonly List<RewardChest> _runtimeRewardChests = new();
+    private readonly List<Store> _runtimeStores = new();
+    // 실제 구독 대상을 따로 추적하여 목록이 수정되어도 구독을 빠짐없이 해제한다.
+    private readonly HashSet<Store> _subscribedStores = new();
     // 소모품을 제외한 공용 후보를 한 번 준비하고 모든 상자의 추첨에 재사용한다.
     private readonly List<ItemDefinition> _rewardItemCandidates = new();
+    // 후보 수는 로드할 때만 집계하여 상자 추첨마다 임시 목록을 만들지 않는다.
+    private readonly int[] _rewardItemCountsByRarity = new int[(int)ItemRarity.Legendary + 1];
 
     public IReadOnlyList<RewardChest> RewardChests => _rewardChests;
+    public IReadOnlyList<Store> Stores => _stores;
 
     public StageGraph CurrentGraph { get; private set; }
 
@@ -40,6 +50,9 @@ public class StageManager : MonoBehaviour
     public event Action<StageGraph> MapChanged;
 
     public event Action<StageNode, Door> RoomEntered;
+
+    // 추후 상점창은 개별 상점을 찾지 않고 이 이벤트로 상점과 플레이어를 전달받는다.
+    public event Action<Store, PlayerManager> StoreInteractionRequested;
 
     private void Awake()
     {
@@ -82,6 +95,7 @@ public class StageManager : MonoBehaviour
         {
             // 그래프가 없는 테스트 씬에서도 Inspector에 지정한 상자는 등록한다.
             ResetRewardChests();
+            ResetStores();
             return;
         }
 
@@ -98,6 +112,8 @@ public class StageManager : MonoBehaviour
 
         _roomNodes.Clear();
         ClearRuntimeRewardChests();
+        UnsubscribeStores();
+        ClearRuntimeStores();
     }
 
     private void Update()
@@ -132,6 +148,7 @@ public class StageManager : MonoBehaviour
         ItemDefinition[] definitions = Resources.LoadAll<ItemDefinition>(ItemDefinitionResourcePath);
         _rewardItemCandidates.Clear();
         _rewardItemCandidates.Capacity = definitions.Length;
+        Array.Clear(_rewardItemCountsByRarity, 0, _rewardItemCountsByRarity.Length);
 
         for (int index = 0; index < definitions.Length; index++)
         {
@@ -142,6 +159,11 @@ public class StageManager : MonoBehaviour
             }
 
             _rewardItemCandidates.Add(definition);
+            int rarityIndex = (int)definition.Rarity;
+            if (rarityIndex >= 0 && rarityIndex < _rewardItemCountsByRarity.Length)
+            {
+                _rewardItemCountsByRarity[rarityIndex]++;
+            }
         }
 
         if (_rewardItemCandidates.Count == 0)
@@ -157,9 +179,61 @@ public class StageManager : MonoBehaviour
             return;
         }
 
-        // 희귀도 가중치 없이 아이템별로 균등 추첨하며 같은 아이템의 중복 추첨도 허용한다.
-        int index = UnityEngine.Random.Range(0, _rewardItemCandidates.Count);
-        chest.SetRewardItem(_rewardItemCandidates[index]);
+        // 스테이지 정의가 없는 테스트 씬에서는 기존 아이템별 균등 추첨을 유지한다.
+        if (!_stageDefinition)
+        {
+            int index = UnityEngine.Random.Range(0, _rewardItemCandidates.Count);
+            chest.SetRewardItem(_rewardItemCandidates[index]);
+            return;
+        }
+
+        if (!TrySelectRewardItemRarity(out ItemRarity rarity))
+        {
+            Debug.LogWarning("보상 상자에 사용할 아이템 후보와 양수 가중치가 있는 희귀도가 없습니다.", this);
+            return;
+        }
+
+        // 선택된 희귀도 안에서만 균등 추첨하므로 등급별 아이템 개수가 희귀도 확률을 바꾸지 않는다.
+        int itemIndex = UnityEngine.Random.Range(0, _rewardItemCountsByRarity[(int)rarity]);
+        for (int index = 0; index < _rewardItemCandidates.Count; index++)
+        {
+            ItemDefinition candidate = _rewardItemCandidates[index];
+            if (candidate.Rarity != rarity) continue;
+            if (itemIndex-- == 0)
+            {
+                chest.SetRewardItem(candidate);
+                return;
+            }
+        }
+    }
+
+    private bool TrySelectRewardItemRarity(out ItemRarity rarity)
+    {
+        rarity = default;
+        // 여러 큰 float 가중치의 합도 넘치지 않도록 누적값만 double로 계산한다.
+        double totalWeight = 0d;
+        for (int index = 0; index < _rewardItemCountsByRarity.Length; index++)
+        {
+            if (_rewardItemCountsByRarity[index] == 0) continue;
+            totalWeight += _stageDefinition.GetRewardChestRarityWeight((ItemRarity)index);
+        }
+
+        if (totalWeight <= 0d) return false;
+
+        double randomWeight = UnityEngine.Random.value * totalWeight;
+        for (int index = 0; index < _rewardItemCountsByRarity.Length; index++)
+        {
+            if (_rewardItemCountsByRarity[index] == 0) continue;
+            float weight = _stageDefinition.GetRewardChestRarityWeight((ItemRarity)index);
+            if (weight <= 0f) continue;
+
+            rarity = (ItemRarity)index;
+            if (randomWeight < weight) return true;
+            randomWeight -= weight;
+        }
+
+        // Random.value가 1이거나 누적 오차가 있어도 마지막 유효한 희귀도를 선택한다.
+        return true;
     }
 
     private void ResetRewardChests()
@@ -208,6 +282,87 @@ public class StageManager : MonoBehaviour
         AssignRewardItem(chest);
     }
 
+    private void ResetStores()
+    {
+        UnsubscribeStores();
+        ClearRuntimeStores();
+        if (_stores == null)
+        {
+            _stores = new();
+            return;
+        }
+
+        // 사전 지정한 상점은 유지하고 빈 참조와 중복만 정리한다.
+        for (int index = _stores.Count - 1; index >= 0; index--)
+        {
+            Store store = _stores[index];
+            if (!store || _stores.IndexOf(store) != index)
+            {
+                _stores.RemoveAt(index);
+                continue;
+            }
+
+            SubscribeStore(store);
+        }
+    }
+
+    private void ClearRuntimeStores()
+    {
+        for (int index = 0; index < _runtimeStores.Count; index++)
+        {
+            Store store = _runtimeStores[index];
+            if (_subscribedStores.Remove(store) && store)
+            {
+                store.InteractionRequested -= HandleStoreInteractionRequested;
+            }
+
+            _stores?.Remove(store);
+        }
+
+        _runtimeStores.Clear();
+    }
+
+    private void RegisterStore(Store store)
+    {
+        // Inspector에서 이미 지정한 상점은 런타임 항목에 다시 추가하지 않는다.
+        if (!store || _stores.Contains(store))
+        {
+            return;
+        }
+
+        _stores.Add(store);
+        _runtimeStores.Add(store);
+        SubscribeStore(store);
+    }
+
+    private void SubscribeStore(Store store)
+    {
+        if (!_subscribedStores.Add(store)) return;
+        store.InteractionRequested += HandleStoreInteractionRequested;
+    }
+
+    private void UnsubscribeStores()
+    {
+        foreach (Store store in _subscribedStores)
+        {
+            if (store)
+            {
+                store.InteractionRequested -= HandleStoreInteractionRequested;
+            }
+        }
+
+        _subscribedStores.Clear();
+    }
+
+    private void HandleStoreInteractionRequested(Store store, PlayerManager player)
+    {
+        // 이전 스테이지의 상점이나 비활성화된 매니저의 요청은 UI로 전달하지 않는다.
+        if (!isActiveAndEnabled || !store || !store.isActiveAndEnabled || !player || !player.isActiveAndEnabled || _stores == null || !_stores.Contains(store)) return;
+        if (_playerManager && player != _playerManager) return;
+
+        StoreInteractionRequested?.Invoke(store, player);
+    }
+
     private void HandleGraphChanged(StageGraph graph)
     {
         // 매니저를 다시 활성화한 경우에는 같은 그래프의 방문 기록과 현재 방을 유지한다.
@@ -223,6 +378,7 @@ public class StageManager : MonoBehaviour
 
         _roomNodes.Clear();
         ResetRewardChests();
+        ResetStores();
 
         if (graph == null)
         {
@@ -246,6 +402,10 @@ public class StageManager : MonoBehaviour
             if (node.RoomData && node.RoomData.RoomType == RoomType.Reward)
             {
                 RegisterRewardChest(room.RewardChest);
+            }
+            else if (node.RoomData && node.RoomData.RoomType == RoomType.Store)
+            {
+                RegisterStore(room.Store);
             }
 
             // 새 스테이지의 시작 방은 처음부터 지도에 공개한다.

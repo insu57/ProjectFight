@@ -7,6 +7,17 @@ public enum ItemType
     Relic = 2
 }
 
+public enum EquipmentSlot
+{
+    // 기존 장비 SO도 부위가 지정되지 않은 상태(None)로 유지한다.
+    None = 0,
+    Head = 1,       // 머리
+    UpperBody = 2,  // 상의
+    LowerBody = 3,  // 하의
+    Gloves = 4,     // 장갑
+    Shoes = 5      // 신발
+}
+
 public enum ItemRarity
 {
     Common = 0,
@@ -25,6 +36,8 @@ public sealed class ItemDefinition : ScriptableObject
     [field: SerializeField, TextArea] public string ItemDescription { get; private set; }
     [field: SerializeField] public Sprite ItemIcon { get; private set; }
     [field: SerializeField] public ItemType ItemType { get; private set; }
+    // 장비의 고정 장착 부위이며 실제 착용 상태는 런타임에서 관리한다.
+    [field: SerializeField] public EquipmentSlot EquipmentSlot { get; private set; } = EquipmentSlot.None;
     [field: SerializeField] public ItemRarity Rarity { get; private set; } = ItemRarity.Common;
     // 개별 아이템 1개의 기준 가격이며 보유 금액과 같은 정수 단위를 사용한다.
     [field: SerializeField, Min(0)] public int BasePrice { get; private set; }
@@ -35,6 +48,12 @@ public sealed class ItemDefinition : ScriptableObject
 
     private void OnValidate()
     {
+        // 소모품과 유물에는 장비용 장착 부위를 저장하지 않는다.
+        if (ItemType != ItemType.Equipment)
+        {
+            EquipmentSlot = EquipmentSlot.None;
+        }
+
         // Inspector에 저장되는 값도 종류별 중첩 규칙에 맞춰 보정한다.
         _maxStackCount = MaxStackCount;
         // 기본 가격은 음수로 저장되지 않도록 보정한다.

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d218ea65a584c84adab3f4653d65972, type: 3}
+  m_Name: Equip10
+  m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
+  <ItemID>k__BackingField: 1010
+  <ItemName>k__BackingField: "\uC7A5\uBE4410\uBC88"
+  <ItemDescription>k__BackingField: 
+  <ItemIcon>k__BackingField: {fileID: 0}
+  <ItemType>k__BackingField: 0
+  <EquipmentSlot>k__BackingField: 0
+  <Rarity>k__BackingField: 3
+  <BasePrice>k__BackingField: 0
+  _maxStackCount: 1

@@ -23,6 +23,14 @@ public class StageDefinition : ScriptableObject
     // 보스방에서 사용할 적 편성이다.
     [field: SerializeField] public EncounterDefinition BossEncounter { get; private set; }
 
+    [Header("Reward Chest Rarity Weights")]
+    // 아이템 개수와 관계없이 희귀도 자체의 상대 확률을 정하며, 0인 등급은 추첨에서 제외한다.
+    [field: SerializeField, Min(0f)] public float RewardChestCommonWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float RewardChestUncommonWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float RewardChestRareWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float RewardChestEpicWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float RewardChestLegendaryWeight { get; private set; } = 1f;
+
     [Header("Modules")]
     [field: SerializeField] public float RoomDistance { get; private set; } = 5f;
     [field: SerializeField] public GameObject NormalCorridorModule { get; private set; }
@@ -52,4 +60,20 @@ public class StageDefinition : ScriptableObject
     [field: SerializeField] public int MinLoopGraphDistance { get; private set; } = 3;
     [field: SerializeField] public int MaxLoopPerNode { get; private set; } = 2;
     [field: SerializeField] public int MaxStraightLoopGridDistance { get; private set; } = 2;
+
+    public float GetRewardChestRarityWeight(ItemRarity rarity)
+    {
+        float weight = rarity switch
+        {
+            ItemRarity.Common => RewardChestCommonWeight,
+            ItemRarity.Uncommon => RewardChestUncommonWeight,
+            ItemRarity.Rare => RewardChestRareWeight,
+            ItemRarity.Epic => RewardChestEpicWeight,
+            ItemRarity.Legendary => RewardChestLegendaryWeight,
+            _ => 0f
+        };
+
+        // Inspector 밖에서 입력된 음수나 유효하지 않은 실수도 확률 계산에 섞이지 않게 한다.
+        return weight > 0f && !float.IsInfinity(weight) ? weight : 0f;
+    }
 }
