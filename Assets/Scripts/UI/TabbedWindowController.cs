@@ -5,9 +5,9 @@ using UnityEngine.EventSystems;
 
 public interface IWindowTabBinding<TTab>
 {
-    TTab TabType { get; }
-    WindowTabButton Button { get; }
-    GameObject Content { get; }
+    public TTab TabType { get; }
+    public WindowTabButton Button { get; }
+    public GameObject Content { get; }
 }
 
 public abstract class TabbedWindowController<TTab> : WindowControllerBase where TTab : struct, Enum

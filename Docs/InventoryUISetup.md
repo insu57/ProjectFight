@@ -1,6 +1,8 @@
 # 인벤토리 그리드와 공통 아이템 설명 UI
 
-현재 단계는 Inspector에 지정한 ItemDefinition을 표시하는 UI이다. `Preview Items`는 UI 확인용 목록이며, 실제 보유 아이템이나 장착·사용 상태를 변경하지 않는다.
+`RewardChest`를 열면 배정된 아이템 한 개를 `PlayerManager`의 해당 타입 보유 목록에 추가한다. 장비·소모품·유물은 각각 별도 목록으로 관리하고, `InventoryView`는 `GetInventoryItems(ItemType)`으로 조회한 목록을 해당 타입 그리드에 전달한다. 같은 장비·유물을 여러 번 획득하면 각각 별도의 칸으로 표시한다.
+
+`Preview Items`는 `InventoryView` 없이 그리드만 확인할 때 사용하는 UI 확인용 목록이다. `InventoryView`가 연결된 실제 인벤토리는 보유 아이템이 없어도 빈 목록을 전달하므로 확인용 아이템을 보유한 것처럼 표시하지 않는다.
 
 ## 계층
 
@@ -71,10 +73,10 @@ InventoryGridView의 최초 대여는 모든 Awake가 끝난 뒤 Start에서 진
 | 각 InventoryGridView | Item Type | 해당 패널의 ItemType |
 | 각 InventoryGridView | Content | 해당 ScrollView의 Content RectTransform |
 | 각 InventoryGridView | Slot Prefab | 공통 InventoryItemSlot 프리팹 |
-| 각 InventoryGridView | Preview Items | UI에 표시할 ItemDefinition SO 목록 |
+| 각 InventoryGridView | Preview Items | 그리드 단독 확인용 ItemDefinition SO 목록 |
 | ItemDescriptionView | Icon / Name Text / Rarity Text / Description Text | 공통 설명 패널의 Image와 TMP 컴포넌트 |
 
-Preview Items에는 해당 그리드 타입의 아이템만 표시된다. null 항목과 다른 타입의 아이템은 건너뛴다. 같은 SO를 여러 번 지정하면 각각 별도의 칸으로 표시한다.
+각 그리드는 자신의 타입에 해당하는 보유 목록을 전달받는다. null 항목과 다른 타입의 아이템은 기존 안전 검사로 건너뛴다. `InventoryView`는 기존 플레이어 창의 다른 View와 동일하게 Awake에서 PlayerManager를 한 번 찾으므로 추가 Inspector 연결은 필요하지 않다.
 
 버튼 클릭 이벤트는 코드가 구독하므로 Inspector On Click에 별도로 등록하지 않는다. 기존 Canvas의 GraphicRaycaster와 EventSystem을 사용한다.
 
@@ -105,8 +107,12 @@ InventoryView가 위쪽 이동 대상과 ItemType에 맞는 오른쪽 타입 탭
 - 탭 전환 또는 창 닫기·재개방 시 아이템 선택과 설명을 초기화한다. 마지막으로 선택한 아이템 타입은 유지한다.
 - 슬롯은 미리 준비한 공통 풀에서 대여하고, 목록 교체·탭 전환·창 닫기 시 반환한다.
 - 닫힌 그리드에 SetItems를 호출하면 마지막 목록을 저장하고 다시 열 때 표시한다. SetItems(null)은 다음 활성화에서도 빈 목록을 유지한다.
-- 추후 실제 보유 데이터는 `InventoryGridView.SetItems(IReadOnlyList<ItemDefinition>)`로 전달할 수 있다.
+- `InventoryView`는 활성화 시 모든 그리드에 타입별 현재 보유 목록을 즉시 전달한다. 활성화된 동안에는 `PlayerManager.InventoryChanged`가 알린 ItemType의 그리드만 갱신하고, 다른 타입의 슬롯·선택·설명은 유지한다. 비활성화 시 구독을 해제한다.
 
 ## Play Mode 확인
 
-타입별 테스트 SO를 지정한 뒤 각 탭의 목록, 포인터·키보드·패드 선택, 설명 갱신, 탭 전환과 창 재개방 시 초기화, 목록이 길어졌을 때 스크롤을 확인한다. 시작 시 PoolingManager/ PooledObjects/ Inactive 아래 초기 수량이 준비되는지, 탭 전환마다 같은 슬롯이 이동하는지 확인한다. CLI 소스 컴파일과 스텁 검사는 실제 Canvas/TMP 렌더링과 EventSystem 동작을 검증하지 않는다.
+아이템을 획득하기 전에는 확인용 아이템이 지정되어 있어도 실제 인벤토리가 비어 있는지 확인한다. 장비·유물 보상 상자를 열고 해당 탭에 아이템이 한 개씩 추가되는지, 같은 상자에 다시 상호작용해도 중복 지급되지 않는지 확인한다. 같은 SO를 보상으로 가진 서로 다른 상자를 열면 각각 별도 칸이 생겨야 한다.
+
+창을 닫은 동안 상자를 연 뒤 다시 열어 최신 목록을 확인한다. 각 탭의 목록, 포인터·키보드·패드 선택, 설명 갱신, 탭 전환과 창 재개방 시 초기화, 목록이 길어졌을 때 스크롤도 확인한다. 시작 시 PoolingManager/ PooledObjects/ Inactive 아래 초기 수량이 준비되는지, 탭 전환마다 같은 슬롯이 이동하는지 확인한다. CLI 소스 컴파일과 스텁 검사는 실제 Canvas/TMP 렌더링과 EventSystem 동작을 검증하지 않는다.
+
+장비 탭에서 아이템을 선택한 상태로 `PlayerManager.TryAddItem`을 통해 유물을 추가했을 때 장비 슬롯·선택·설명이 유지되는지 확인한다. 이후 유물 탭을 열면 새 아이템이 표시되어야 한다. 현재 표시 중인 타입에 아이템을 추가하면 해당 그리드만 다시 구성되며 선택과 설명은 초기화된다.

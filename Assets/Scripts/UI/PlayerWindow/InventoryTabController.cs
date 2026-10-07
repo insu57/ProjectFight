@@ -21,10 +21,12 @@ public sealed class InventoryTabController : MonoBehaviour
 
         public void SetGridNavigationTarget(Selectable target, bool refreshNavigation)
         {
-            if (!_button || !_button.TryGetComponent(out Button button))
+            if (!_button)
             {
                 return;
             }
+
+            Button button = _button.Button;
 
             bool shouldRefresh = !_hasNavigationOverride || refreshNavigation;
 

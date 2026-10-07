@@ -56,8 +56,7 @@ public sealed class InventoryGridView : MonoBehaviour
 
     private bool IsUsableSlot(InventoryItemSlotView slot)
     {
-        return slot && slot.IsSpawned && slot.Item && slot.transform.parent == _content && slot.Button && slot.Button.IsActive()
-            && slot.Button.IsInteractable();
+        return slot && slot.IsSpawned && slot.Item && slot.transform.parent == _content;
     }
 
     private void OnEnable()
@@ -123,7 +122,7 @@ public sealed class InventoryGridView : MonoBehaviour
         }
     }
 
-    private void RefreshItems()
+    private void RefreshItems() //비용?
     {
         ReleaseSlots();
 
@@ -206,8 +205,8 @@ public sealed class InventoryGridView : MonoBehaviour
 
             Vector2 position = GetSlotPosition(slot);
             Selectable up = null, down = null, left = null, right = null;
-            float upDistance = float.PositiveInfinity, downDistance = float.PositiveInfinity, leftDistance = float.PositiveInfinity,
-                rightDistance = float.PositiveInfinity;
+            float upDistance = float.PositiveInfinity, downDistance = float.PositiveInfinity,
+                leftDistance = float.PositiveInfinity, rightDistance = float.PositiveInfinity;
 
             for (int j = 0; j < _slots.Count; j++)
             {

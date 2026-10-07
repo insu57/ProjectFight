@@ -7,7 +7,9 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Button))]
 public sealed class WindowTabButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
 {
-    [SerializeField] private Button _button;
+    [field: SerializeField] private Button _button;
+    public Button Button => _button;
+
     [SerializeField] private GameObject _selectedVisual;
     [SerializeField] private Graphic _selectedVisualGraphic;
     [SerializeField] private Color _selectedColor = Color.white;

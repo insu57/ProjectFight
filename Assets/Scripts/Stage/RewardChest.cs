@@ -17,7 +17,7 @@ public sealed class RewardChest : MonoBehaviour
     public bool IsOpen { get; private set; }
     public bool IsOpening { get; private set; }
     public bool CanOpen => isActiveAndEnabled && !IsOpen && _chestTop;
-    public ItemDefinition RewardItem { get; private set; }
+    [field:SerializeField] public ItemDefinition RewardItem { get; private set; }
 
     // 후속 보상 처리가 상자를 연 플레이어를 받을 수 있도록 전달한다.
     public event Action<PlayerManager> Opened;
@@ -55,20 +55,19 @@ public sealed class RewardChest : MonoBehaviour
             return false;
         }
 
-        // 이벤트 처리 중 다시 호출되어도 이 상자의 개방 알림은 한 번만 발생한다.
+        // 인벤토리 변경 이벤트에서 다시 호출되어도 보상 지급과 개방 알림은 한 번만 발생한다.
         IsOpen = true;
         IsOpening = true;
         _openProgress = 0f;
 
-        // 실제 획득 대신 개방 시 한 번만 테스트 로그를 출력한다.
+        // 실제 보유 목록의 변경과 UI 알림은 상자를 연 플레이어의 Manager가 담당한다.
         if (RewardItem)
         {
-            string itemName = string.IsNullOrEmpty(RewardItem.ItemName) ? RewardItem.name : RewardItem.ItemName;
-            Debug.Log($"상자 보상 테스트: {itemName} (ID: {RewardItem.ItemID}, 종류: {RewardItem.ItemType})", this);
+            player.TryAddItem(RewardItem);
         }
         else
         {
-            Debug.LogWarning("상자 보상 테스트: 배정된 아이템이 없습니다.", this);
+            Debug.LogWarning("보상 상자에 배정된 아이템이 없습니다.", this);
         }
 
         Opened?.Invoke(player);

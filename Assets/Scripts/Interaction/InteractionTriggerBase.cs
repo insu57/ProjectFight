@@ -1,6 +1,7 @@
 using UnityEngine;
 
 // 대상별 실행 규칙은 파생 클래스에 두고 플레이어 추적과 범위 검사는 한 곳에서 처리한다.
+[RequireComponent(typeof(BoxCollider))]
 public abstract class InteractionTriggerBase : MonoBehaviour, IInteractable
 {
     private CharacterController _trackedController;
@@ -30,9 +31,7 @@ public abstract class InteractionTriggerBase : MonoBehaviour, IInteractable
         ConfigureTriggerComponents();
     }
 
-    protected virtual void ConfigureTriggerComponents()
-    {
-    }
+    protected virtual void ConfigureTriggerComponents()  {}
 
     protected void OnTriggerEnter(Collider other)
     {
@@ -108,9 +107,7 @@ public abstract class InteractionTriggerBase : MonoBehaviour, IInteractable
 
     protected abstract bool TryExecuteInteraction(PlayerManager player);
 
-    protected virtual void OnInteractionSucceeded()
-    {
-    }
+    protected virtual void OnInteractionSucceeded() {}
 
     protected void OnTriggerExit(Collider other)
     {

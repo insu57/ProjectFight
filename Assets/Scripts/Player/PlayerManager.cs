@@ -21,6 +21,10 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private bool _hasPendingGuardChange;
     // 범위 안의 후보는 유지하고, 표시와 입력에 사용할 가장 가까운 유효 대상을 공유한다.
     private readonly List<IInteractable> _interactionCandidates = new(4);
+    // 타입별 목록을 재사용하며 같은 장비·유물도 획득한 수만큼 별도 항목으로 보관한다.
+    private readonly List<ItemDefinition> _equipmentItems = new(16);
+    private readonly List<ItemDefinition> _consumableItems = new(16);
+    private readonly List<ItemDefinition> _relicItems = new(16);
     private IInteractable _currentInteraction;
     private bool _isGameplayInputEnabled = true;
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
@@ -36,6 +40,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     public event Action<int> SkillPointsChanged;
     public event Action<SkillTreeNodeRuntime> SkillTreeNodeUnlocked;
     public event Action<string> InteractionPromptChanged;
+    public event Action<ItemType> InventoryChanged;
+    public event Action<ItemDefinition> ItemAcquired;
 
     public SkillTreeRuntime SkillTreeRuntime => _playerSkillTree ? _playerSkillTree.Runtime : null;
     public PlayerStatSnapshot CurrentPlayerStats => _playerStat ? _playerStat.CurrentStats : default;
@@ -536,6 +542,40 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         _playerStat.AddMoney(amount);
     }
 
+    public IReadOnlyList<ItemDefinition> GetInventoryItems(ItemType itemType)
+    {
+        // 조회 때 필터링 목록을 할당하지 않고 해당 타입의 보유 목록을 그대로 전달한다.
+        IReadOnlyList<ItemDefinition> items = GetInventoryList(itemType);
+        return items ?? Array.Empty<ItemDefinition>();
+    }
+
+    private List<ItemDefinition> GetInventoryList(ItemType itemType)
+    {
+        return itemType switch
+        {
+            ItemType.Equipment => _equipmentItems,
+            ItemType.Consumable => _consumableItems,
+            ItemType.Relic => _relicItems,
+            _ => null
+        };
+    }
+
+    public bool TryAddItem(ItemDefinition item)
+    {
+        if (!isActiveAndEnabled || !item) return false;
+
+        ItemType itemType = item.ItemType;
+        List<ItemDefinition> items = GetInventoryList(itemType);
+        if (items == null) return false;
+
+        // 공유 SO를 복제하지 않고 해당 타입에 한 개를 추가한 뒤 변경된 타입만 알린다.
+        items.Add(item);
+        InventoryChanged?.Invoke(itemType);
+        // 획득 알림은 실제 보유 목록에 추가된 아이템을 받아 인벤토리 창과 별도로 표시한다.
+        ItemAcquired?.Invoke(item);
+        return true;
+    }
+
     public void AddSkillPoints(int amount)
     {
         if (_playerSkillTree)
@@ -556,7 +596,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     public void RegisterInteraction(IInteractable interaction)
     {
-        if (!isActiveAndEnabled || !IsInteractionActive(interaction) || _interactionCandidates.Contains(interaction)) return;
+        if (!isActiveAndEnabled || !IsInteractionActive(interaction) || _interactionCandidates.Contains(interaction))
+            return;
 
         _interactionCandidates.Add(interaction);
         RefreshInteractionTarget();
@@ -564,7 +605,10 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     public void UnregisterInteraction(IInteractable interaction)
     {
-        if (_interactionCandidates.Remove(interaction)) RefreshInteractionTarget();
+        if (_interactionCandidates.Remove(interaction))
+        {
+            RefreshInteractionTarget();
+        }
     }
 
     private void RefreshInteractionTarget()
@@ -597,7 +641,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         SetInteractionTarget(nearestInteraction);
     }
 
-    private static bool IsInteractionActive(IInteractable interaction)
+    private static bool IsInteractionActive(IInteractable interaction)//개선??
     {
         return interaction is MonoBehaviour component && component && component.isActiveAndEnabled;
     }

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,6 +6,8 @@ using UnityEngine.InputSystem;
 public sealed class WindowInputRouter : MonoBehaviour
 {
     [Header("References")]
+    private StageManager _stageManager;
+    private StoreWindowController _storeWindow;
     private PlayerManager _playerManager;
     private PlayerWindowController _playerWindow;
     private OptionWindowController _optionWindow;
@@ -17,17 +20,29 @@ public sealed class WindowInputRouter : MonoBehaviour
     private bool _cancelRequested;
     private bool _playerWindowRequested;
     private bool _optionWindowRequested;
+    private bool _storeWindowRequested;
+    private Store _pendingStore;
+    private PlayerManager _pendingStorePlayer;
+    private Action<Store, PlayerManager> _storeInteractionHandler;
 
     private void Awake()
     {
         _playerManager = FindFirstObjectByType<PlayerManager>();
+        _stageManager = FindFirstObjectByType<StageManager>();
         _playerWindow = GetComponentInChildren<PlayerWindowController>();
         _optionWindow = GetComponentInChildren<OptionWindowController>();
-        _skillConfirmation = GetComponent<SkillUnlockConfirmationView>();
+        _storeWindow = GetComponentInChildren<StoreWindowController>();
+        _skillConfirmation = GetComponentInChildren<SkillUnlockConfirmationView>();
     }
 
     private void OnEnable()
     {
+        if (_stageManager)
+        {
+            _storeInteractionHandler ??= RequestStoreWindow;
+            _stageManager.StoreInteractionRequested += _storeInteractionHandler;
+        }
+
         if (_playerManager)
         {
             _playerManager.PlayerWindowRequested += RequestPlayerWindow;
@@ -51,6 +66,11 @@ public sealed class WindowInputRouter : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_stageManager)
+        {
+            _stageManager.StoreInteractionRequested -= _storeInteractionHandler;
+        }
+
         if (_playerManager)
         {
             _playerManager.PlayerWindowRequested -= RequestPlayerWindow;
@@ -70,6 +90,12 @@ public sealed class WindowInputRouter : MonoBehaviour
 
         _enabledCancelAction = false;
         ClearRequests();
+
+        // Cancel을 받을 라우터가 비활성화되면 상점창의 입력 차단도 함께 해제한다.
+        if (_storeWindow && _storeWindow.IsOpen)
+        {
+            _storeWindow.CloseWindow();
+        }
     }
 
     private void HandleCancelInput(InputAction.CallbackContext context)
@@ -87,9 +113,23 @@ public sealed class WindowInputRouter : MonoBehaviour
         _optionWindowRequested = true;
     }
 
+    private void RequestStoreWindow(Store store, PlayerManager player)
+    {
+        if (!isActiveAndEnabled || !_storeWindow || !_storeWindow.isActiveAndEnabled || !store || !store.isActiveAndEnabled
+            || !player || !player.isActiveAndEnabled || player != _playerManager)
+        {
+            return;
+        }
+
+        // 상점 요청도 Cancel 및 단축키와 함께 프레임당 한 번만 처리한다.
+        _pendingStore = store;
+        _pendingStorePlayer = player;
+        _storeWindowRequested = true;
+    }
+
     private void LateUpdate()
     {
-        if (!_cancelRequested && !_playerWindowRequested && !_optionWindowRequested)
+        if (!_cancelRequested && !_playerWindowRequested && !_optionWindowRequested && !_storeWindowRequested)
         {
             return;
         }
@@ -97,6 +137,9 @@ public sealed class WindowInputRouter : MonoBehaviour
         bool cancelRequested = _cancelRequested;
         bool playerWindowRequested = _playerWindowRequested;
         bool optionWindowRequested = _optionWindowRequested;
+        bool storeWindowRequested = _storeWindowRequested;
+        Store pendingStore = _pendingStore;
+        PlayerManager pendingStorePlayer = _pendingStorePlayer;
         ClearRequests();
 
         // 같은 프레임의 Cancel과 창 열기 요청 중 취소 처리를 우선한다.
@@ -108,6 +151,23 @@ public sealed class WindowInputRouter : MonoBehaviour
         // 확인창이 떠 있는 동안에는 다른 창 단축키를 처리하지 않는다.
         if (_skillConfirmation && _skillConfirmation.IsOpen)
         {
+            return;
+        }
+
+        // 상점창이 입력과 일시정지를 소유하는 동안 다른 창은 열지 않는다.
+        if (_storeWindow && _storeWindow.IsOpen)
+        {
+            return;
+        }
+
+        if (storeWindowRequested)
+        {
+            // 닫힌 상태에서 동시에 들어온 Cancel도 상점 열기보다 우선한다.
+            if (!cancelRequested && _storeWindow && (!_playerWindow || !_playerWindow.IsOpen) && (!_optionWindow || !_optionWindow.IsOpen))
+            {
+                _storeWindow.OpenStore(pendingStore, pendingStorePlayer);
+            }
+
             return;
         }
 
@@ -146,6 +206,12 @@ public sealed class WindowInputRouter : MonoBehaviour
             return true;
         }
 
+        if (_storeWindow && _storeWindow.IsOpen)
+        {
+            _storeWindow.CloseWindow();
+            return true;
+        }
+
         if (_optionWindow && _optionWindow.IsOpen)
         {
             _optionWindow.CloseWindow();
@@ -166,5 +232,8 @@ public sealed class WindowInputRouter : MonoBehaviour
         _cancelRequested = false;
         _playerWindowRequested = false;
         _optionWindowRequested = false;
+        _storeWindowRequested = false;
+        _pendingStore = null;
+        _pendingStorePlayer = null;
     }
 }

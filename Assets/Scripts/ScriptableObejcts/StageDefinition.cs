@@ -5,7 +5,7 @@ using UnityEngine;
 public class StageDefinition : ScriptableObject
 {
     [field: SerializeField] public int StageID { get; private set; } = 0;
-    [Header("RoomDefinition")]
+    [field: Header("RoomDefinition")]
     [field: SerializeField] public RoomDefinition StartRoomDef { get; private set; }
     [field: SerializeField] public RoomDefinition BossRoomDef { get; private set; }
     [field: SerializeField] public RoomDefinition NextRoomDef { get; private set; }
@@ -14,7 +14,7 @@ public class StageDefinition : ScriptableObject
     [field: SerializeField] public RoomDefinition[] StoreRoomsDef { get; private set; }
     //추가: 상점 등 ...
 
-    [Header("Encounters")]
+    [field: Header("Encounters")]
     // 일반 전투방마다 선택할 수 있는 이 스테이지의 적 편성 후보들이다.
     [field: SerializeField] public EncounterDefinition[] BattleEncounters { get; private set; } = Array.Empty<EncounterDefinition>();
     // 편성의 실제 스폰 수량과 별개로 일반 적 프리팹마다 준비할 비활성 대기 수량이다.
@@ -23,38 +23,53 @@ public class StageDefinition : ScriptableObject
     // 보스방에서 사용할 적 편성이다.
     [field: SerializeField] public EncounterDefinition BossEncounter { get; private set; }
 
-    [Header("Reward Chest Rarity Weights")]
+    [field: Header("Reward Chest Rarity Weights")]
     // 아이템 개수와 관계없이 희귀도 자체의 상대 확률을 정하며, 0인 등급은 추첨에서 제외한다.
     [field: SerializeField, Min(0f)] public float RewardChestCommonWeight { get; private set; } = 1f;
     [field: SerializeField, Min(0f)] public float RewardChestUncommonWeight { get; private set; } = 1f;
     [field: SerializeField, Min(0f)] public float RewardChestRareWeight { get; private set; } = 1f;
     [field: SerializeField, Min(0f)] public float RewardChestEpicWeight { get; private set; } = 1f;
     [field: SerializeField, Min(0f)] public float RewardChestLegendaryWeight { get; private set; } = 1f;
+   
 
-    [Header("Modules")]
+    [field: Header("Store Rarity Weights")]
+    // 상점 상품의 등급별 상대 가중치이며, 0인 등급은 상품 추첨에서 제외한다.
+    [field: SerializeField, Min(0f)] public float StoreCommonWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float StoreUncommonWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float StoreRareWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float StoreEpicWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float StoreLegendaryWeight { get; private set; } = 1f;
+
+    [field: Header("Store Item Type Weights")]
+    // 상점 상품의 타입별 상대 가중치이며, 0인 타입은 상품 추첨에서 제외한다.
+    [field: SerializeField, Min(0f)] public float StoreEquipmentWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float StoreConsumableWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float StoreRelicWeight { get; private set; } = 1f;
+
+    [field: Header("Modules")]
     [field: SerializeField] public float RoomDistance { get; private set; } = 5f;
     [field: SerializeField] public GameObject NormalCorridorModule { get; private set; }
     [field: SerializeField] public GameObject HalfCorridorModule { get; private set; }
     [field: SerializeField] public GameObject CornerCorridorModule { get; private set; }
 
-    [Header("Main Path")]
+    [field: Header("Main Path")]
     [field: SerializeField] public int MainRoomDepth { get; private set; } = 2; //Battle, Reward
     [field: SerializeField] public int MinMainTurnCount { get; private set; } = 4;
     [field: SerializeField] public int MaxMainTurnCount { get; private set; } = 5;
     //[field: SerializeField] private int _maxMainPathGenerationAttempts = 30;
 
-    [Header("Guranteed Reward Room Count")]
+    [field: Header("Guranteed Reward Room Count")]
     [field: SerializeField] public int GuaranteedMainRewardRoomCount { get; private set; } = 1;
     [field: SerializeField] public int GuaranteedBranchRewardRoomCount { get; private set; } = 1;
 
-    [Header("Branch")]
+    [field: Header("Branch")]
     [field: SerializeField] public int MinBranchCount { get; private set; } = 2;
     [field: SerializeField] public int MaxBranchCount { get; private set; } = 3;
     [field: SerializeField] public int MinBranchDepth { get; private set; } = 1;
     [field: SerializeField] public int MaxBranchDepth { get; private set; } = 3;
     [field: SerializeField] public int MaxBranchPerNode { get; private set; } = 2;
 
-    [Header("Loop")]
+    [field: Header("Loop")]
     [field: SerializeField] public int MinLoopCount { get; private set; } = 3;
     [field: SerializeField] public int MaxLoopCount { get; private set; } = 3;
     [field: SerializeField] public int MinLoopGraphDistance { get; private set; } = 3;
@@ -74,6 +89,36 @@ public class StageDefinition : ScriptableObject
         };
 
         // Inspector 밖에서 입력된 음수나 유효하지 않은 실수도 확률 계산에 섞이지 않게 한다.
+        return weight > 0f && !float.IsInfinity(weight) ? weight : 0f;
+    }
+
+    public float GetStoreRarityWeight(ItemRarity rarity)
+    {
+        float weight = rarity switch
+        {
+            ItemRarity.Common => StoreCommonWeight,
+            ItemRarity.Uncommon => StoreUncommonWeight,
+            ItemRarity.Rare => StoreRareWeight,
+            ItemRarity.Epic => StoreEpicWeight,
+            ItemRarity.Legendary => StoreLegendaryWeight,
+            _ => 0f
+        };
+
+        // 상자용 가중치와 동일하게 음수, NaN, Infinity는 유효한 가중치로 반환하지 않는다.
+        return weight > 0f && !float.IsInfinity(weight) ? weight : 0f;
+    }
+
+    public float GetStoreItemTypeWeight(ItemType itemType)
+    {
+        float weight = itemType switch
+        {
+            ItemType.Equipment => StoreEquipmentWeight,
+            ItemType.Consumable => StoreConsumableWeight,
+            ItemType.Relic => StoreRelicWeight,
+            _ => 0f
+        };
+
+        // 타입 가중치에도 같은 보정을 적용하여 확률 계산에 유효하지 않은 값이 섞이지 않게 한다.
         return weight > 0f && !float.IsInfinity(weight) ? weight : 0f;
     }
 }
