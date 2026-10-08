@@ -28,6 +28,12 @@ public static class ItemDisplayUtility
         };
     }
 
+    public static Color GetPriceColor(bool canAfford)
+    {
+        // 지불 가능한 가격과 금액이 부족한 가격의 표시 색상을 공통으로 관리한다.
+        return canAfford ? Color.black : Color.red;
+    }
+
     public static Color GetRarityColor(ItemRarity rarity)
     {
         // Color32는 값 형식이므로 색상 변환 시 별도 객체를 할당하지 않는다.

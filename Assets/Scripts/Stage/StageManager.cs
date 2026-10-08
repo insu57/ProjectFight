@@ -6,6 +6,8 @@ using UnityEngine.Serialization;
 public class StageManager : MonoBehaviour
 {
     private const string ItemDefinitionResourcePath = "ItemDefinition";
+    private const int ItemTypeCount = (int)ItemType.Relic + 1;
+    private const int ItemRarityCount = (int)ItemRarity.Legendary + 1;
 
     // 현재 스테이지 생성에 사용할 정의.
     [field: SerializeField] private StageDefinition _stageDefinition;
@@ -37,6 +39,12 @@ public class StageManager : MonoBehaviour
     private readonly List<ItemDefinition> _rewardItemCandidates = new();
     // 후보 수는 로드할 때만 집계하여 상자 추첨마다 임시 목록을 만들지 않는다.
     private readonly int[] _rewardItemCountsByRarity = new int[(int)ItemRarity.Legendary + 1];
+    // 상점은 소모품까지 포함하며 종류·희귀도별 후보 수와 추첨 버퍼를 재사용한다.
+    private readonly List<ItemDefinition> _storeItemCandidates = new();
+    private readonly int[] _storeItemCountsByTypeAndRarity = new int[ItemTypeCount * ItemRarityCount];
+    private readonly ItemDefinition[] _storeItemSelection = new ItemDefinition[Store.ItemCount];
+    // Money 변경 알림에서 리롤을 다시 요청하더라도 공용 추첨 버퍼와 차감 처리가 겹치지 않게 한다.
+    private bool _isRerollingStore;
 
     public IReadOnlyList<RewardChest> RewardChests => _rewardChests;
     public IReadOnlyList<Store> Stores => _stores;
@@ -56,8 +64,8 @@ public class StageManager : MonoBehaviour
 
     private void Awake()
     {
-        // 그래프가 없는 테스트 씬에서도 사전 지정한 상자에 보상을 주입할 수 있게 먼저 읽는다.
-        LoadRewardItems();
+        // 그래프가 없는 테스트 씬에서도 사전 지정한 상자와 상점에 아이템을 주입하도록 먼저 읽는다.
+        LoadItems();
 
         if (!TryGetComponent(out _mapGenerator))
         {
@@ -143,23 +151,35 @@ public class StageManager : MonoBehaviour
         _roomEncounters.Clear();
     }
 
-    private void LoadRewardItems()
+    private void LoadItems()
     {
         ItemDefinition[] definitions = Resources.LoadAll<ItemDefinition>(ItemDefinitionResourcePath);
         _rewardItemCandidates.Clear();
         _rewardItemCandidates.Capacity = definitions.Length;
         Array.Clear(_rewardItemCountsByRarity, 0, _rewardItemCountsByRarity.Length);
+        _storeItemCandidates.Clear();
+        _storeItemCandidates.Capacity = definitions.Length;
+        Array.Clear(_storeItemCountsByTypeAndRarity, 0, _storeItemCountsByTypeAndRarity.Length);
 
         for (int index = 0; index < definitions.Length; index++)
         {
             ItemDefinition definition = definitions[index];
-            if (!definition || (definition.ItemType != ItemType.Equipment && definition.ItemType != ItemType.Relic))
+            if (!definition)
             {
                 continue;
             }
 
-            _rewardItemCandidates.Add(definition);
+            int typeIndex = (int)definition.ItemType;
             int rarityIndex = (int)definition.Rarity;
+            if (typeIndex >= 0 && typeIndex < ItemTypeCount && rarityIndex >= 0 && rarityIndex < ItemRarityCount)
+            {
+                _storeItemCandidates.Add(definition);
+                _storeItemCountsByTypeAndRarity[typeIndex * ItemRarityCount + rarityIndex]++;
+            }
+
+            // 보상 상자는 기존처럼 장비와 유물만 사용한다.
+            if (definition.ItemType != ItemType.Equipment && definition.ItemType != ItemType.Relic) continue;
+            _rewardItemCandidates.Add(definition);
             if (rarityIndex >= 0 && rarityIndex < _rewardItemCountsByRarity.Length)
             {
                 _rewardItemCountsByRarity[rarityIndex]++;
@@ -170,6 +190,167 @@ public class StageManager : MonoBehaviour
         {
             Debug.LogWarning("Resources/ItemDefinition에 보상 상자용 장비 또는 유물 아이템이 없습니다.", this);
         }
+
+        if (_storeItemCandidates.Count == 0)
+        {
+            Debug.LogWarning("Resources/ItemDefinition에 상점용 아이템이 없습니다.", this);
+        }
+    }
+
+    private void AssignStoreItems(Store store)
+    {
+        if (!store || store.HasItems || _storeItemCandidates.Count == 0) return;
+
+        if (!TryFillStoreItemSelection())
+        {
+            Debug.LogWarning("상점에 사용할 아이템 후보와 양수 종류·희귀도 가중치가 없습니다.", store);
+            return;
+        }
+
+        store.SetItems(_storeItemSelection);
+    }
+
+    public bool TryRerollStore(Store store, PlayerManager player)
+    {
+        if (_isRerollingStore || !isActiveAndEnabled || !store || !store.isActiveAndEnabled
+            || !player || !player.isActiveAndEnabled || _stores == null || !_stores.Contains(store)) return false;
+        if (_playerManager && player != _playerManager) return false;
+
+        int price = store.RerollPrice;
+        if (player.CurrentPlayerStats.Money < price) return false;
+
+        _isRerollingStore = true;
+        try
+        {
+            // 추첨을 먼저 완료해 후보가 없는 경우 기존 상품과 잔액, 누적 비용을 모두 보존한다.
+            if (!TryFillStoreItemSelection() || !player.TrySpendMoney(price)) return false;
+
+            store.SetRerolledItems(_storeItemSelection);
+            return true;
+        }
+        finally
+        {
+            _isRerollingStore = false;
+        }
+    }
+
+    private bool TryFillStoreItemSelection()
+    {
+        if (_storeItemCandidates.Count == 0) return false;
+
+        // 각 칸을 독립적으로 추첨해 중복을 허용하고, 완성된 목록만 상점에 복사한다.
+        for (int index = 0; index < _storeItemSelection.Length; index++)
+        {
+            if (!TrySelectStoreItem(out _storeItemSelection[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool TrySelectStoreItem(out ItemDefinition item)
+    {
+        item = null;
+        if (_storeItemCandidates.Count == 0) return false;
+
+        // 스테이지 정의가 없는 테스트 씬에서는 유효한 아이템 전체를 균등 추첨한다.
+        if (!_stageDefinition)
+        {
+            item = _storeItemCandidates[UnityEngine.Random.Range(0, _storeItemCandidates.Count)];
+            return true;
+        }
+
+        if (!TrySelectStoreItemType(out ItemType itemType) || !TrySelectStoreItemRarity(itemType, out ItemRarity rarity)) return false;
+
+        // 종류와 희귀도를 정한 뒤 해당 묶음 안에서만 균등 선택한다.
+        int itemIndex = UnityEngine.Random.Range(0, _storeItemCountsByTypeAndRarity[(int)itemType * ItemRarityCount + (int)rarity]);
+        for (int index = 0; index < _storeItemCandidates.Count; index++)
+        {
+            ItemDefinition candidate = _storeItemCandidates[index];
+            if (candidate.ItemType != itemType || candidate.Rarity != rarity) continue;
+            if (itemIndex-- != 0) continue;
+
+            item = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    private float GetEligibleStoreItemTypeWeight(int typeIndex)
+    {
+        float weight = _stageDefinition.GetStoreItemTypeWeight((ItemType)typeIndex);
+        if (weight <= 0f) return 0f;
+
+        // 실제 후보와 양수 희귀도 가중치가 있는 종류만 추첨에 참여한다.
+        for (int rarityIndex = 0; rarityIndex < ItemRarityCount; rarityIndex++)
+        {
+            if (_storeItemCountsByTypeAndRarity[typeIndex * ItemRarityCount + rarityIndex] > 0
+                && _stageDefinition.GetStoreRarityWeight((ItemRarity)rarityIndex) > 0f)
+            {
+                return weight;
+            }
+        }
+
+        return 0f;
+    }
+
+    private bool TrySelectStoreItemType(out ItemType itemType)
+    {
+        itemType = default;
+        // 큰 float 가중치 여러 개를 합해도 넘치지 않도록 누적값은 double로 계산한다.
+        double totalWeight = 0d;
+        for (int index = 0; index < ItemTypeCount; index++)
+        {
+            totalWeight += GetEligibleStoreItemTypeWeight(index);
+        }
+
+        if (totalWeight <= 0d) return false;
+
+        double randomWeight = UnityEngine.Random.value * totalWeight;
+        for (int index = 0; index < ItemTypeCount; index++)
+        {
+            float weight = GetEligibleStoreItemTypeWeight(index);
+            if (weight <= 0f) continue;
+
+            itemType = (ItemType)index;
+            if (randomWeight < weight) return true;
+            randomWeight -= weight;
+        }
+
+        // Random.value가 1이거나 누적 오차가 있어도 마지막 유효 종류를 선택한다.
+        return true;
+    }
+
+    private bool TrySelectStoreItemRarity(ItemType itemType, out ItemRarity rarity)
+    {
+        rarity = default;
+        int typeOffset = (int)itemType * ItemRarityCount;
+        double totalWeight = 0d;
+        for (int index = 0; index < ItemRarityCount; index++)
+        {
+            if (_storeItemCountsByTypeAndRarity[typeOffset + index] == 0) continue;
+            totalWeight += _stageDefinition.GetStoreRarityWeight((ItemRarity)index);
+        }
+
+        if (totalWeight <= 0d) return false;
+
+        double randomWeight = UnityEngine.Random.value * totalWeight;
+        for (int index = 0; index < ItemRarityCount; index++)
+        {
+            if (_storeItemCountsByTypeAndRarity[typeOffset + index] == 0) continue;
+            float weight = _stageDefinition.GetStoreRarityWeight((ItemRarity)index);
+            if (weight <= 0f) continue;
+
+            rarity = (ItemRarity)index;
+            if (randomWeight < weight) return true;
+            randomWeight -= weight;
+        }
+
+        // 마지막 유효 희귀도를 보존하여 상한값과 누적 오차를 처리한다.
+        return true;
     }
 
     private void AssignRewardItem(RewardChest chest)
@@ -282,7 +463,7 @@ public class StageManager : MonoBehaviour
         AssignRewardItem(chest);
     }
 
-    private void ResetStores()
+    private void ResetStores(bool resetItems = false)
     {
         UnsubscribeStores();
         ClearRuntimeStores();
@@ -302,7 +483,13 @@ public class StageManager : MonoBehaviour
                 continue;
             }
 
-            SubscribeStore(store);
+            if (resetItems)
+            {
+                // 새 그래프의 사전 배치 상점만 상품을 갱신하고 같은 그래프의 재등록은 유지한다.
+                store.ClearItems();
+            }
+
+            SubscribeStore(store, resetItems);
         }
     }
 
@@ -335,9 +522,11 @@ public class StageManager : MonoBehaviour
         SubscribeStore(store);
     }
 
-    private void SubscribeStore(Store store)
+    private void SubscribeStore(Store store, bool resetRerollPrice = false)
     {
         if (!_subscribedStores.Add(store)) return;
+        store.Initialize(this, _stageDefinition ? _stageDefinition.BaseRerollPrice : 0, _stageDefinition ? _stageDefinition.RerollPriceIncrease : 0, resetRerollPrice);
+        AssignStoreItems(store);
         store.InteractionRequested += HandleStoreInteractionRequested;
     }
 
@@ -378,7 +567,7 @@ public class StageManager : MonoBehaviour
 
         _roomNodes.Clear();
         ResetRewardChests();
-        ResetStores();
+        ResetStores(graphChanged);
 
         if (graph == null)
         {

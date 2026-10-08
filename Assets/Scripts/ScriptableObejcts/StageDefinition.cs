@@ -46,6 +46,11 @@ public class StageDefinition : ScriptableObject
     [field: SerializeField, Min(0f)] public float StoreConsumableWeight { get; private set; } = 1f;
     [field: SerializeField, Min(0f)] public float StoreRelicWeight { get; private set; } = 1f;
 
+    [field: Header("Store Reroll Price")]
+    // 최초 리롤 비용과 성공할 때마다 더할 금액이며 실제 누적 비용은 각 상점이 보관한다.
+    [field: SerializeField, Min(0)] public int BaseRerollPrice { get; private set; }
+    [field: SerializeField, Min(0)] public int RerollPriceIncrease { get; private set; }
+
     [field: Header("Modules")]
     [field: SerializeField] public float RoomDistance { get; private set; } = 5f;
     [field: SerializeField] public GameObject NormalCorridorModule { get; private set; }

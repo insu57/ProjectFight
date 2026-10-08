@@ -204,6 +204,17 @@ public class PlayerStat : MonoBehaviour
         NotifyStatsChanged();
     }
 
+    public bool TrySpendMoney(int amount)
+    {
+        if (amount < 0 || _money < amount) return false;
+        if (amount == 0) return true;
+
+        // 잔액 검사와 차감을 한 경로에서 처리하고 실제 금액이 변할 때만 UI에 알린다.
+        _money -= amount;
+        NotifyStatsChanged();
+        return true;
+    }
+
     public void AddExperience(int amount)
     {
         if (amount <= 0)

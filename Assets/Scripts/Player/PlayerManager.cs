@@ -542,6 +542,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         _playerStat.AddMoney(amount);
     }
 
+    public bool TrySpendMoney(int amount)
+    {
+        if (!isActiveAndEnabled || !_playerStat) return false;
+
+        // 상점 등 외부 시스템은 하위 PlayerStat을 직접 참조하지 않고 Manager로 비용을 지불한다.
+        return _playerStat.TrySpendMoney(amount);
+    }
+
     public IReadOnlyList<ItemDefinition> GetInventoryItems(ItemType itemType)
     {
         // 조회 때 필터링 목록을 할당하지 않고 해당 타입의 보유 목록을 그대로 전달한다.
