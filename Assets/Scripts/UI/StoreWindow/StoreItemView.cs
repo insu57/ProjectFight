@@ -1,5 +1,7 @@
+using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
@@ -7,6 +9,8 @@ using UnityEngine.UI;
 public sealed class StoreItemView : MonoBehaviour
 {
     [SerializeField] private Button _button;
+    [Tooltip("아이콘·테두리·텍스트·가격을 묶은 표시용 자식 부모를 연결한다.")]
+    [SerializeField] private GameObject _contentRoot;
     [SerializeField] private Image _icon;
     [SerializeField] private Image _rarityOutline;
     [SerializeField] private TMP_Text _nameText;
@@ -15,8 +19,11 @@ public sealed class StoreItemView : MonoBehaviour
     [SerializeField] private TMP_Text _descriptionText;
     [SerializeField] private TMP_Text _itemPriceTxt;
 
+    private UnityAction _clickHandler;
+
     public ItemDefinition Item { get; private set; }
     public Button Button => _button;
+    public event Action<StoreItemView> PurchaseRequested;
 
     private void Awake()
     {
@@ -24,6 +31,31 @@ public sealed class StoreItemView : MonoBehaviour
         {
             TryGetComponent(out _button);
         }
+    }
+
+    private void OnEnable()
+    {
+        if (!_button) return;
+
+        // 마우스 클릭과 UI.Submit은 같은 Button 이벤트로 전달하며 콜백을 재사용한다.
+        _clickHandler ??= HandleClick;
+        _button.onClick.AddListener(_clickHandler);
+    }
+
+    private void OnDisable()
+    {
+        if (_button && _clickHandler != null)
+        {
+            _button.onClick.RemoveListener(_clickHandler);
+        }
+    }
+
+    private void HandleClick()
+    {
+        if (!isActiveAndEnabled || !Item || !_button || !_button.isActiveAndEnabled || !_button.IsInteractable()) return;
+
+        // 뷰는 플레이어를 직접 찾지 않고 자신의 구매 요청을 상점 컨트롤러에 전달한다.
+        PurchaseRequested?.Invoke(this);
     }
 
     public void Bind(ItemDefinition item)
@@ -34,6 +66,13 @@ public sealed class StoreItemView : MonoBehaviour
         if (_button)
         {
             _button.interactable = item;
+        }
+
+        if (!item && _contentRoot)
+        {
+            // 상품 루트와 고정 칸은 유지하고 표시용 자식만 숨겨 빈 상태로 처리한다.
+            _contentRoot.SetActive(false);
+            return;
         }
 
         if (_icon)
@@ -78,6 +117,13 @@ public sealed class StoreItemView : MonoBehaviour
                 // 창을 닫거나 상품이 없을 때 가격 참조도 안전하게 비운다.
                 _itemPriceTxt.SetText(string.Empty);
             }
+        }
+
+        // 새 상품의 내용을 모두 갱신한 다음 표시하여 이전 상품 내용이 다시 보이지 않게 한다.
+        // 부모가 연결되지 않은 기존 뷰는 위의 개별 표시 비우기 처리를 그대로 사용한다.
+        if (_contentRoot)
+        {
+            _contentRoot.SetActive(true);
         }
     }
 }

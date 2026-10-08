@@ -17,7 +17,20 @@ public sealed class Store : MonoBehaviour
     private readonly ItemDefinition[] _items = new ItemDefinition[ItemCount];
 
     public bool CanInteract => isActiveAndEnabled && !_isRequestingInteraction;
-    public bool HasItems => _items[0];
+    public bool HasItems
+    {
+        get
+        {
+            for (int index = 0; index < _items.Length; index++)
+            {
+                if (_items[index]) return true;
+            }
+
+            return false;
+        }
+    }
+    // 전부 판매된 목록도 준비된 목록이므로 같은 스테이지의 재등록에서 재추첨하지 않는다.
+    public bool HasAssignedItems { get; private set; }
     public IReadOnlyList<ItemDefinition> Items => _items;
     public int BaseRerollPrice { get; private set; }
     public int RerollPriceIncrease { get; private set; }
@@ -56,6 +69,18 @@ public sealed class Store : MonoBehaviour
         return _stageManager && _stageManager.TryRerollStore(this, player);
     }
 
+    public bool TryPurchaseItem(int itemIndex, ItemDefinition expectedItem, PlayerManager player)
+    {
+        return _stageManager && _stageManager.TryPurchaseStoreItem(this, itemIndex, expectedItem, player);
+    }
+
+    internal void SetItem(int itemIndex, ItemDefinition item)
+    {
+        if (itemIndex < 0 || itemIndex >= _items.Length) return;
+
+        _items[itemIndex] = item;
+    }
+
     public void SetRerolledItems(IReadOnlyList<ItemDefinition> items)
     {
         SetItems(items);
@@ -71,11 +96,14 @@ public sealed class Store : MonoBehaviour
             // 매니저의 공용 추첨 버퍼를 참조하지 않고 상점 자신의 고정 배열로 복사한다.
             _items[index] = index < itemCount ? items[index] : null;
         }
+
+        HasAssignedItems = true;
     }
 
     public void ClearItems()
     {
         Array.Clear(_items, 0, _items.Length);
+        HasAssignedItems = false;
     }
 
     public bool TryInteract(PlayerManager player)

@@ -576,12 +576,31 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         List<ItemDefinition> items = GetInventoryList(itemType);
         if (items == null) return false;
 
+        AddInventoryItem(item, itemType, items);
+        return true;
+    }
+
+    public bool TryPurchaseItem(ItemDefinition item)
+    {
+        if (!isActiveAndEnabled || !_playerStat || !item || item.BasePrice < 0) return false;
+
+        ItemType itemType = item.ItemType;
+        List<ItemDefinition> items = GetInventoryList(itemType);
+        // 추가 가능한 목록을 결제 전에 확정하여 잘못된 종류에는 비용을 청구하지 않는다.
+        if (items == null || !TrySpendMoney(item.BasePrice)) return false;
+
+        // Money 알림에서 활성 상태가 바뀌어도 이미 결제한 아이템은 확정한 목록에 추가한다.
+        AddInventoryItem(item, itemType, items);
+        return true;
+    }
+
+    private void AddInventoryItem(ItemDefinition item, ItemType itemType, List<ItemDefinition> items)
+    {
         // 공유 SO를 복제하지 않고 해당 타입에 한 개를 추가한 뒤 변경된 타입만 알린다.
         items.Add(item);
         InventoryChanged?.Invoke(itemType);
         // 획득 알림은 실제 보유 목록에 추가된 아이템을 받아 인벤토리 창과 별도로 표시한다.
         ItemAcquired?.Invoke(item);
-        return true;
     }
 
     public void AddSkillPoints(int amount)

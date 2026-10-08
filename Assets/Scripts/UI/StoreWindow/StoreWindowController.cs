@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -18,6 +19,7 @@ public sealed class StoreWindowController : WindowControllerBase
 
     private UnityAction _closeWindowHandler;
     private UnityAction _rerollHandler;
+    private Action<StoreItemView> _purchaseRequestedHandler;
     // 정수 비용의 10자리 버퍼를 재사용해 가격 갱신마다 문자열을 생성하지 않는다.
     private readonly char[] _rerollPriceCharacters = new char[10];
     private int _displayedRerollPrice = -1;
@@ -62,6 +64,17 @@ public sealed class StoreWindowController : WindowControllerBase
         {
             PlayerManager.PlayerStatsChanged += HandlePlayerStatsChanged;
         }
+
+        _purchaseRequestedHandler ??= HandlePurchaseRequested;
+        if (_itemViews == null) return;
+
+        for (int index = 0; index < _itemViews.Length; index++)
+        {
+            if (_itemViews[index])
+            {
+                _itemViews[index].PurchaseRequested += _purchaseRequestedHandler;
+            }
+        }
     }
 
     protected override void OnWindowControllerDisabled()
@@ -79,6 +92,17 @@ public sealed class StoreWindowController : WindowControllerBase
         if (PlayerManager)
         {
             PlayerManager.PlayerStatsChanged -= HandlePlayerStatsChanged;
+        }
+
+        if (_itemViews != null && _purchaseRequestedHandler != null)
+        {
+            for (int index = 0; index < _itemViews.Length; index++)
+            {
+                if (_itemViews[index])
+                {
+                    _itemViews[index].PurchaseRequested -= _purchaseRequestedHandler;
+                }
+            }
         }
 
         ClearItemViews();
@@ -166,6 +190,30 @@ public sealed class StoreWindowController : WindowControllerBase
         {
             // 다른 경로로 Money가 바뀌어도 열린 상점의 지불 가능 색상을 즉시 갱신한다.
             RefreshRerollPrice(stats.Money);
+        }
+    }
+
+    private void HandlePurchaseRequested(StoreItemView view)
+    {
+        if (!isActiveAndEnabled || !IsOpen || !CurrentStore || !PlayerManager || !view || _itemViews == null) return;
+
+        for (int index = 0; index < _itemViews.Length && index < Store.ItemCount; index++)
+        {
+            if (_itemViews[index] != view) continue;
+
+            Store store = CurrentStore;
+            bool purchased = store.TryPurchaseItem(index, view.Item, PlayerManager);
+            // 획득 알림에서 창을 닫거나 다른 상점으로 바꿨다면 이전 상점의 UI를 갱신하지 않는다.
+            if (!IsOpen || CurrentStore != store) return;
+
+            if (purchased)
+            {
+                RefreshItemViews();
+                FocusWindow();
+            }
+
+            RefreshRerollPrice();
+            return;
         }
     }
 

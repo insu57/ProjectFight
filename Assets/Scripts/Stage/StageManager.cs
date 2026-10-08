@@ -43,8 +43,8 @@ public class StageManager : MonoBehaviour
     private readonly List<ItemDefinition> _storeItemCandidates = new();
     private readonly int[] _storeItemCountsByTypeAndRarity = new int[ItemTypeCount * ItemRarityCount];
     private readonly ItemDefinition[] _storeItemSelection = new ItemDefinition[Store.ItemCount];
-    // Money 변경 알림에서 리롤을 다시 요청하더라도 공용 추첨 버퍼와 차감 처리가 겹치지 않게 한다.
-    private bool _isRerollingStore;
+    // Money·획득 알림에서 구매나 리롤을 다시 요청해도 상품 변경과 결제가 겹치지 않게 한다.
+    private bool _isUpdatingStore;
 
     public IReadOnlyList<RewardChest> RewardChests => _rewardChests;
     public IReadOnlyList<Store> Stores => _stores;
@@ -199,7 +199,7 @@ public class StageManager : MonoBehaviour
 
     private void AssignStoreItems(Store store)
     {
-        if (!store || store.HasItems || _storeItemCandidates.Count == 0) return;
+        if (!store || store.HasAssignedItems || _storeItemCandidates.Count == 0) return;
 
         if (!TryFillStoreItemSelection())
         {
@@ -212,14 +212,12 @@ public class StageManager : MonoBehaviour
 
     public bool TryRerollStore(Store store, PlayerManager player)
     {
-        if (_isRerollingStore || !isActiveAndEnabled || !store || !store.isActiveAndEnabled
-            || !player || !player.isActiveAndEnabled || _stores == null || !_stores.Contains(store)) return false;
-        if (_playerManager && player != _playerManager) return false;
+        if (!CanUseStore(store, player)) return false;
 
         int price = store.RerollPrice;
         if (player.CurrentPlayerStats.Money < price) return false;
 
-        _isRerollingStore = true;
+        _isUpdatingStore = true;
         try
         {
             // 추첨을 먼저 완료해 후보가 없는 경우 기존 상품과 잔액, 누적 비용을 모두 보존한다.
@@ -230,8 +228,40 @@ public class StageManager : MonoBehaviour
         }
         finally
         {
-            _isRerollingStore = false;
+            _isUpdatingStore = false;
         }
+    }
+
+    public bool TryPurchaseStoreItem(Store store, int itemIndex, ItemDefinition expectedItem, PlayerManager player)
+    {
+        if (!CanUseStore(store, player) || itemIndex < 0 || itemIndex >= Store.ItemCount) return false;
+
+        ItemDefinition item = store.Items[itemIndex];
+        // UI가 표시한 상품과 현재 칸이 일치할 때만 결제하여 빈 칸이나 이전 목록을 구매하지 않는다.
+        if (!item || item != expectedItem) return false;
+
+        _isUpdatingStore = true;
+        try
+        {
+            // 결제·획득 알림에서도 해당 칸은 이미 품절로 보이며, 결제 실패에는 원래 상품을 복구한다.
+            store.SetItem(itemIndex, null);
+            if (player.TryPurchaseItem(item)) return true;
+
+            store.SetItem(itemIndex, item);
+            return false;
+        }
+        finally
+        {
+            _isUpdatingStore = false;
+        }
+    }
+
+    private bool CanUseStore(Store store, PlayerManager player)
+    {
+        if (_isUpdatingStore || !isActiveAndEnabled || !store || !store.isActiveAndEnabled
+            || !player || !player.isActiveAndEnabled || _stores == null || !_stores.Contains(store)) return false;
+
+        return !_playerManager || player == _playerManager;
     }
 
     private bool TryFillStoreItemSelection()
