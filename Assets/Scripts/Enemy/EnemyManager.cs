@@ -20,6 +20,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     [field: SerializeField] private EnemyDefinition _enemyDefinition;
     [Header("이동 중 피격")]
     [SerializeField, Min(0f)] private float _movementHitPauseDuration = 0.2f;
+    // 씬에 직접 배치한 적은 Inspector에서 방을 지정하고, 풀 스폰은 SpawnManager가 전달한다.
+    [SerializeField] private Room _sceneNavigationRoom;
     private EnemyDefinition _defaultEnemyDefinition;
     private EnemyState _enemyState;
     private EnemyStat _enemyStat;
@@ -67,6 +69,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void OnEnable()
     {
+        _enemyMove?.SetNavigationRoom(_sceneNavigationRoom);
+
         if (_hurtbox)
         {
             _hurtbox.DamageRequested += HandleDamageRequested;
@@ -143,6 +147,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void OnDisable()
     {
+        // 풀 반환 후 이전 방의 참조와 경로를 사용하지 않는다.
+        _enemyMove?.SetNavigationRoom(null);
         _rewardRecipient = null;
         _patternExecutor?.CancelCurrentPattern(false);
         _poiseReaction.Reset();
@@ -293,7 +299,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         ApplyDefinitionStats();
     }
 
-    public void InitializeSpawn(EnemyDefinition enemyDefinition, Transform target)
+    public void InitializeSpawn(EnemyDefinition enemyDefinition, Transform target, Room room = null)
     {
         // 편성에 별도 Definition이 없으면 프리팹의 원래 설정을 사용한다.
         _enemyDefinition = enemyDefinition ? enemyDefinition : _defaultEnemyDefinition;
@@ -306,6 +312,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _patternExecutor.SetPatterns(_enemyDefinition ? _enemyDefinition.Patterns : null);
         _enemyStat.ResetForSpawn();
         _target = target;
+        _enemyMove.SetNavigationRoom(room);
     }
 
     private void ApplyDefinitionStats()
@@ -480,8 +487,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             }
 
             step = _patternExecutor.CurrentStep;
-            Vector2 movement = _enemyMove.MoveCircleTarget(_target.position, step.CircleSpeed, step.CircleDistance,
-                step.CircleDistanceTolerance, _patternExecutor.CircleDirectionSign, deltaTime);
+            Vector2 movement = _enemyMove.MoveCircleTarget(_target.position, step.CircleSpeed, step.CircleDistance, step.CircleDistanceTolerance, _patternExecutor.CircleDirectionSign, deltaTime);
             _enemyAnimation.SetMovement(movement, deltaTime);
 
             // 이동을 요청했는데 일정 시간 거의 움직이지 못하면 패턴을 종료한다.

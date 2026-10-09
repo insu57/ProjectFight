@@ -19,5 +19,5 @@ MonoBehaviour:
   <ItemType>k__BackingField: 1
   <EquipmentSlot>k__BackingField: 0
   <Rarity>k__BackingField: 0
-  <BasePrice>k__BackingField: 0
+  <BasePrice>k__BackingField: 20
   _maxStackCount: 1

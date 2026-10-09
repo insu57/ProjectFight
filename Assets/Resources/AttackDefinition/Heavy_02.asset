@@ -16,7 +16,7 @@ MonoBehaviour:
   <AttackName>k__BackingField: Heavy_02
   <AnimationStateName>k__BackingField: Heavy_02
   <AnimationSpeed>k__BackingField: 0.7
-  <BaseDamage>k__BackingField: 0
+  <BaseDamage>k__BackingField: 20
   <BasePoiseDamage>k__BackingField: 20
   <BaseGuardPoiseDamage>k__BackingField: 20
   <HitStopDuration>k__BackingField: 0.11

@@ -236,35 +236,39 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 167401094203026293, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
-      value: 3929
+      value: 3932
       objectReference: {fileID: 0}
     - target: {fileID: 530554662830517553, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
-      value: 3943
+      value: 3946
       objectReference: {fileID: 0}
     - target: {fileID: 609286606906377145, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
-      value: 3943
+      value: 3946
       objectReference: {fileID: 0}
+    - target: {fileID: 1224717894380502781, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_NavMeshData
+      value: 
+      objectReference: {fileID: 23800000, guid: 184e0f90b3de92c47904573fc631a867, type: 2}
     - target: {fileID: 2273264256385536831, guid: f1deab079781c274db9b321569f95c73, type: 3}
-      propertyPath: m_VersionIndex
-      value: 3943
-      objectReference: {fileID: 0}
-    - target: {fileID: 2975158628634060158, guid: f1deab079781c274db9b321569f95c73, type: 3}
-      propertyPath: m_VersionIndex
-      value: 3943
-      objectReference: {fileID: 0}
-    - target: {fileID: 3346938903752228390, guid: f1deab079781c274db9b321569f95c73, type: 3}
-      propertyPath: m_VersionIndex
-      value: 3943
-      objectReference: {fileID: 0}
-    - target: {fileID: 4154159816236699400, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
       value: 3946
       objectReference: {fileID: 0}
+    - target: {fileID: 2975158628634060158, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_VersionIndex
+      value: 3946
+      objectReference: {fileID: 0}
+    - target: {fileID: 3346938903752228390, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_VersionIndex
+      value: 3946
+      objectReference: {fileID: 0}
+    - target: {fileID: 4154159816236699400, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_VersionIndex
+      value: 3949
+      objectReference: {fileID: 0}
     - target: {fileID: 6268940090703510461, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
-      value: 3943
+      value: 3946
       objectReference: {fileID: 0}
     - target: {fileID: 6275643571205478383, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_LocalPosition.x
@@ -307,6 +311,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6340401070377889738, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: <NavigationSurface>k__BackingField
+      value: 
+      objectReference: {fileID: 6767543738667466849}
+    - target: {fileID: 6340401070377889738, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: <SpawnAreas>k__BackingField.Array.size
       value: 4
       objectReference: {fileID: 0}
@@ -328,11 +336,11 @@ PrefabInstance:
       objectReference: {fileID: 3778747303039908760}
     - target: {fileID: 7196770319402141803, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
-      value: 3929
+      value: 3932
       objectReference: {fileID: 0}
     - target: {fileID: 7384263892825106302, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
-      value: 3929
+      value: 3932
       objectReference: {fileID: 0}
     - target: {fileID: 7604064244004780585, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_Name
@@ -340,11 +348,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7800211889743682405, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
-      value: 3929
+      value: 3932
       objectReference: {fileID: 0}
     - target: {fileID: 8193296665582765304, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
-      value: 3946
+      value: 3949
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -366,6 +374,17 @@ PrefabInstance:
       addedObject: {fileID: 6059417535539649087}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f1deab079781c274db9b321569f95c73, type: 3}
+--- !u!114 &6767543738667466849 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1224717894380502781, guid: f1deab079781c274db9b321569f95c73, type: 3}
+  m_PrefabInstance: {fileID: 5554125001452207772}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
 --- !u!4 &8552862437309616874 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4298096855481560182, guid: f1deab079781c274db9b321569f95c73, type: 3}

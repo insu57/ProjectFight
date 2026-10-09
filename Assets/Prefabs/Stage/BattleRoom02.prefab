@@ -290,7 +290,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 2872310827262419865}
+    m_TransformParent: {fileID: 5435290321244461056}
     m_Modifications:
     - target: {fileID: 206018912079605138, guid: ef80c49c85f05b644a60f0860839e293, type: 3}
       propertyPath: m_LocalPosition.x
@@ -298,7 +298,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 206018912079605138, guid: ef80c49c85f05b644a60f0860839e293, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.00000046967475
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 206018912079605138, guid: ef80c49c85f05b644a60f0860839e293, type: 3}
       propertyPath: m_LocalPosition.z
@@ -354,6 +354,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1224717894380502781, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_NavMeshData
+      value: 
+      objectReference: {fileID: 23800000, guid: b6cf9548b5ceff54b84a4138febd4949, type: 2}
     - target: {fileID: 6275643571205478383, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -421,9 +425,6 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 6275643571205478383, guid: f1deab079781c274db9b321569f95c73, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 6324849523605883262}
     - targetCorrespondingSourceObject: {fileID: 4211701751878340052, guid: f1deab079781c274db9b321569f95c73, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8418138805502760564}
@@ -436,15 +437,18 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4211701751878340052, guid: f1deab079781c274db9b321569f95c73, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8169966020628682215}
+    - targetCorrespondingSourceObject: {fileID: 4298096855481560182, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6324849523605883262}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f1deab079781c274db9b321569f95c73, type: 3}
---- !u!4 &2872310827262419865 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 6275643571205478383, guid: f1deab079781c274db9b321569f95c73, type: 3}
-  m_PrefabInstance: {fileID: 8127853760850867318}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &5384360682740251042 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4211701751878340052, guid: f1deab079781c274db9b321569f95c73, type: 3}
+  m_PrefabInstance: {fileID: 8127853760850867318}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5435290321244461056 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4298096855481560182, guid: f1deab079781c274db9b321569f95c73, type: 3}
   m_PrefabInstance: {fileID: 8127853760850867318}
   m_PrefabAsset: {fileID: 0}

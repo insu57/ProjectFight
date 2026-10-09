@@ -107,7 +107,7 @@ public class SpawnManager : MonoBehaviour
         return SpawnEnemy(prefab, null, position, rotation);
     }
 
-    private EnemyManager SpawnEnemy(EnemyManager prefab, EnemyDefinition definition, Vector3 position, Quaternion rotation)
+    private EnemyManager SpawnEnemy(EnemyManager prefab, EnemyDefinition definition, Vector3 position, Quaternion rotation, Room room = null)
     {
         PoolingManager poolingManager = PoolingManager.Instance;
 
@@ -120,7 +120,8 @@ public class SpawnManager : MonoBehaviour
 
         if (enemy)
         {
-            enemy.InitializeSpawn(definition, Player.transform);
+            // 스폰을 요청한 방의 이동 정보는 EnemyManager를 통해 전달한다.
+            enemy.InitializeSpawn(definition, Player.transform, room);
         }
 
         return enemy;
@@ -155,6 +156,7 @@ public class SpawnManager : MonoBehaviour
         for (int attempt = 0; attempt < Mathf.Max(1, _maxSpawnPositionAttempts); attempt++)
         {
             if (!room.TryGetRandomSpawnPosition(queryRadius, out Vector3 footPosition)) return false;
+            if (!room.TryValidateSpawnPosition(footPosition, queryRadius, out footPosition)) continue;
 
             Vector3 center = footPosition + Vector3.up * (height * 0.5f);
             Vector3 bottom = center - Vector3.up * sphereOffset;
@@ -163,7 +165,7 @@ public class SpawnManager : MonoBehaviour
             if (OverlapsSpawnReservation(bottom, top, queryRadius)) continue;
 
             // CharacterController.center가 치우친 프리팹도 발과 몸의 중심을 영역 안에 맞춘다.
-            enemy = SpawnEnemy(entry.Prefab, entry.Definition, center - centerOffset, rotation);
+            enemy = SpawnEnemy(entry.Prefab, entry.Definition, center - centerOffset, rotation, room);
             if (!enemy) return false;
 
             _spawnReservations.Add(new SpawnReservation { Bottom = bottom, Top = top, Radius = queryRadius });

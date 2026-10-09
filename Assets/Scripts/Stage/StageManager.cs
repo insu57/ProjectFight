@@ -133,6 +133,8 @@ public class StageManager : MonoBehaviour
         foreach (KeyValuePair<Room, RoomEncounterRuntime> entry in _roomEncounters)
         {
             entry.Value.Tick(deltaTime);
+            // 생존 적이 잠시 0이어도 다음 그룹이나 미스폰 적이 남아 있으면 문을 잠근다.
+            if (entry.Key) entry.Key.SetDoorOpeningBlocked(!entry.Value.IsComplete);
         }
     }
 
@@ -146,6 +148,8 @@ public class StageManager : MonoBehaviour
         foreach (KeyValuePair<Room, RoomEncounterRuntime> entry in _roomEncounters)
         {
             entry.Value.Clear();
+            // 스테이지 정리 시 이전 전투의 잠금이 방에 남지 않도록 해제한다.
+            if (entry.Key) entry.Key.SetDoorOpeningBlocked(false);
         }
 
         _roomEncounters.Clear();
@@ -728,8 +732,11 @@ public class StageManager : MonoBehaviour
 
         RoomEncounterRuntime encounter = new(room, _spawnManager, selected);
         _roomEncounters.Add(room, encounter);
+        // 첫 스폰이나 다음 그룹의 대기 조건을 처리하기 전에 상호작용부터 차단한다.
+        room.SetDoorOpeningBlocked(true);
         // 첫 그룹의 조건을 즉시 확인하되, 이후 대기와 재시도는 Update에서 이어간다.
         encounter.Tick(0f);
+        room.SetDoorOpeningBlocked(!encounter.IsComplete);
     }
 
     private static bool HasSpawnableEnemies(EncounterDefinition encounter)
