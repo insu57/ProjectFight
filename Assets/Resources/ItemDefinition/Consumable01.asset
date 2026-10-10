@@ -21,3 +21,17 @@ MonoBehaviour:
   <Rarity>k__BackingField: 0
   <BasePrice>k__BackingField: 20
   _maxStackCount: 1
+  _statModifiers: []
+  _useEffectData:
+  - rid: 3955778087045824681
+  _acquireEffectData: []
+  _passiveEffectData: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 3955778087045824681
+      type: {class: RestoreEnergyEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _amount:
+          _mode: 0
+          _value: 30
