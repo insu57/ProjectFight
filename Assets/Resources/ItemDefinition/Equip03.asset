@@ -13,10 +13,18 @@ MonoBehaviour:
   m_Name: Equip03
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   <ItemID>k__BackingField: 1003
-  <ItemName>k__BackingField: "\uC7A5\uBE443\uBC88"
-  <ItemDescription>k__BackingField: 
-  <ItemIcon>k__BackingField: {fileID: 0}
+  <ItemName>k__BackingField: "\uC544\uB2C8\uC2A4\uC758 \uC790\uCF13"
+  <ItemDescription>k__BackingField: "\uC544\uB2C8\uC2A4\uC758 \uC790\uCF13\uC774\uC57C"
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 529694ed9e5dff24199b452e8ec294e5, type: 3}
   <ItemType>k__BackingField: 0
+  <EquipmentSlot>k__BackingField: 2
   <Rarity>k__BackingField: 0
   <BasePrice>k__BackingField: 0
   _maxStackCount: 1
+  _statModifiers: []
+  _useEffectData: []
+  _acquireEffectData: []
+  _passiveEffectData: []
+  references:
+    version: 2
+    RefIds: []

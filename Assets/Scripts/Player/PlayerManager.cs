@@ -23,15 +23,22 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private readonly List<IInteractable> _interactionCandidates = new(4);
     // 타입별 목록을 재사용하며 같은 장비·유물도 획득한 수만큼 별도 항목으로 보관한다.
     private readonly List<ItemDefinition> _equipmentItems = new(16);
+    // 소모품 목록은 최초 획득 순서의 Definition만 보관하고 실제 수량은 Dictionary에서 관리한다.
     private readonly List<ItemDefinition> _consumableItems = new(16);
+    private readonly Dictionary<ItemDefinition, int> _consumableItemCounts = new(16);
     private readonly List<ItemDefinition> _relicItems = new(16);
+
+    // 장비 목록은 획득 순서로 추가만 하므로 그 인덱스로 같은 Definition의 개별 보유 장비를 구분한다.
+    // None, 머리, 상의, 하의, 장갑, 신발 순서이며 -1은 해당 부위에 장착한 장비가 없다는 뜻이다.
+    private readonly int[] _equippedEquipmentIndices = { -1, -1, -1, -1, -1, -1 };
     private IInteractable _currentInteraction;
     private bool _isGameplayInputEnabled = true;
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
     private readonly PoiseReactionRuntime _poiseReaction = new();
 
     private bool IsHitStopped => _playerAnimation && _playerAnimation.IsHitStopped;
-    private bool IsInPoiseReaction => _playerState && (_playerState.ActionState == PlayerActionState.Stunned || _playerState.ActionState == PlayerActionState.GuardBroken);
+    private bool IsInPoiseReaction => _playerState && (_playerState.ActionState == PlayerActionState.Stunned
+        || _playerState.ActionState == PlayerActionState.GuardBroken);
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
@@ -42,6 +49,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     public event Action<string> InteractionPromptChanged;
     public event Action<ItemType> InventoryChanged;
     public event Action<ItemDefinition> ItemAcquired;
+    public event Action<EquipmentSlot> EquipmentChanged;
 
     public SkillTreeRuntime SkillTreeRuntime => _playerSkillTree ? _playerSkillTree.Runtime : null;
     public PlayerStatSnapshot CurrentPlayerStats => _playerStat ? _playerStat.CurrentStats : default;
@@ -557,6 +565,53 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         return items ?? Array.Empty<ItemDefinition>();
     }
 
+    public int GetConsumableCount(ItemDefinition item)
+    {
+        // 소모품 목록의 길이는 종류 수이므로 수량은 공유 Definition을 키로 바로 조회한다.
+        return item && item.ItemType == ItemType.Consumable && _consumableItemCounts.TryGetValue(item, out int count) ? count : 0;
+    }
+
+    public ItemDefinition GetEquippedItem(EquipmentSlot equipmentSlot)
+    {
+        int slotIndex = (int)equipmentSlot;
+        if (slotIndex <= 0 || slotIndex >= _equippedEquipmentIndices.Length) return null;
+
+        int inventoryIndex = _equippedEquipmentIndices[slotIndex];
+        ItemDefinition item = inventoryIndex >= 0 && inventoryIndex < _equipmentItems.Count ? _equipmentItems[inventoryIndex] : null;
+        return item && item.ItemType == ItemType.Equipment && item.EquipmentSlot == equipmentSlot ? item : null;
+    }
+
+    public bool CanToggleEquipment(int inventoryIndex, ItemDefinition expectedItem)
+    {
+        if (!expectedItem || expectedItem.ItemType != ItemType.Equipment || inventoryIndex < 0
+            || inventoryIndex >= _equipmentItems.Count || _equipmentItems[inventoryIndex] != expectedItem) return false;
+
+        // 미보유 항목, 오래된 슬롯 바인딩과 부위 미지정 장비는 장착 대상으로 사용하지 않는다.
+        int slotIndex = (int)expectedItem.EquipmentSlot;
+        return isActiveAndEnabled && slotIndex > 0 && slotIndex < _equippedEquipmentIndices.Length;
+    }
+
+    public bool IsEquipmentEquipped(int inventoryIndex, ItemDefinition expectedItem)
+    {
+        if (!expectedItem || expectedItem.ItemType != ItemType.Equipment || inventoryIndex < 0
+            || inventoryIndex >= _equipmentItems.Count || _equipmentItems[inventoryIndex] != expectedItem) return false;
+
+        int slotIndex = (int)expectedItem.EquipmentSlot;
+        return slotIndex > 0 && slotIndex < _equippedEquipmentIndices.Length && _equippedEquipmentIndices[slotIndex] == inventoryIndex;
+    }
+
+    public bool TryToggleEquipment(int inventoryIndex, ItemDefinition expectedItem)
+    {
+        if (!CanToggleEquipment(inventoryIndex, expectedItem)) return false;
+
+        EquipmentSlot equipmentSlot = expectedItem.EquipmentSlot;
+        int slotIndex = (int)equipmentSlot;
+        // 같은 보유 항목은 해제하고 다른 항목은 교체한다. 인벤토리와 스탯은 변경하지 않는다.
+        _equippedEquipmentIndices[slotIndex] = _equippedEquipmentIndices[slotIndex] == inventoryIndex ? -1 : inventoryIndex;
+        EquipmentChanged?.Invoke(equipmentSlot);
+        return true;
+    }
+
     private List<ItemDefinition> GetInventoryList(ItemType itemType)
     {
         return itemType switch
@@ -596,10 +651,24 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void AddInventoryItem(ItemDefinition item, ItemType itemType, List<ItemDefinition> items)
     {
-        // 공유 SO를 복제하지 않고 해당 타입에 한 개를 추가한 뒤 변경된 타입만 알린다.
-        items.Add(item);
+        if (itemType == ItemType.Consumable)
+        {
+            // 기존 소모품은 수량만 늘려 같은 Definition이 목록과 그리드에 중복되지 않도록 한다.
+            bool alreadyOwned = _consumableItemCounts.TryGetValue(item, out int count);
+            _consumableItemCounts[item] = count + 1;
+            if (!alreadyOwned)
+            {
+                items.Add(item);
+            }
+        }
+        else
+        {
+            // 장비와 유물은 같은 공유 SO라도 획득한 수만큼 개별 항목을 유지한다.
+            items.Add(item);
+        }
+
         InventoryChanged?.Invoke(itemType);
-        // 획득 알림은 실제 보유 목록에 추가된 아이템을 받아 인벤토리 창과 별도로 표시한다.
+        // 수량과 목록이 반영된 후 획득 알림을 보내 기존 HUD와 구매 흐름을 유지한다.
         ItemAcquired?.Invoke(item);
     }
 

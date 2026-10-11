@@ -138,9 +138,14 @@ public sealed class RecoveryOverTimeEffectData : ItemEffectData
 [Serializable, ItemEffectName("시간 제한 스탯 보정")]
 public sealed class TimedStatModifierEffectData : ItemEffectData
 {
-    [SerializeField, Min(0.01f), Tooltip("스탯 보정이 유지되는 시간(초)입니다. 시작할 때 적용하고 만료될 때 이 효과의 보정만 제거합니다.")] private float _duration = 20f;
-    [SerializeField, Tooltip("기본 스탯과 별도로 합산할 보정입니다. FlatAdd는 고정값, PercentAdd는 비율입니다.")] private StatModifier[] _statModifiers = Array.Empty<StatModifier>();
-    [SerializeField, Tooltip("동일 아이템의 동일 효과를 재사용할 때 지속시간을 갱신하거나 각 사용을 별도로 중첩합니다.")] private ItemEffectStackingPolicy _stackingPolicy = ItemEffectStackingPolicy.RefreshDuration;
+    [SerializeField, Min(0.01f), Tooltip("스탯 보정이 유지되는 시간(초)입니다. 시작할 때 적용하고 만료될 때 이 효과의 보정만 제거합니다.")]
+    private float _duration = 20f;
+
+    [SerializeField, Tooltip("기본 스탯과 별도로 합산할 보정입니다. FlatAdd는 고정값, PercentAdd는 비율입니다.")]
+    private StatModifier[] _statModifiers = Array.Empty<StatModifier>();
+
+    [SerializeField, Tooltip("동일 아이템의 동일 효과를 재사용할 때 지속시간을 갱신하거나 각 사용을 별도로 중첩합니다.")]
+    private ItemEffectStackingPolicy _stackingPolicy = ItemEffectStackingPolicy.RefreshDuration;
 
     public float Duration => _duration;
     public IReadOnlyList<StatModifier> StatModifiers => _statModifiers ?? Array.Empty<StatModifier>();
@@ -207,7 +212,9 @@ public sealed class AddMoneyEffectData : ItemEffectData
 public sealed class ConditionalStatEffectData : PassiveItemEffectData
 {
     // 모든 조건을 만족하는 동안만 보정하며, 빈 조건 목록은 항상 충족으로 취급한다.
-    [SerializeField, Tooltip("모든 조건을 만족해야 합니다. 빈 목록은 항상 충족으로 취급합니다.")] private ItemEffectCondition[] _conditions = Array.Empty<ItemEffectCondition>();
+    [SerializeField, Tooltip("모든 조건을 만족해야 합니다. 빈 목록은 항상 충족으로 취급합니다.")]
+    private ItemEffectCondition[] _conditions = Array.Empty<ItemEffectCondition>();
+
     [SerializeField] private StatModifier[] _statModifiers = Array.Empty<StatModifier>();
 
     public IReadOnlyList<ItemEffectCondition> Conditions => _conditions ?? Array.Empty<ItemEffectCondition>();
@@ -232,9 +239,16 @@ public sealed class ConditionalStatEffectData : PassiveItemEffectData
 public sealed class TriggeredEffectData : PassiveItemEffectData
 {
     [SerializeField] private ItemEffectTrigger _trigger;
-    [SerializeField, Tooltip("이벤트 발생 시 모든 조건을 만족해야 합니다. 빈 목록은 조건 없이 발동합니다.")] private ItemEffectCondition[] _conditions = Array.Empty<ItemEffectCondition>();
-    [SerializeField, Range(0f, 1f), Tooltip("조건을 충족한 이벤트의 발동 확률입니다. 1은 항상 발동합니다.")] private float _chance = 1f;
-    [SerializeField, Min(0f), Tooltip("발동 후 다시 발동할 수 있을 때까지의 시간(초)입니다.")] private float _cooldown;
+
+    [SerializeField, Tooltip("이벤트 발생 시 모든 조건을 만족해야 합니다. 빈 목록은 조건 없이 발동합니다.")]
+    private ItemEffectCondition[] _conditions = Array.Empty<ItemEffectCondition>();
+
+    [SerializeField, Range(0f, 1f), Tooltip("조건을 충족한 이벤트의 발동 확률입니다. 1은 항상 발동합니다.")]
+    private float _chance = 1f;
+
+    [SerializeField, Min(0f), Tooltip("발동 후 다시 발동할 수 있을 때까지의 시간(초)입니다.")]
+    private float _cooldown;
+
     // 발동 시 시작할 효과의 수치도 이 아이템 안에 저장하며, 별도 효과 SO를 참조하지 않는다.
     [SerializeReference] private ItemEffectData[] _effects = Array.Empty<ItemEffectData>();
 
@@ -246,7 +260,8 @@ public sealed class TriggeredEffectData : PassiveItemEffectData
 
     public TriggeredEffectData() { }
 
-    public TriggeredEffectData(ItemEffectTrigger trigger, ItemEffectCondition[] conditions, float chance, float cooldown, ItemEffectData[] effects)
+    public TriggeredEffectData(ItemEffectTrigger trigger, ItemEffectCondition[] conditions
+        , float chance, float cooldown, ItemEffectData[] effects)
     {
         _trigger = trigger;
         _conditions = conditions ?? Array.Empty<ItemEffectCondition>();

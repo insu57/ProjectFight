@@ -28,6 +28,21 @@ public static class ItemDisplayUtility
         };
     }
 
+    public static string GetEquipmentSlotText(EquipmentSlot equipmentSlot)
+    {
+        // 고정 문구로 장비 부위를 표시하여 enum 문자열 변환 할당을 피한다.
+        return equipmentSlot switch
+        {
+            EquipmentSlot.None => "미지정",
+            EquipmentSlot.Head => "머리",
+            EquipmentSlot.UpperBody => "상의",
+            EquipmentSlot.LowerBody => "하의",
+            EquipmentSlot.Gloves => "장갑",
+            EquipmentSlot.Shoes => "신발",
+            _ => string.Empty
+        };
+    }
+
     public static Color GetPriceColor(bool canAfford)
     {
         // 지불 가능한 가격과 금액이 부족한 가격의 표시 색상을 공통으로 관리한다.

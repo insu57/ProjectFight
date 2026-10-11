@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,13 +9,16 @@ public sealed class InventoryView : MonoBehaviour
     [SerializeField] private InventoryTabController _tabController;
     [SerializeField] private InventoryGridView[] _grids = Array.Empty<InventoryGridView>();
     [SerializeField] private ItemDescriptionView _descriptionView;
+    [SerializeField] private EquipmentPanelView _equipmentPanelView;
 
     [Header("슬롯 탐색")]
     [SerializeField] private Button _playerWindowInventoryTabButton;
 
     private Action<InventoryGridView> _slotsChangedHandler;
     private Action<ItemType> _inventoryChangedHandler;
+    private Action<EquipmentSlot> _equipmentChangedHandler;
     private PlayerManager _playerManager;
+    private InventoryItemSlotView _selectedItemSlot;
 
     private void Awake()
     {
@@ -26,6 +30,7 @@ public sealed class InventoryView : MonoBehaviour
     {
         _slotsChangedHandler ??= HandleSlotsChanged;
         _inventoryChangedHandler ??= RefreshInventory;
+        _equipmentChangedHandler ??= HandleEquipmentChanged;
 
         if (_tabController)
         {
@@ -37,6 +42,7 @@ public sealed class InventoryView : MonoBehaviour
             if (_grids[i])
             {
                 _grids[i].ItemSelected += HandleItemSelected;
+                _grids[i].ItemInteracted += HandleItemInteracted;
                 _grids[i].SlotsChanged += _slotsChangedHandler;
             }
         }
@@ -46,11 +52,20 @@ public sealed class InventoryView : MonoBehaviour
         if (_playerManager)
         {
             _playerManager.InventoryChanged += _inventoryChangedHandler;
+            _playerManager.EquipmentChanged += _equipmentChangedHandler;
         }
 
         // 창이 닫힌 동안 획득한 아이템도 재개방 시 최신 목록으로 표시한다.
         RefreshAllInventory();
+
+        if (_tabController && _descriptionView)
+        {
+            // 활성화 순서 때문에 탭 변경 이벤트를 놓쳐도 재개방 시 현재 탭과 맞춘다.
+            _descriptionView.ShowTypePanel(_tabController.CurrentItemType);
+        }
+
         RefreshTabGridNavigation(GetCurrentGrid(), true);
+        RefreshEquipmentState();
     }
 
     private void OnDisable()
@@ -58,6 +73,7 @@ public sealed class InventoryView : MonoBehaviour
         if (_playerManager)
         {
             _playerManager.InventoryChanged -= _inventoryChangedHandler;
+            _playerManager.EquipmentChanged -= _equipmentChangedHandler;
         }
 
         if (_tabController)
@@ -70,6 +86,7 @@ public sealed class InventoryView : MonoBehaviour
             if (_grids[i])
             {
                 _grids[i].ItemSelected -= HandleItemSelected;
+                _grids[i].ItemInteracted -= HandleItemInteracted;
                 _grids[i].SlotsChanged -= _slotsChangedHandler;
             }
         }
@@ -119,14 +136,26 @@ public sealed class InventoryView : MonoBehaviour
 
     private void HandleItemTypeChanged(ItemType itemType)
     {
-        // 공통 하단 설명에 이전 타입의 선택이 남지 않도록 함께 초기화한다.
+        // 타입 전환 시 이전 선택을 해제하고 공통 하단 설명을 숨긴다.
         ClearSelection();
+
+        if (_descriptionView)
+        {
+            _descriptionView.ShowTypePanel(itemType);
+        }
+
         ConfigureNavigationTargets();
         RefreshTabGridNavigation(GetCurrentGrid(), true);
     }
 
     private void HandleSlotsChanged(InventoryGridView grid)
     {
+        if (grid && grid.ItemType == ItemType.Equipment)
+        {
+            // 장비 목록 갱신과 탭 재개방으로 다시 대여한 슬롯에도 기존 장착 상태를 표시한다.
+            grid.RefreshEquipmentIndicators(_playerManager);
+        }
+
         if (grid && (!_tabController || grid.ItemType == _tabController.CurrentItemType))
         {
             RefreshTabGridNavigation(grid, true);
@@ -193,6 +222,8 @@ public sealed class InventoryView : MonoBehaviour
         }
 
         RefreshTabGridNavigation(grid, false);
+        _selectedItemSlot = item ? grid.SelectedSlot : null;
+        RefreshEquipmentPanel();
 
         if (!_descriptionView)
         {
@@ -201,15 +232,61 @@ public sealed class InventoryView : MonoBehaviour
 
         if (!item)
         {
-            _descriptionView.Clear();
+            _descriptionView.Hide();
             return;
         }
 
-        _descriptionView.Show(item);
+        _descriptionView.Show(item, GetConsumableCount(item));
+    }
+
+    private void HandleItemInteracted(InventoryGridView grid, InventoryItemSlotView slot)
+    {
+        if (!_playerManager || !grid || !grid.isActiveAndEnabled || !slot
+            || (_tabController && grid.ItemType != _tabController.CurrentItemType)) return;
+
+        // 보유 항목의 인덱스와 현재 Definition을 함께 검증해 다른 복사본이나 오래된 입력을 구분한다.
+        _playerManager.TryToggleEquipment(slot.InventoryIndex, slot.Item);
+    }
+
+    private void HandleEquipmentChanged(EquipmentSlot equipmentSlot)
+    {
+        // 장착은 목록을 다시 대여하지 않고 표시만 바꿔 포커스와 현재 선택을 유지한다.
+        RefreshEquipmentState();
+    }
+
+    private void RefreshEquipmentState()
+    {
+        for (int i = 0; i < (_grids?.Length ?? 0); i++)
+        {
+            InventoryGridView grid = _grids[i];
+            if (grid && grid.isActiveAndEnabled && grid.ItemType == ItemType.Equipment)
+            {
+                grid.RefreshEquipmentIndicators(_playerManager);
+            }
+        }
+
+        RefreshEquipmentPanel();
+    }
+
+    private void RefreshEquipmentPanel()
+    {
+        if (_equipmentPanelView)
+        {
+            ItemDefinition item = _selectedItemSlot ? _selectedItemSlot.Item : null;
+            int inventoryIndex = _selectedItemSlot ? _selectedItemSlot.InventoryIndex : -1;
+            _equipmentPanelView.Refresh(_playerManager, item, inventoryIndex);
+        }
+    }
+
+    private int GetConsumableCount(ItemDefinition item)
+    {
+        // 그리드의 소모품 슬롯 수와 관계없이 Manager가 관리하는 실제 보유 수량을 표시한다.
+        return _playerManager ? _playerManager.GetConsumableCount(item) : 0;
     }
 
     private void ClearSelection()
     {
+        _selectedItemSlot = null;
         for (int i = 0; i < (_grids?.Length ?? 0); i++)
         {
             if (_grids[i])
@@ -220,7 +297,9 @@ public sealed class InventoryView : MonoBehaviour
 
         if (_descriptionView)
         {
-            _descriptionView.Clear();
+            _descriptionView.Hide();
         }
+
+        RefreshEquipmentPanel();
     }
 }

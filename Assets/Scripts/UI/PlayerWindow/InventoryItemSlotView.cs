@@ -6,17 +6,37 @@ using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Button))]
-public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler, ISelectHandler
+public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler, ISelectHandler, IPointerClickHandler, ISubmitHandler
 {
     [SerializeField] private Button _button;
     [SerializeField] private Image _icon;
     //[SerializeField] private TMP_Text _nameText;
     [SerializeField] private GameObject _selectedVisual;
 
+    [Header("Equipment")]
+    [SerializeField] private GameObject _equippedVisual;
+    [SerializeField] private Image _equipmentTypeVisual;
+    [SerializeField] private Sprite _headSprite;
+    [SerializeField] private Sprite _upperSprite;
+    [SerializeField] private Sprite _lowerSprite;
+    [SerializeField] private Sprite _glovesSprite;
+    [SerializeField] private Sprite _shoesSprite;
+
+    [Header("QuickSlot")]
+    [SerializeField] private Image _quickSlotVisual;
+    [SerializeField] private Sprite _quickSlot01Sprite;
+    [SerializeField] private Sprite _quickSlot02Sprite;
+    [SerializeField] private Sprite _quickSlot03Sprite;
+    [SerializeField] private Sprite _quickSlot04Sprite;
+    private ItemDefinition _firstClickItem;
+    private int _firstClickPointerId;
+
     public ItemDefinition Item { get; private set; }
+    public int InventoryIndex { get; private set; } = -1;
     public Button Button => _button;
 
     public event Action<InventoryItemSlotView> Selected;
+    public event Action<InventoryItemSlotView> Interacted;
 
     private void Awake()
     {
@@ -42,7 +62,9 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
 
     private void OnDisable()
     {
+        ResetDoubleClick();
         SetSelected(false);
+        SetEquipped(false);
     }
 
     protected override void OnPoolSpawned()
@@ -60,13 +82,18 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         // 다른 타입의 그리드가 재대여해도 이전 데이터와 구독이 따라가지 않도록 초기화한다.
         Bind(null);
         Selected = null;
+        Interacted = null;
     }
 
-    public void Bind(ItemDefinition item)
+    public void Bind(ItemDefinition item, int inventoryIndex = -1)
     {
+        // 재대여나 목록 갱신 사이의 클릭이 새 아이템의 더블클릭으로 이어지지 않게 한다.
+        ResetDoubleClick();
         // 표시할 공유 데이터만 보관하며 보유 수량이나 장착 상태를 SO에 기록하지 않는다.
         Item = item;
+        InventoryIndex = item ? inventoryIndex : -1;
         SetSelected(false);
+        SetEquipped(false);
 
         if (_button)
         {
@@ -85,10 +112,43 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
             _icon.enabled = _icon.sprite;
         }
 
+        RefreshEquipmentTypeVisual(item);
+
         /*if (_nameText)
         {
             _nameText.SetText(item ? (string.IsNullOrEmpty(item.ItemName) ? item.name : item.ItemName) : string.Empty);
         }*/
+    }
+
+    private void RefreshEquipmentTypeVisual(ItemDefinition item)
+    {
+        if (!_equipmentTypeVisual)
+        {
+            return;
+        }
+
+        // 풀에서 다른 아이템으로 재사용될 때 이전 장비 부위 아이콘을 남기지 않는다.
+        Sprite equipmentTypeSprite = null;
+        if (item && item.ItemType == ItemType.Equipment)
+        {
+            equipmentTypeSprite = item.EquipmentSlot switch
+            {
+                EquipmentSlot.Head => _headSprite,
+                EquipmentSlot.UpperBody => _upperSprite,
+                EquipmentSlot.LowerBody => _lowerSprite,
+                EquipmentSlot.Gloves => _glovesSprite,
+                EquipmentSlot.Shoes => _shoesSprite,
+                _ => null
+            };
+        }
+
+        bool showVisual = equipmentTypeSprite;
+        _equipmentTypeVisual.sprite = equipmentTypeSprite;
+        _equipmentTypeVisual.enabled = showVisual;
+        if (_equipmentTypeVisual.gameObject.activeSelf != showVisual)
+        {
+            _equipmentTypeVisual.gameObject.SetActive(showVisual);
+        }
     }
 
     public void SetSelected(bool isSelected)
@@ -96,6 +156,16 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         if (_selectedVisual && _selectedVisual.activeSelf != isSelected)
         {
             _selectedVisual.SetActive(isSelected);
+        }
+    }
+
+    public void SetEquipped(bool isEquipped)
+    {
+        // 풀 재사용 시 다른 타입에 장착 표시가 남지 않도록 장비 항목에만 표시한다.
+        bool showEquipped = isEquipped && Item && Item.ItemType == ItemType.Equipment;
+        if (_equippedVisual && _equippedVisual.activeSelf != showEquipped)
+        {
+            _equippedVisual.SetActive(showEquipped);
         }
     }
 
@@ -122,14 +192,94 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         NotifySelected();
     }
 
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData == null || eventData.button != PointerEventData.InputButton.Left || !CanInteract())
+        {
+            ResetDoubleClick();
+            return;
+        }
+
+        if (eventData.clickCount == 1)
+        {
+            _firstClickItem = Item;
+            _firstClickPointerId = eventData.pointerId;
+            return;
+        }
+
+        // 같은 포인터로 같은 아이템을 두 번 클릭했을 때만 한 번 실행한다.
+        bool isDoubleClick = eventData.clickCount == 2 && _firstClickItem == Item && _firstClickPointerId == eventData.pointerId;
+        ResetDoubleClick();
+
+        if (isDoubleClick)
+        {
+            Interact();
+        }
+    }
+
+    public void OnSubmit(BaseEventData eventData)
+    {
+        ResetDoubleClick();
+        EventSystem eventSystem = EventSystem.current;
+
+        // 마우스 Hover 표시와 무관하게 실제 UI 포커스가 있는 슬롯에서만 처리한다.
+        if (!eventSystem || !_button || eventSystem.currentSelectedGameObject != _button.gameObject)
+        {
+            return;
+        }
+
+        Interact();
+    }
+
     private void HandleClick()
     {
+        // Button.onClick은 단일 클릭과 Submit에서도 호출되므로 선택만 처리한다.
         NotifySelected();
+    }
+
+    private bool CanInteract()
+    {
+        return isActiveAndEnabled && Item && _button && _button.IsActive() && _button.IsInteractable();
+    }
+
+    private void Interact()
+    {
+        if (!CanInteract())
+        {
+            return;
+        }
+
+        ItemDefinition item = Item;
+        int inventoryIndex = InventoryIndex;
+        NotifySelected();
+
+        // 선택 콜백이 슬롯을 반환하거나 다시 바인딩했다면 이전 입력을 취소한다.
+        if (!CanInteract() || Item != item || InventoryIndex != inventoryIndex)
+        {
+            return;
+        }
+
+        // 장착은 소유 그리드와 InventoryView를 통해 PlayerManager에 전달한다.
+        switch (item.ItemType)
+        {
+            case ItemType.Equipment:
+                Interacted?.Invoke(this);
+                break;
+            case ItemType.Consumable:
+                Debug.Log("사용", this);
+                break;
+        }
+    }
+
+    private void ResetDoubleClick()
+    {
+        _firstClickItem = null;
+        _firstClickPointerId = 0;
     }
 
     private void NotifySelected()
     {
-        if (isActiveAndEnabled && Item && _button && _button.interactable)
+        if (CanInteract())
         {
             Selected?.Invoke(this);
         }

@@ -17,9 +17,12 @@ public sealed class InventoryGridView : MonoBehaviour
     [SerializeField] private ItemDefinition[] _previewItems = Array.Empty<ItemDefinition>();
 
     private readonly List<InventoryItemSlotView> _slots = new(16);
+    private readonly List<Vector2> _navigationSlotPositions = new(16);
+    private readonly HashSet<ItemDefinition> _displayedConsumables = new(16);
     private InventoryItemSlotView _selectedSlot;
     private IReadOnlyList<ItemDefinition> _items;
     private Action<InventoryItemSlotView> _slotSelectedHandler;
+    private Action<InventoryItemSlotView> _slotInteractedHandler;
     private bool _hasItems;
     private bool _hasStarted;
     private Selectable _upNavigationTarget;
@@ -27,7 +30,9 @@ public sealed class InventoryGridView : MonoBehaviour
     private Vector2 _navigationContentSize;
 
     public ItemType ItemType => _itemType;
+    public InventoryItemSlotView SelectedSlot => _selectedSlot;
     public event Action<InventoryGridView, ItemDefinition> ItemSelected;
+    public event Action<InventoryGridView, InventoryItemSlotView> ItemInteracted;
     public event Action<InventoryGridView> SlotsChanged;
 
     public Button GetNavigationEntryPoint()
@@ -59,6 +64,18 @@ public sealed class InventoryGridView : MonoBehaviour
         return slot && slot.IsSpawned && slot.Item && slot.transform.parent == _content;
     }
 
+    public void RefreshEquipmentIndicators(PlayerManager player)
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            InventoryItemSlotView slot = _slots[i];
+            if (IsUsableSlot(slot))
+            {
+                slot.SetEquipped(player && player.IsEquipmentEquipped(slot.InventoryIndex, slot.Item));
+            }
+        }
+    }
+
     private void OnEnable()
     {
         if (_hasStarted)
@@ -86,12 +103,38 @@ public sealed class InventoryGridView : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (_content && _slots.Count > 0 && _navigationContentSize != _content.rect.size)
+        if (!_content || _slots.Count == 0)
         {
-            // 패널 너비가 바뀌어 열 수가 달라진 경우에만 연결을 다시 계산한다.
-            RebuildNavigation(true);
+            return;
+        }
+
+        bool contentSizeChanged = _navigationContentSize != _content.rect.size;
+        if (contentSizeChanged || HaveSlotPositionsChanged())
+        {
+            // Canvas의 지연 배치로 슬롯 위치만 바뀐 경우에도 실제 이웃으로 연결을 갱신한다.
+            RebuildNavigation(contentSizeChanged);
             SlotsChanged?.Invoke(this);
         }
+    }
+
+    private bool HaveSlotPositionsChanged()
+    {
+        if (_navigationSlotPositions.Count != _slots.Count)
+        {
+            return true;
+        }
+
+        // 기존 위치 목록을 재사용해 매 프레임 할당이나 전체 방향 연결 재계산을 피한다.
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            Vector2 position = _slots[i] ? GetSlotPosition(_slots[i]) : Vector2.zero;
+            if ((position - _navigationSlotPositions[i]).sqrMagnitude > NavigationPositionTolerance * NavigationPositionTolerance)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void SetNavigationTargets(Selectable upTarget, Selectable rightTarget)
@@ -141,6 +184,7 @@ public sealed class InventoryGridView : MonoBehaviour
         }
 
         _slotSelectedHandler ??= HandleSlotSelected;
+        _slotInteractedHandler ??= HandleSlotInteracted;
         IReadOnlyList<ItemDefinition> items = _hasItems ? _items : _previewItems;
         int itemCount = items?.Count ?? 0;
 
@@ -149,6 +193,12 @@ public sealed class InventoryGridView : MonoBehaviour
             ItemDefinition item = items[i];
 
             if (!item || item.ItemType != _itemType)
+            {
+                continue;
+            }
+
+            // 확인용 목록에도 같은 소모품이 반복될 수 있어 재사용하는 집합으로 중복 슬롯을 막는다.
+            if (_itemType == ItemType.Consumable && !_displayedConsumables.Add(item))
             {
                 continue;
             }
@@ -162,8 +212,10 @@ public sealed class InventoryGridView : MonoBehaviour
             }
 
             slot.Selected += _slotSelectedHandler;
+            slot.Interacted += _slotInteractedHandler;
             _slots.Add(slot);
-            slot.Bind(item);
+            // 실제 보유 목록의 인덱스만 장착 항목의 식별자로 전달하고 확인용 목록은 -1로 구분한다.
+            slot.Bind(item, _hasItems ? i : -1);
         }
 
         RebuildNavigation(true);
@@ -184,13 +236,22 @@ public sealed class InventoryGridView : MonoBehaviour
         }
 
         _navigationContentSize = _content.rect.size;
+        _navigationSlotPositions.Clear();
+        if (_navigationSlotPositions.Capacity < _slots.Count)
+        {
+            _navigationSlotPositions.Capacity = _slots.Capacity;
+        }
+
         float topPosition = float.NegativeInfinity;
 
         for (int i = 0; i < _slots.Count; i++)
         {
+            // 한 번 읽은 배치를 모든 방향 탐색에서 공유해 동일한 위치로 연결을 계산한다.
+            Vector2 position = _slots[i] ? GetSlotPosition(_slots[i]) : Vector2.zero;
+            _navigationSlotPositions.Add(position);
             if (_slots[i])
             {
-                topPosition = Mathf.Max(topPosition, GetSlotPosition(_slots[i]).y);
+                topPosition = Mathf.Max(topPosition, position.y);
             }
         }
 
@@ -203,7 +264,7 @@ public sealed class InventoryGridView : MonoBehaviour
                 continue;
             }
 
-            Vector2 position = GetSlotPosition(slot);
+            Vector2 position = _navigationSlotPositions[i];
             Selectable up = null, down = null, left = null, right = null;
             float upDistance = float.PositiveInfinity, downDistance = float.PositiveInfinity,
                 leftDistance = float.PositiveInfinity, rightDistance = float.PositiveInfinity;
@@ -217,7 +278,7 @@ public sealed class InventoryGridView : MonoBehaviour
                     continue;
                 }
 
-                Vector2 difference = GetSlotPosition(candidate) - position;
+                Vector2 difference = _navigationSlotPositions[j] - position;
 
                 if (Mathf.Abs(difference.x) <= NavigationPositionTolerance)
                 {
@@ -290,6 +351,7 @@ public sealed class InventoryGridView : MonoBehaviour
             }
 
             slot.Selected -= _slotSelectedHandler;
+            slot.Interacted -= _slotInteractedHandler;
 
             if (slot.IsSpawned && slot.transform.parent == _content)
             {
@@ -299,6 +361,8 @@ public sealed class InventoryGridView : MonoBehaviour
 
         // 활성 그리드만 슬롯을 보유하여 세 아이템 타입이 같은 프리팹 풀을 공유한다.
         _slots.Clear();
+        _navigationSlotPositions.Clear();
+        _displayedConsumables.Clear();
 
         if (hadSlots)
         {
@@ -323,5 +387,13 @@ public sealed class InventoryGridView : MonoBehaviour
         _selectedSlot = slot;
         slot.SetSelected(true);
         ItemSelected?.Invoke(this, slot.Item);
+    }
+
+    private void HandleSlotInteracted(InventoryItemSlotView slot)
+    {
+        if (!isActiveAndEnabled || !IsUsableSlot(slot) || !_slots.Contains(slot)) return;
+
+        // 슬롯은 플레이어를 직접 찾지 않고 현재 소유 그리드를 통해 상위 View로 요청한다.
+        ItemInteracted?.Invoke(this, slot);
     }
 }

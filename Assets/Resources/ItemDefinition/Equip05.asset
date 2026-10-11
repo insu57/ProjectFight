@@ -17,6 +17,14 @@ MonoBehaviour:
   <ItemDescription>k__BackingField: 
   <ItemIcon>k__BackingField: {fileID: 0}
   <ItemType>k__BackingField: 0
+  <EquipmentSlot>k__BackingField: 1
   <Rarity>k__BackingField: 1
   <BasePrice>k__BackingField: 0
   _maxStackCount: 1
+  _statModifiers: []
+  _useEffectData: []
+  _acquireEffectData: []
+  _passiveEffectData: []
+  references:
+    version: 2
+    RefIds: []
