@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
@@ -10,20 +12,33 @@ public sealed class InventoryView : MonoBehaviour
     [SerializeField] private InventoryGridView[] _grids = Array.Empty<InventoryGridView>();
     [SerializeField] private ItemDescriptionView _descriptionView;
     [SerializeField] private EquipmentPanelView _equipmentPanelView;
+    [SerializeField] private QuickslotPanelView _quickslotPanelView;
 
     [Header("슬롯 탐색")]
     [SerializeField] private Button _playerWindowInventoryTabButton;
 
+    [Header("퀵슬롯 등록")]
+    [SerializeField] private QuickslotRegistrationView _quickslotRegistrationView;
+    [SerializeField, Tooltip("UI/RegisterQuickslot1~4 순서로 연결합니다.")]
+    private InputActionReference[] _registerSlotActions = new InputActionReference[PlayerQuickslot.SlotCount];
+    [SerializeField] private InputActionReference _openRegistrationAction;
+
+    private readonly bool[] _enabledSlotActions = new bool[PlayerQuickslot.SlotCount];
+    private bool _enabledOpenRegistrationAction;
+    private int _requestedQuickslot;
+    private bool _registrationPanelRequested;
     private Action<InventoryGridView> _slotsChangedHandler;
     private Action<ItemType> _inventoryChangedHandler;
     private Action<EquipmentSlot> _equipmentChangedHandler;
     private PlayerManager _playerManager;
     private InventoryItemSlotView _selectedItemSlot;
+    private WindowTabButton _inventoryEntryTabButton;
 
     private void Awake()
     {
         // 기존 플레이어 창의 다른 View와 동일하게 플레이어 참조를 한 번만 찾는다.
         _playerManager = FindFirstObjectByType<PlayerManager>();
+        if (_playerWindowInventoryTabButton) _playerWindowInventoryTabButton.TryGetComponent(out _inventoryEntryTabButton);
     }
 
     private void OnEnable()
@@ -53,6 +68,7 @@ public sealed class InventoryView : MonoBehaviour
         {
             _playerManager.InventoryChanged += _inventoryChangedHandler;
             _playerManager.EquipmentChanged += _equipmentChangedHandler;
+            _playerManager.QuickslotsChanged += RefreshQuickslotIndicators;
         }
 
         // 창이 닫힌 동안 획득한 아이템도 재개방 시 최신 목록으로 표시한다.
@@ -66,14 +82,22 @@ public sealed class InventoryView : MonoBehaviour
 
         RefreshTabGridNavigation(GetCurrentGrid(), true);
         RefreshEquipmentState();
+        RefreshQuickslotIndicators();
+        SetQuickslotInputsEnabled(true);
     }
 
     private void OnDisable()
     {
+        if (_inventoryEntryTabButton) _inventoryEntryTabButton.SetDownNavigationTarget(null);
+        SetQuickslotInputsEnabled(false);
+        _requestedQuickslot = 0;
+        _registrationPanelRequested = false;
+        if (_quickslotRegistrationView) _quickslotRegistrationView.Hide();
         if (_playerManager)
         {
             _playerManager.InventoryChanged -= _inventoryChangedHandler;
             _playerManager.EquipmentChanged -= _equipmentChangedHandler;
+            _playerManager.QuickslotsChanged -= RefreshQuickslotIndicators;
         }
 
         if (_tabController)
@@ -99,6 +123,109 @@ public sealed class InventoryView : MonoBehaviour
         }
     }
 
+    private void SetQuickslotInputsEnabled(bool isEnabled)
+    {
+        for (int i = 0; i < Mathf.Min(_registerSlotActions?.Length ?? 0, PlayerQuickslot.SlotCount); i++)
+        {
+            InputAction action = _registerSlotActions[i] ? _registerSlotActions[i].action : null;
+            if (action == null) continue;
+
+            if (isEnabled)
+            {
+                action.performed += HandleRegisterQuickslotInput;
+                _enabledSlotActions[i] = !action.enabled;
+                if (_enabledSlotActions[i]) action.Enable();
+            }
+            else
+            {
+                action.performed -= HandleRegisterQuickslotInput;
+                if (_enabledSlotActions[i]) action.Disable();
+                _enabledSlotActions[i] = false;
+            }
+        }
+
+        InputAction openAction = _openRegistrationAction ? _openRegistrationAction.action : null;
+        if (openAction == null) return;
+        if (isEnabled)
+        {
+            openAction.performed += HandleOpenRegistrationInput;
+            _enabledOpenRegistrationAction = !openAction.enabled;
+            if (_enabledOpenRegistrationAction) openAction.Enable();
+        }
+        else
+        {
+            openAction.performed -= HandleOpenRegistrationInput;
+            if (_enabledOpenRegistrationAction) openAction.Disable();
+            _enabledOpenRegistrationAction = false;
+        }
+    }
+
+    private void HandleRegisterQuickslotInput(InputAction.CallbackContext context)
+    {
+        if (_requestedQuickslot > 0 || (_quickslotRegistrationView && _quickslotRegistrationView.IsOpen)) return;
+        for (int i = 0; i < Mathf.Min(_registerSlotActions?.Length ?? 0, PlayerQuickslot.SlotCount); i++)
+        {
+            if (_registerSlotActions[i] && _registerSlotActions[i].action == context.action)
+            {
+                _requestedQuickslot = i + 1;
+                return;
+            }
+        }
+    }
+
+    private void HandleOpenRegistrationInput(InputAction.CallbackContext context)
+    {
+        if (!_quickslotRegistrationView || !_quickslotRegistrationView.IsOpen) _registrationPanelRequested = true;
+    }
+
+    private void LateUpdate()
+    {
+        if (_requestedQuickslot == 0 && !_registrationPanelRequested) return;
+        int slotNumber = _requestedQuickslot;
+        bool openPanel = slotNumber == 0 && _registrationPanelRequested;
+        _requestedQuickslot = 0;
+        _registrationPanelRequested = false;
+
+        // EventSystem의 탐색 처리가 끝난 뒤 최신 선택을 확인한다. 동시에 누른 숫자는 한 칸만 처리한다.
+        if ((_quickslotRegistrationView && _quickslotRegistrationView.IsOpen)
+            || !TryGetSelectedConsumable(openPanel, out InventoryItemSlotView slot)) return;
+        if (slotNumber > 0)
+        {
+            _playerManager.TryRegisterQuickslot(slotNumber, slot.Item, true);
+        }
+        else if (_quickslotRegistrationView)
+        {
+            _quickslotRegistrationView.Show(_playerManager, slot.Item, slot);
+        }
+    }
+
+    private bool TryGetSelectedConsumable(bool requireFocus, out InventoryItemSlotView slot)
+    {
+        slot = _selectedItemSlot;
+        if (requireFocus)
+        {
+            // 패드는 마우스 Hover로 표시 중인 항목 대신 실제 UI 포커스가 있는 슬롯을 사용한다.
+            GameObject selected = EventSystem.current ? EventSystem.current.currentSelectedGameObject : null;
+            if (!selected || !selected.TryGetComponent(out slot)) return false;
+        }
+
+        InventoryGridView grid = GetCurrentGrid();
+        return _playerManager && grid && grid.ItemType == ItemType.Consumable && grid.ContainsSlot(slot)
+            && slot.isActiveAndEnabled && _playerManager.CanRegisterQuickslot(slot.Item);
+    }
+
+    private void RefreshQuickslotIndicators()
+    {
+        for (int i = 0; i < (_grids?.Length ?? 0); i++)
+        {
+            InventoryGridView grid = _grids[i];
+            if (grid && grid.isActiveAndEnabled && grid.ItemType == ItemType.Consumable) grid.RefreshQuickslotIndicators(_playerManager);
+        }
+
+        // 슬롯 목록을 다시 만들지 않고 현재 퀵슬롯 정보 패널의 아이콘도 함께 갱신한다.
+        if (_quickslotPanelView) _quickslotPanelView.Refresh(_playerManager);
+    }
+
     private void RefreshAllInventory()
     {
         ClearSelection();
@@ -117,6 +244,8 @@ public sealed class InventoryView : MonoBehaviour
 
     private void RefreshInventory(ItemType itemType)
     {
+        // 소모품 목록 재대여로 패널이 오래된 슬롯을 참조하지 않도록 먼저 닫는다.
+        if (itemType == ItemType.Consumable && _quickslotRegistrationView) _quickslotRegistrationView.Hide();
         if (!_playerManager)
         {
             return;
@@ -136,6 +265,7 @@ public sealed class InventoryView : MonoBehaviour
 
     private void HandleItemTypeChanged(ItemType itemType)
     {
+        if (_quickslotRegistrationView) _quickslotRegistrationView.Hide();
         // 타입 전환 시 이전 선택을 해제하고 공통 하단 설명을 숨긴다.
         ClearSelection();
 
@@ -146,10 +276,17 @@ public sealed class InventoryView : MonoBehaviour
 
         ConfigureNavigationTargets();
         RefreshTabGridNavigation(GetCurrentGrid(), true);
+        RefreshQuickslotIndicators();
     }
 
     private void HandleSlotsChanged(InventoryGridView grid)
     {
+        if (grid && grid.ItemType == ItemType.Consumable)
+        {
+            // 새로 대여한 슬롯에도 현재 등록 번호를 반영한다.
+            grid.RefreshQuickslotIndicators(_playerManager);
+        }
+
         if (grid && grid.ItemType == ItemType.Equipment)
         {
             // 장비 목록 갱신과 탭 재개방으로 다시 대여한 슬롯에도 기존 장착 상태를 표시한다.
@@ -200,6 +337,10 @@ public sealed class InventoryView : MonoBehaviour
 
     private void ConfigureNavigationTargets()
     {
+        // 상단 인벤토리 탭에서 아래로 진입할 때는 타입 탭 순서와 현재 선택에 관계없이 Equipment를 우선한다.
+        if (_inventoryEntryTabButton)
+            _inventoryEntryTabButton.SetDownNavigationTarget(_tabController ? _tabController.GetTabButton(ItemType.Equipment) : null);
+
         for (int i = 0; i < (_grids?.Length ?? 0); i++)
         {
             InventoryGridView grid = _grids[i];
@@ -216,7 +357,8 @@ public sealed class InventoryView : MonoBehaviour
     private void HandleItemSelected(InventoryGridView grid, ItemDefinition item)
     {
         // 비활성/다른 타입 그리드의 선택 해제가 현재 타입의 설명과 탐색 대상을 지우지 않도록 한다.
-        if (!grid || !grid.isActiveAndEnabled || (_tabController && grid.ItemType != _tabController.CurrentItemType))
+        if ((_quickslotRegistrationView && _quickslotRegistrationView.IsOpen) || !grid || !grid.isActiveAndEnabled
+            || (_tabController && grid.ItemType != _tabController.CurrentItemType))
         {
             return;
         }
@@ -241,7 +383,7 @@ public sealed class InventoryView : MonoBehaviour
 
     private void HandleItemInteracted(InventoryGridView grid, InventoryItemSlotView slot)
     {
-        if (!_playerManager || !grid || !grid.isActiveAndEnabled || !slot
+        if ((_quickslotRegistrationView && _quickslotRegistrationView.IsOpen) || !_playerManager || !grid || !grid.isActiveAndEnabled || !slot
             || (_tabController && grid.ItemType != _tabController.CurrentItemType)) return;
 
         // 보유 항목의 인덱스와 현재 Definition을 함께 검증해 다른 복사본이나 오래된 입력을 구분한다.

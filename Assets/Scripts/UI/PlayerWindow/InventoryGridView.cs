@@ -64,6 +64,21 @@ public sealed class InventoryGridView : MonoBehaviour
         return slot && slot.IsSpawned && slot.Item && slot.transform.parent == _content;
     }
 
+    public bool ContainsSlot(InventoryItemSlotView slot)
+    {
+        // 패널을 열 때 다른 그리드나 풀에서 재사용된 슬롯을 등록 대상으로 받지 않는다.
+        return IsUsableSlot(slot) && _slots.Contains(slot);
+    }
+
+    public void RefreshQuickslotIndicators(PlayerManager player)
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            InventoryItemSlotView slot = _slots[i];
+            if (IsUsableSlot(slot)) slot.SetQuickslotNumber(player ? player.GetQuickslotNumber(slot.Item) : 0);
+        }
+    }
+
     public void RefreshEquipmentIndicators(PlayerManager player)
     {
         for (int i = 0; i < _slots.Count; i++)

@@ -17,6 +17,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private PlayerCamera _playerCamera;
     private PlayerLockOn _playerLockOn;
     private PlayerSkillTree _playerSkillTree;
+    private PlayerQuickslot _playerQuickslot;
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
     private bool _hasPendingGuardChange;
     // 범위 안의 후보는 유지하고, 표시와 입력에 사용할 가장 가까운 유효 대상을 공유한다.
@@ -50,6 +51,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     public event Action<ItemType> InventoryChanged;
     public event Action<ItemDefinition> ItemAcquired;
     public event Action<EquipmentSlot> EquipmentChanged;
+    public event Action QuickslotsChanged;
 
     public SkillTreeRuntime SkillTreeRuntime => _playerSkillTree ? _playerSkillTree.Runtime : null;
     public PlayerStatSnapshot CurrentPlayerStats => _playerStat ? _playerStat.CurrentStats : default;
@@ -67,6 +69,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         TryGetComponent(out _playerCamera);
         TryGetComponent(out _playerLockOn);
         TryGetComponent(out _playerSkillTree);
+        TryGetComponent(out _playerQuickslot);
 
         _attackHitbox = GetComponentInChildren<AttackHitbox>();
         _hurtbox = GetComponentInChildren<Hurtbox>();
@@ -111,6 +114,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         if (_playerStat)
         {
             _playerStat.StatsChanged += HandlePlayerStatsChanged;
+        }
+
+        if (_playerQuickslot)
+        {
+            _playerQuickslot.Changed += HandleQuickslotsChanged;
         }
 
         SubscribeSkillTreeRuntime();
@@ -165,6 +173,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         if (_playerStat)
         {
             _playerStat.StatsChanged -= HandlePlayerStatsChanged;
+        }
+
+        if (_playerQuickslot)
+        {
+            _playerQuickslot.Changed -= HandleQuickslotsChanged;
         }
 
         UnsubscribeSkillTreeRuntime();
@@ -569,6 +582,38 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     {
         // 소모품 목록의 길이는 종류 수이므로 수량은 공유 Definition을 키로 바로 조회한다.
         return item && item.ItemType == ItemType.Consumable && _consumableItemCounts.TryGetValue(item, out int count) ? count : 0;
+    }
+
+    public ItemDefinition GetQuickslotItem(int slotNumber)
+    {
+        return _playerQuickslot ? _playerQuickslot.GetItem(slotNumber) : null;
+    }
+
+    public int GetQuickslotNumber(ItemDefinition item)
+    {
+        return _playerQuickslot ? _playerQuickslot.GetSlotNumber(item) : 0;
+    }
+
+    public bool CanRegisterQuickslot(ItemDefinition item)
+    {
+        // UI가 미보유 항목이나 확인용 목록을 등록하지 못하도록 소유 여부를 Manager에서 검증한다.
+        return isActiveAndEnabled && _playerQuickslot && _playerQuickslot.isActiveAndEnabled && GetConsumableCount(item) > 0;
+    }
+
+    public bool TryRegisterQuickslot(int slotNumber, ItemDefinition item, bool toggleIfSame = false)
+    {
+        return CanRegisterQuickslot(item) && _playerQuickslot.TryRegister(slotNumber, item, toggleIfSame);
+    }
+
+    public bool TryUnregisterQuickslot(ItemDefinition item)
+    {
+        // 수량이 0이 된 항목도 등록 해제는 가능하게 하며 등록 정보만 변경한다.
+        return isActiveAndEnabled && _playerQuickslot && _playerQuickslot.TryUnregister(item);
+    }
+
+    private void HandleQuickslotsChanged()
+    {
+        QuickslotsChanged?.Invoke();
     }
 
     public ItemDefinition GetEquippedItem(EquipmentSlot equipmentSlot)

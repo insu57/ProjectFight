@@ -19,7 +19,7 @@ public sealed class InventoryTabController : MonoBehaviour
         public WindowTabButton Button => _button;
         public GameObject Content => _content;
 
-        public void SetGridNavigationTarget(Selectable target, bool refreshNavigation)
+        public void SetGridNavigationTarget(Selectable target, Selectable upTarget, Selectable downTarget, bool refreshNavigation)
         {
             if (!_button)
             {
@@ -27,6 +27,7 @@ public sealed class InventoryTabController : MonoBehaviour
             }
 
             Button button = _button.Button;
+            if (!button) return;
 
             bool shouldRefresh = !_hasNavigationOverride || refreshNavigation;
 
@@ -52,6 +53,9 @@ public sealed class InventoryTabController : MonoBehaviour
                 }
             }
 
+            // 타입 탭 사이의 수직 이동은 초기 배치가 끝나기 전의 Automatic 탐색 결과에 의존하지 않는다.
+            if (upTarget) navigation.selectOnUp = upTarget;
+            if (downTarget) navigation.selectOnDown = downTarget;
             navigation.mode = Navigation.Mode.Explicit;
             navigation.selectOnLeft = target;
             button.navigation = navigation;
@@ -120,10 +124,30 @@ public sealed class InventoryTabController : MonoBehaviour
             return;
         }
 
-        // 어떤 타입 탭에 포커스가 있어도 현재 표시 중인 그리드로 복귀한다.
+        // Inspector 배열 순서나 레이아웃 갱신 시점과 관계없이 현재 수직 타입 탭 순서로 연결한다.
+        Button equipment = GetTabButton(ItemType.Equipment);
+        Button consumable = GetTabButton(ItemType.Consumable);
+        Button relic = GetTabButton(ItemType.Relic);
         for (int i = 0; i < TabBindingCount; i++)
         {
-            _tabBindings[i]?.SetGridNavigationTarget(target, refreshNavigation);
+            TabBinding binding = _tabBindings[i];
+            if (binding == null) continue;
+
+            Selectable up = binding.TabType switch
+            {
+                ItemType.Consumable => equipment,
+                ItemType.Relic => consumable,
+                _ => null
+            };
+            Selectable down = binding.TabType switch
+            {
+                ItemType.Equipment => consumable,
+                ItemType.Consumable => relic,
+                _ => null
+            };
+
+            // 왼쪽은 어떤 타입 탭에서도 현재 표시 중인 그리드의 복귀 대상을 사용한다.
+            binding.SetGridNavigationTarget(target, up, down, refreshNavigation);
         }
     }
 

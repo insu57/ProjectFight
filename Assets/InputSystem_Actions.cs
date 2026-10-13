@@ -1183,6 +1183,51 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""RegisterQuickslot1"",
+                    ""type"": ""Button"",
+                    ""id"": ""0dccc6b9-05dd-4323-9ed0-8b3f2e17b69f"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""RegisterQuickslot2"",
+                    ""type"": ""Button"",
+                    ""id"": ""7ff31de4-3e62-4835-a792-2a74b106a7ba"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""RegisterQuickslot3"",
+                    ""type"": ""Button"",
+                    ""id"": ""f80da263-acd9-4d6c-b5dc-d20e12c3844a"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""RegisterQuickslot4"",
+                    ""type"": ""Button"",
+                    ""id"": ""dda54b3c-bfa4-4898-82c7-7e80ea7f7e80"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenQuickslotRegistration"",
+                    ""type"": ""Button"",
+                    ""id"": ""cd1a63f6-5a2c-4631-9272-633fa0131192"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -1603,6 +1648,61 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""action"": ""MapPan"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""300565bb-598a-419d-8c26-bde0ab5750ff"",
+                    ""path"": ""<Keyboard>/1"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""RegisterQuickslot1"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""efa69e92-99d5-444c-bdf0-2ca8b3e58329"",
+                    ""path"": ""<Keyboard>/2"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""RegisterQuickslot2"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""dd9a4f93-97a3-4159-b3e4-f006da7e657d"",
+                    ""path"": ""<Keyboard>/3"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""RegisterQuickslot3"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""f48842ae-6430-4a4d-8d3e-45302ac90e51"",
+                    ""path"": ""<Keyboard>/4"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""RegisterQuickslot4"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""6e1ef2e8-0098-4972-b640-63674e3c89e3"",
+                    ""path"": ""<Gamepad>/buttonNorth"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Gamepad"",
+                    ""action"": ""OpenQuickslotRegistration"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -1710,6 +1810,11 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         m_UI_ZoomIn = m_UI.FindAction("ZoomIn", throwIfNotFound: true);
         m_UI_ZoomOut = m_UI.FindAction("ZoomOut", throwIfNotFound: true);
         m_UI_MapPan = m_UI.FindAction("MapPan", throwIfNotFound: true);
+        m_UI_RegisterQuickslot1 = m_UI.FindAction("RegisterQuickslot1", throwIfNotFound: true);
+        m_UI_RegisterQuickslot2 = m_UI.FindAction("RegisterQuickslot2", throwIfNotFound: true);
+        m_UI_RegisterQuickslot3 = m_UI.FindAction("RegisterQuickslot3", throwIfNotFound: true);
+        m_UI_RegisterQuickslot4 = m_UI.FindAction("RegisterQuickslot4", throwIfNotFound: true);
+        m_UI_OpenQuickslotRegistration = m_UI.FindAction("OpenQuickslotRegistration", throwIfNotFound: true);
     }
 
     ~@InputSystem_Actions()
@@ -2206,6 +2311,11 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
     private readonly InputAction m_UI_ZoomIn;
     private readonly InputAction m_UI_ZoomOut;
     private readonly InputAction m_UI_MapPan;
+    private readonly InputAction m_UI_RegisterQuickslot1;
+    private readonly InputAction m_UI_RegisterQuickslot2;
+    private readonly InputAction m_UI_RegisterQuickslot3;
+    private readonly InputAction m_UI_RegisterQuickslot4;
+    private readonly InputAction m_UI_OpenQuickslotRegistration;
     /// <summary>
     /// Provides access to input actions defined in input action map "UI".
     /// </summary>
@@ -2269,6 +2379,26 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "UI/MapPan".
         /// </summary>
         public InputAction @MapPan => m_Wrapper.m_UI_MapPan;
+        /// <summary>
+        /// Provides access to the underlying input action "UI/RegisterQuickslot1".
+        /// </summary>
+        public InputAction @RegisterQuickslot1 => m_Wrapper.m_UI_RegisterQuickslot1;
+        /// <summary>
+        /// Provides access to the underlying input action "UI/RegisterQuickslot2".
+        /// </summary>
+        public InputAction @RegisterQuickslot2 => m_Wrapper.m_UI_RegisterQuickslot2;
+        /// <summary>
+        /// Provides access to the underlying input action "UI/RegisterQuickslot3".
+        /// </summary>
+        public InputAction @RegisterQuickslot3 => m_Wrapper.m_UI_RegisterQuickslot3;
+        /// <summary>
+        /// Provides access to the underlying input action "UI/RegisterQuickslot4".
+        /// </summary>
+        public InputAction @RegisterQuickslot4 => m_Wrapper.m_UI_RegisterQuickslot4;
+        /// <summary>
+        /// Provides access to the underlying input action "UI/OpenQuickslotRegistration".
+        /// </summary>
+        public InputAction @OpenQuickslotRegistration => m_Wrapper.m_UI_OpenQuickslotRegistration;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -2334,6 +2464,21 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @MapPan.started += instance.OnMapPan;
             @MapPan.performed += instance.OnMapPan;
             @MapPan.canceled += instance.OnMapPan;
+            @RegisterQuickslot1.started += instance.OnRegisterQuickslot1;
+            @RegisterQuickslot1.performed += instance.OnRegisterQuickslot1;
+            @RegisterQuickslot1.canceled += instance.OnRegisterQuickslot1;
+            @RegisterQuickslot2.started += instance.OnRegisterQuickslot2;
+            @RegisterQuickslot2.performed += instance.OnRegisterQuickslot2;
+            @RegisterQuickslot2.canceled += instance.OnRegisterQuickslot2;
+            @RegisterQuickslot3.started += instance.OnRegisterQuickslot3;
+            @RegisterQuickslot3.performed += instance.OnRegisterQuickslot3;
+            @RegisterQuickslot3.canceled += instance.OnRegisterQuickslot3;
+            @RegisterQuickslot4.started += instance.OnRegisterQuickslot4;
+            @RegisterQuickslot4.performed += instance.OnRegisterQuickslot4;
+            @RegisterQuickslot4.canceled += instance.OnRegisterQuickslot4;
+            @OpenQuickslotRegistration.started += instance.OnOpenQuickslotRegistration;
+            @OpenQuickslotRegistration.performed += instance.OnOpenQuickslotRegistration;
+            @OpenQuickslotRegistration.canceled += instance.OnOpenQuickslotRegistration;
         }
 
         /// <summary>
@@ -2384,6 +2529,21 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @MapPan.started -= instance.OnMapPan;
             @MapPan.performed -= instance.OnMapPan;
             @MapPan.canceled -= instance.OnMapPan;
+            @RegisterQuickslot1.started -= instance.OnRegisterQuickslot1;
+            @RegisterQuickslot1.performed -= instance.OnRegisterQuickslot1;
+            @RegisterQuickslot1.canceled -= instance.OnRegisterQuickslot1;
+            @RegisterQuickslot2.started -= instance.OnRegisterQuickslot2;
+            @RegisterQuickslot2.performed -= instance.OnRegisterQuickslot2;
+            @RegisterQuickslot2.canceled -= instance.OnRegisterQuickslot2;
+            @RegisterQuickslot3.started -= instance.OnRegisterQuickslot3;
+            @RegisterQuickslot3.performed -= instance.OnRegisterQuickslot3;
+            @RegisterQuickslot3.canceled -= instance.OnRegisterQuickslot3;
+            @RegisterQuickslot4.started -= instance.OnRegisterQuickslot4;
+            @RegisterQuickslot4.performed -= instance.OnRegisterQuickslot4;
+            @RegisterQuickslot4.canceled -= instance.OnRegisterQuickslot4;
+            @OpenQuickslotRegistration.started -= instance.OnOpenQuickslotRegistration;
+            @OpenQuickslotRegistration.performed -= instance.OnOpenQuickslotRegistration;
+            @OpenQuickslotRegistration.canceled -= instance.OnOpenQuickslotRegistration;
         }
 
         /// <summary>
@@ -2743,5 +2903,40 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnMapPan(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "RegisterQuickslot1" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnRegisterQuickslot1(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "RegisterQuickslot2" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnRegisterQuickslot2(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "RegisterQuickslot3" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnRegisterQuickslot3(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "RegisterQuickslot4" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnRegisterQuickslot4(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "OpenQuickslotRegistration" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnOpenQuickslotRegistration(InputAction.CallbackContext context);
     }
 }

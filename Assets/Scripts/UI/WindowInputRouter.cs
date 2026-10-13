@@ -12,6 +12,7 @@ public sealed class WindowInputRouter : MonoBehaviour
     private PlayerWindowController _playerWindow;
     private OptionWindowController _optionWindow;
     private SkillUnlockConfirmationView _skillConfirmation;
+    [SerializeField] private QuickslotRegistrationView _quickslotRegistration;
 
     [Header("Input")]
     [SerializeField] private InputActionReference _cancelAction;
@@ -90,6 +91,7 @@ public sealed class WindowInputRouter : MonoBehaviour
 
         _enabledCancelAction = false;
         ClearRequests();
+        if (_quickslotRegistration) _quickslotRegistration.Hide();
 
         // Cancel을 받을 라우터가 비활성화되면 상점창의 입력 차단도 함께 해제한다.
         if (_storeWindow && _storeWindow.IsOpen)
@@ -148,8 +150,8 @@ public sealed class WindowInputRouter : MonoBehaviour
             return;
         }
 
-        // 확인창이 떠 있는 동안에는 다른 창 단축키를 처리하지 않는다.
-        if (_skillConfirmation && _skillConfirmation.IsOpen)
+        // 모달 패널이 떠 있는 동안에는 다른 창 단축키를 처리하지 않는다.
+        if ((_skillConfirmation && _skillConfirmation.IsOpen) || (_quickslotRegistration && _quickslotRegistration.IsOpen))
         {
             return;
         }
@@ -200,6 +202,13 @@ public sealed class WindowInputRouter : MonoBehaviour
 
     private bool TryCancelTopWindow()
     {
+        // B/○/Escape 한 번으로 등록 패널과 플레이어 창이 함께 닫히지 않도록 먼저 소비한다.
+        if (_quickslotRegistration && _quickslotRegistration.IsOpen)
+        {
+            _quickslotRegistration.Cancel();
+            return true;
+        }
+
         if (_skillConfirmation && _skillConfirmation.IsOpen)
         {
             _skillConfirmation.Cancel();

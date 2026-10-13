@@ -1097,6 +1097,51 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
+                },
+                {
+                    "name": "RegisterQuickslot1",
+                    "type": "Button",
+                    "id": "0dccc6b9-05dd-4323-9ed0-8b3f2e17b69f",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "RegisterQuickslot2",
+                    "type": "Button",
+                    "id": "7ff31de4-3e62-4835-a792-2a74b106a7ba",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "RegisterQuickslot3",
+                    "type": "Button",
+                    "id": "f80da263-acd9-4d6c-b5dc-d20e12c3844a",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "RegisterQuickslot4",
+                    "type": "Button",
+                    "id": "dda54b3c-bfa4-4898-82c7-7e80ea7f7e80",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "OpenQuickslotRegistration",
+                    "type": "Button",
+                    "id": "cd1a63f6-5a2c-4631-9272-633fa0131192",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -1515,6 +1560,61 @@
                     "processors": "",
                     "groups": "",
                     "action": "MapPan",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "300565bb-598a-419d-8c26-bde0ab5750ff",
+                    "path": "<Keyboard>/1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "RegisterQuickslot1",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "efa69e92-99d5-444c-bdf0-2ca8b3e58329",
+                    "path": "<Keyboard>/2",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "RegisterQuickslot2",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "dd9a4f93-97a3-4159-b3e4-f006da7e657d",
+                    "path": "<Keyboard>/3",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "RegisterQuickslot3",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f48842ae-6430-4a4d-8d3e-45302ac90e51",
+                    "path": "<Keyboard>/4",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "RegisterQuickslot4",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6e1ef2e8-0098-4972-b640-63674e3c89e3",
+                    "path": "<Gamepad>/buttonNorth",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "OpenQuickslotRegistration",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

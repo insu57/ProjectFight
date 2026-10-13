@@ -23,6 +23,7 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
     [SerializeField] private Sprite _shoesSprite;
 
     [Header("QuickSlot")]
+    [SerializeField] private GameObject _quickSlotVisualParent;
     [SerializeField] private Image _quickSlotVisual;
     [SerializeField] private Sprite _quickSlot01Sprite;
     [SerializeField] private Sprite _quickSlot02Sprite;
@@ -65,6 +66,7 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         ResetDoubleClick();
         SetSelected(false);
         SetEquipped(false);
+        SetQuickslotNumber(0);
     }
 
     protected override void OnPoolSpawned()
@@ -94,6 +96,7 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         InventoryIndex = item ? inventoryIndex : -1;
         SetSelected(false);
         SetEquipped(false);
+        SetQuickslotNumber(0);
 
         if (_button)
         {
@@ -167,6 +170,23 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         {
             _equippedVisual.SetActive(showEquipped);
         }
+    }
+
+    public void SetQuickslotNumber(int slotNumber)
+    {
+        Sprite sprite = Item && Item.ItemType == ItemType.Consumable ? slotNumber switch
+        {
+            1 => _quickSlot01Sprite,
+            2 => _quickSlot02Sprite,
+            3 => _quickSlot03Sprite,
+            4 => _quickSlot04Sprite,
+            _ => null
+        } : null;
+
+        // 번호 아이콘은 기존 Image의 스프라이트만 바꾸고 배경을 포함한 부모 전체의 표시를 제어한다.
+        if (_quickSlotVisual) _quickSlotVisual.sprite = sprite;
+        bool showVisual = _quickSlotVisual && sprite;
+        if (_quickSlotVisualParent && _quickSlotVisualParent.activeSelf != showVisual) _quickSlotVisualParent.SetActive(showVisual);
     }
 
     public void SetNavigation(Selectable up, Selectable down, Selectable left, Selectable right)

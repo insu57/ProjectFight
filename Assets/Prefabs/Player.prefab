@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: 7894886072742760587}
   - component: {fileID: 8968012954492850399}
   - component: {fileID: 112678730961460787}
+  - component: {fileID: 7641029048191393880}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -231,9 +232,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98cda8bf454544c42959ad404e71abd8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStat
+  _progressionDefinition: {fileID: 0}
   _level: 1
   _currentExp: 0
   _targetExp: 100
+  _money: 0
   _maxHealth: 100
   _currentHealth: 100
   _baseAttackPower: 0
@@ -250,6 +253,23 @@ MonoBehaviour:
   _guardPoiseRecoveryRate: 20
   _guardBreakDuration: 1.5
   _guardBreakMoveDistance: 1
+--- !u!114 &7641029048191393880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4129976254972732029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa5a22be4ce944eaa6443434d39c055b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerQuickslot
+  _items:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
 --- !u!1 &5692278023597871169
 GameObject:
   m_ObjectHideFlags: 0

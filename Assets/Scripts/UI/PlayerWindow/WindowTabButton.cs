@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Button))]
-public sealed class WindowTabButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
+public sealed class WindowTabButton : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler, IMoveHandler
 {
     [field: SerializeField] private Button _button;
     public Button Button => _button;
@@ -18,6 +18,7 @@ public sealed class WindowTabButton : MonoBehaviour, ISelectHandler, IDeselectHa
     private bool _isSelected;
     private bool _isFocused;
     private bool _isPointerOver;
+    private Selectable _downNavigationTarget;
 
     public event Action<WindowTabButton> Selected;
 
@@ -53,7 +54,25 @@ public sealed class WindowTabButton : MonoBehaviour, ISelectHandler, IDeselectHa
 
         _isFocused = false;
         _isPointerOver = false;
+        _downNavigationTarget = null;
         RefreshVisual();
+    }
+
+    public void SetDownNavigationTarget(Selectable target)
+    {
+        // 대상은 활성 화면의 View가 전달하며 null이면 버튼의 기존 Navigation을 사용한다.
+        _downNavigationTarget = target;
+    }
+
+    public void OnMove(AxisEventData eventData)
+    {
+        if (eventData == null || eventData.moveDir != MoveDirection.Down || !isActiveAndEnabled || !_button
+            || !_button.IsActive() || !_button.IsInteractable() || _button.navigation.mode == Navigation.Mode.None
+            || !_downNavigationTarget || !_downNavigationTarget.IsActive() || !_downNavigationTarget.IsInteractable()) return;
+
+        // Button과 이 컴포넌트가 같은 Move 이벤트를 받으므로 처리 순서와 관계없이 기본 아래 탐색을 막는다.
+        eventData.moveDir = MoveDirection.None;
+        eventData.selectedObject = _downNavigationTarget.gameObject;
     }
 
     public void SetSelected(bool isSelected)
