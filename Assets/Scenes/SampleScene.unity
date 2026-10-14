@@ -7184,6 +7184,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 882e8cf001e34b546b54b738fd29d22a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkillTreeView
+  _playerWindowSkillTreeTabButton: {fileID: 1954520471}
   _treeContainer: {fileID: 1829309696}
   _connectionLayer: {fileID: 732083007}
   _nodeLayer: {fileID: 808933251}
@@ -19744,7 +19745,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2495296684415982692, guid: a93b34066de58da4ab194568fc6b668d, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.00008479616
+      value: -0.00002695539
       objectReference: {fileID: 0}
     - target: {fileID: 5502399782082763497, guid: a93b34066de58da4ab194568fc6b668d, type: 3}
       propertyPath: m_Pivot.x

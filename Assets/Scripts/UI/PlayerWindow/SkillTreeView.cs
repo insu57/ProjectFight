@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 public sealed class SkillTreeView : MonoBehaviour
@@ -22,6 +23,7 @@ public sealed class SkillTreeView : MonoBehaviour
     private PlayerManager _playerManager;
 
     [Header("참조")]
+    [SerializeField] private WindowTabButton _playerWindowSkillTreeTabButton;
     [SerializeField] private RectTransform _treeContainer;
     [SerializeField] private RectTransform _connectionLayer;
     [SerializeField] private RectTransform _nodeLayer;
@@ -70,6 +72,8 @@ public sealed class SkillTreeView : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_playerWindowSkillTreeTabButton) _playerWindowSkillTreeTabButton.SetDownNavigationTarget(null);
+
         if (_playerManager)
         {
             _playerManager.SkillPointsChanged -= HandleSkillPointsChanged;
@@ -217,10 +221,29 @@ public sealed class SkillTreeView : MonoBehaviour
             _availablePointsText.SetText("Skill Points: {0}", availablePoints);
         }
 
+        Button entryButton = null;
+        Vector2 entryPosition = Vector2.zero;
+
         foreach (KeyValuePair<int, SkillTreeNodeView> pair in _nodeViews)
         {
             pair.Value.Refresh(availablePoints);
+
+            if (!_playerWindowSkillTreeTabButton || !runtime.TryGetNode(pair.Key, out SkillTreeNodeRuntime node) || !node.IsUnlocked) continue;
+
+            Button button = pair.Value.Button;
+            if (!button || !button.IsActive() || !button.IsInteractable()) continue;
+
+            Vector2 position = _nodePositions[pair.Key];
+
+            // 깊을수록 Y가 작아지는 기존 배치를 사용하고, 같은 깊이에서는 가장 오른쪽 노드를 우선한다.
+            if (!entryButton || position.y < entryPosition.y || position.y == entryPosition.y && position.x > entryPosition.x)
+            {
+                entryButton = button;
+                entryPosition = position;
+            }
         }
+
+        if (_playerWindowSkillTreeTabButton) _playerWindowSkillTreeTabButton.SetDownNavigationTarget(entryButton);
 
         for (int i = 0; i < _connections.Count; i++)
         {

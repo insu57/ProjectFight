@@ -29,6 +29,7 @@ public sealed class SkillTreeNodeView : MonoBehaviour, IPointerEnterHandler, IPo
     private bool _isPointerOver;
 
     public int NodeID => _node != null ? _node.NodeID : -1;
+    public Button Button => _button;
 
     public event Action<int> Selected;
     public event Action<int> UnlockRequested;
