@@ -131,7 +131,7 @@ InventoryView가 위쪽 이동 대상과 ItemType에 맞는 오른쪽 타입 탭
 | 게임패드 Y/△ | 실제 UI 포커스가 있는 소모품의 등록 패널 열기 |
 | 패널에서 방향 입력 후 A/× | 1~4번 중 선택한 칸에 등록. 같은 칸을 선택하면 등록 유지 |
 | 패널의 등록 해제 버튼 | 선택한 소모품의 기존 등록 해제 |
-| 패널의 취소 버튼 또는 B/○/Escape | 패널만 닫고 원래 소모품으로 복귀 |
+| B/○/Escape | 패널만 닫고 원래 소모품으로 복귀 |
 
 예를 들어 A가 1번, B가 2번일 때 A를 2번에 등록하면 1번은 비고 2번에는 A가 들어간다. B는 퀵슬롯에서만 해제되며 보유 수량은 바뀌지 않는다.
 
@@ -152,10 +152,14 @@ PlayerWindowPanel
       ├─ Slot3Button (Button, 라벨: 3 ↓)
       ├─ Slot4Button (Button, 라벨: 4 ←)
       ├─ UnregisterButton (Button, 라벨: 등록 해제)
-      └─ CancelButton (Button, 라벨: 취소)
+      └─ ControlGuide (고정 조작 안내)
+         ├─ ConfirmGuide (Image + TMP, Xbox 기준 A 확인)
+         └─ CancelGuide (Image + TMP, Xbox 기준 B 취소)
 ```
 
-각 슬롯 버튼에 현재 등록된 아이템의 Icon(Image)과 ItemNameText(TMP)를 선택적으로 추가한다. 번호/방향 라벨은 별도 고정 텍스트로 둔다. 패널 버튼은 배열 순서대로 상하좌우 탐색하며, 미등록 소모품의 등록 해제 버튼은 비활성화하고 탐색에서도 건너뛴다. 버튼을 한 줄 또는 한 열로 배치하면 탐색 순서와 일치한다.
+각 슬롯 버튼에 현재 등록된 아이템의 Icon(Image)과 ItemNameText(TMP)를 선택적으로 추가한다. 번호/방향 라벨은 별도 고정 텍스트로 둔다. 패널은 슬롯 1~4와 등록 해제 버튼만 순환 탐색하며, 미등록 소모품의 등록 해제 버튼은 비활성화하고 탐색에서도 건너뛴다. 버튼을 한 줄 또는 한 열로 배치하면 탐색 순서와 일치한다.
+
+씬의 기존 CancelButton은 삭제하고, 패널 하단에 고정된 `A 확인 · B 취소` 안내를 배치한다. 안내용 이미지와 텍스트의 Raycast Target은 끄고 Button 컴포넌트는 추가하지 않는다. A는 현재 선택한 슬롯의 등록 또는 등록 해제를 실행하고, B는 선택 위치에 관계없이 패널만 닫는다. 안내 이미지는 Inspector에서 배치하며 QuickslotRegistrationView에 연결할 필드는 없다.
 
 RegistrationPanel의 배경 Image는 창 영역을 덮고 Raycast Target을 켜며, 아이콘과 텍스트의 Raycast Target은 끈다. QuickslotRegistrationView를 비활성 RegistrationPanel 자체에 붙이지 않고 활성 컨트롤러에 붙인다. Background Group 아래에 RegistrationPanel을 넣으면 배경 입력 차단이 팝업에도 적용되므로 잘못된 구성은 패널을 열지 않고 경고한다.
 
@@ -170,7 +174,7 @@ RegistrationPanel의 배경 Image는 창 영역을 덮고 Raycast Target을 켜�
 | QuickslotRegistrationView | Background Group | WindowBody의 CanvasGroup |
 | QuickslotRegistrationView | Selected Item Name Text | 선택한 소모품 이름을 표시할 TMP, 선택 사항 |
 | QuickslotRegistrationView | Slots | Size 4. 각 원소의 Button을 1~4번 버튼에 연결. Icon과 Item Name Text는 선택 사항 |
-| QuickslotRegistrationView | Unregister Button / Cancel Button | 등록 해제 / 취소 Button |
+| QuickslotRegistrationView | Unregister Button | 등록 해제 Button |
 | WindowInputRouter | Quickslot Registration | 위 QuickslotRegistrationView |
 | InventoryItemSlotView 프리팹 | Quick Slot Visual Parent | 퀵슬롯 표시 전체를 감싸는 부모 GameObject. 등록·해제 시 활성 상태를 변경 |
 | InventoryItemSlotView 프리팹 | Quick Slot Visual | 부모 아래의 번호 Image. GameObject와 Image는 활성 상태로 두고 Raycast Target은 끔. 코드에서는 Sprite만 변경 |
@@ -192,6 +196,6 @@ EquipmentPanelView와 동일하게 첫 갱신 시 각 Image의 기본 Sprite와 
 
 ### Play Mode 확인 항목
 
-보유한 소모품 두 종류로 숫자 등록·같은 숫자 해제·다른 칸 이동·목적지 교체를 확인한다. 게임패드에서는 십자버튼으로 인벤토리를 탐색한 뒤 Y/△로 등록 패널을 열고, 등록·같은 칸 등록 유지·별도 등록 해제·B/○ 취소를 확인한다. 패널이 열린 동안 배경 슬롯과 창 탭이 입력을 받지 않아야 하며 B/○ 한 번으로 플레이어 창까지 닫히지 않아야 한다.
+보유한 소모품 두 종류로 숫자 등록·같은 숫자 해제·다른 칸 이동·목적지 교체를 확인한다. 게임패드에서는 십자버튼으로 인벤토리를 탐색한 뒤 Y/△로 등록 패널을 열고, A/× 등록·같은 칸 등록 유지·별도 등록 해제·B/○ 취소를 확인한다. 탐색은 슬롯 4개와 활성 상태의 등록 해제 버튼만 순환하고, 조작 안내 이미지에는 포커스가 가지 않아야 한다. 패널이 열린 동안 배경 슬롯과 창 탭이 입력을 받지 않아야 하며 B/○ 한 번으로 플레이어 창까지 닫히지 않아야 한다.
 
 등록 후 소모품 수량이 바뀌지 않는지, 창 재개방/탭 전환 후 번호가 유지되는지, 슬롯 풀 재사용 시 다른 아이템에 번호가 남지 않는지 확인한다. 소스 컴파일과 스텁 검증은 실제 UI 배치, InputActionReference 연결, 패드 입력, Canvas/TMP 표시 및 Unity Play Mode를 대신하지 않는다.

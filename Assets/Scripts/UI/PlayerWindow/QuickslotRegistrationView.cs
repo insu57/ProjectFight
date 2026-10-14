@@ -8,6 +8,9 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandler
 {
+    // 취소는 WindowInputRouter가 처리하므로 슬롯 4개와 등록 해제 버튼만 탐색한다.
+    private const int NavigationButtonCount = PlayerQuickslot.SlotCount + 1;
+
     [Serializable]
     private sealed class SlotBinding
     {
@@ -33,7 +36,6 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
     [SerializeField, Tooltip("배열 순서가 퀵슬롯 1~4입니다.")]
     private SlotBinding[] _slots = new SlotBinding[PlayerQuickslot.SlotCount];
     [SerializeField] private Button _unregisterButton;
-    [SerializeField] private Button _cancelButton;
 
     private UnityAction[] _slotHandlers;
     private PlayerManager _player;
@@ -60,7 +62,6 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
         }
 
         if (_unregisterButton) _unregisterButton.onClick.AddListener(Unregister);
-        if (_cancelButton) _cancelButton.onClick.AddListener(Cancel);
     }
 
     private void OnDisable()
@@ -71,7 +72,6 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
         }
 
         if (_unregisterButton) _unregisterButton.onClick.RemoveListener(Unregister);
-        if (_cancelButton) _cancelButton.onClick.RemoveListener(Cancel);
         Hide();
     }
 
@@ -82,8 +82,7 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
 
         if (!HasValidBindings())
         {
-            Debug.LogWarning("퀵슬롯 등록 패널의 Panel, 배경 CanvasGroup, 1~4번 버튼, 등록 해제 및 취소 버튼을 연결하세요. " +
-                "Panel은 배경 CanvasGroup 밖에 두세요.", this);
+            Debug.LogWarning("퀵슬롯 등록 패널의 Panel, 배경 CanvasGroup, 1~4번 버튼과 등록 해제 버튼을 연결하세요. Panel은 배경 CanvasGroup 밖에 두세요.", this);
             return false;
         }
 
@@ -114,14 +113,14 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
     private bool HasValidBindings()
     {
         if (!_panel || _panel == gameObject || !_backgroundGroup || _panel.transform.IsChildOf(_backgroundGroup.transform)
-            || !_unregisterButton || !_cancelButton || _slots?.Length != PlayerQuickslot.SlotCount) return false;
+            || !_unregisterButton || _slots?.Length != PlayerQuickslot.SlotCount) return false;
 
         for (int i = 0; i < PlayerQuickslot.SlotCount; i++)
         {
             if (_slots[i] == null || !_slots[i].Button || !_slots[i].Button.transform.IsChildOf(_panel.transform)) return false;
         }
 
-        return _unregisterButton.transform.IsChildOf(_panel.transform) && _cancelButton.transform.IsChildOf(_panel.transform);
+        return _unregisterButton.transform.IsChildOf(_panel.transform);
     }
 
     public void Hide()
@@ -147,6 +146,7 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
 
     public void Cancel()
     {
+        // 패드 B 취소는 별도 버튼 없이 기존 입력 라우터를 통해 호출된다.
         if (IsOpen) Close();
     }
 
@@ -212,7 +212,7 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
         }
 
         _unregisterButton.interactable = _player.GetQuickslotNumber(_pendingItem) > 0;
-        for (int i = 0; i < PlayerQuickslot.SlotCount + 2; i++)
+        for (int i = 0; i < NavigationButtonCount; i++)
         {
             Button button = GetButton(i);
             // 명시적 연결만 사용해 방향 입력이 등록 패널 밖으로 나가지 않도록 한다.
@@ -225,13 +225,12 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
 
     private Button GetButton(int index)
     {
-        if (index < PlayerQuickslot.SlotCount) return _slots[index].Button;
-        return index == PlayerQuickslot.SlotCount ? _unregisterButton : _cancelButton;
+        return index < PlayerQuickslot.SlotCount ? _slots[index].Button : _unregisterButton;
     }
 
     private Button FindNavigationButton(int start, int direction)
     {
-        int count = PlayerQuickslot.SlotCount + 2;
+        int count = NavigationButtonCount;
         for (int offset = 1; offset <= count; offset++)
         {
             int index = (start + direction * offset + count) % count;
@@ -244,7 +243,7 @@ public sealed class QuickslotRegistrationView : MonoBehaviour, IPointerDownHandl
 
     private void FocusEntryPoint()
     {
-        for (int i = 0; i < PlayerQuickslot.SlotCount + 2; i++)
+        for (int i = 0; i < NavigationButtonCount; i++)
         {
             Button button = GetButton(i);
             if (button.IsActive() && button.IsInteractable())

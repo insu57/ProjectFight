@@ -10,7 +10,6 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
 {
     [SerializeField] private Button _button;
     [SerializeField] private Image _icon;
-    //[SerializeField] private TMP_Text _nameText;
     [SerializeField] private GameObject _selectedVisual;
 
     [Header("Equipment")]
@@ -116,11 +115,6 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         }
 
         RefreshEquipmentTypeVisual(item);
-
-        /*if (_nameText)
-        {
-            _nameText.SetText(item ? (string.IsNullOrEmpty(item.ItemName) ? item.name : item.ItemName) : string.Empty);
-        }*/
     }
 
     private void RefreshEquipmentTypeVisual(ItemDefinition item)
@@ -186,7 +180,11 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         // 번호 아이콘은 기존 Image의 스프라이트만 바꾸고 배경을 포함한 부모 전체의 표시를 제어한다.
         if (_quickSlotVisual) _quickSlotVisual.sprite = sprite;
         bool showVisual = _quickSlotVisual && sprite;
-        if (_quickSlotVisualParent && _quickSlotVisualParent.activeSelf != showVisual) _quickSlotVisualParent.SetActive(showVisual);
+
+        if (_quickSlotVisualParent && _quickSlotVisualParent.activeSelf != showVisual)
+        {
+            _quickSlotVisualParent.SetActive(showVisual);
+        }
     }
 
     public void SetNavigation(Selectable up, Selectable down, Selectable left, Selectable right)
@@ -203,6 +201,10 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
 
     public void OnPointerEnter(PointerEventData eventData)
     {
+        if (!CanInteract()) return;
+
+        // 호버한 슬롯과 Submit을 받을 실제 UI 포커스를 일치시킨다.
+        _button.Select();
         NotifySelected();
     }
 
@@ -242,7 +244,7 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
         ResetDoubleClick();
         EventSystem eventSystem = EventSystem.current;
 
-        // 마우스 Hover 표시와 무관하게 실제 UI 포커스가 있는 슬롯에서만 처리한다.
+        // 호버·클릭·Navigation으로 실제 UI 포커스를 받은 슬롯에서만 처리한다.
         if (!eventSystem || !_button || eventSystem.currentSelectedGameObject != _button.gameObject)
         {
             return;

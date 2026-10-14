@@ -1206,7 +1206,7 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""name"": ""RegisterQuickslot3"",
                     ""type"": ""Button"",
                     ""id"": ""f80da263-acd9-4d6c-b5dc-d20e12c3844a"",
-                    ""expectedControlType"": ""Button"",
+                    ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
@@ -1215,7 +1215,7 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""name"": ""RegisterQuickslot4"",
                     ""type"": ""Button"",
                     ""id"": ""dda54b3c-bfa4-4898-82c7-7e80ea7f7e80"",
-                    ""expectedControlType"": ""Button"",
+                    ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
@@ -1225,6 +1225,24 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""type"": ""Button"",
                     ""id"": ""cd1a63f6-5a2c-4631-9272-633fa0131192"",
                     ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""TabLeft"",
+                    ""type"": ""Button"",
+                    ""id"": ""23fa1550-f77e-4985-a506-d1a403865e94"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""TabRight"",
+                    ""type"": ""Button"",
+                    ""id"": ""8a8af26f-f43b-4b0d-8f19-a674467757eb"",
+                    ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
@@ -1703,6 +1721,50 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""action"": ""OpenQuickslotRegistration"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""30744bb0-58cb-47d5-ba31-bb2142b969ff"",
+                    ""path"": ""<Gamepad>/leftShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Gamepad"",
+                    ""action"": ""TabLeft"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""872de287-3ecc-4aaa-b696-767ae911c78e"",
+                    ""path"": ""<Keyboard>/q"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""TabLeft"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""a30c9dd1-5e92-40eb-8841-61274dbc69c9"",
+                    ""path"": ""<Gamepad>/rightShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Gamepad"",
+                    ""action"": ""TabRight"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""2fb0081e-90dd-4416-8a53-21feb2cd47fd"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""TabRight"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -1815,6 +1877,8 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         m_UI_RegisterQuickslot3 = m_UI.FindAction("RegisterQuickslot3", throwIfNotFound: true);
         m_UI_RegisterQuickslot4 = m_UI.FindAction("RegisterQuickslot4", throwIfNotFound: true);
         m_UI_OpenQuickslotRegistration = m_UI.FindAction("OpenQuickslotRegistration", throwIfNotFound: true);
+        m_UI_TabLeft = m_UI.FindAction("TabLeft", throwIfNotFound: true);
+        m_UI_TabRight = m_UI.FindAction("TabRight", throwIfNotFound: true);
     }
 
     ~@InputSystem_Actions()
@@ -2316,6 +2380,8 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
     private readonly InputAction m_UI_RegisterQuickslot3;
     private readonly InputAction m_UI_RegisterQuickslot4;
     private readonly InputAction m_UI_OpenQuickslotRegistration;
+    private readonly InputAction m_UI_TabLeft;
+    private readonly InputAction m_UI_TabRight;
     /// <summary>
     /// Provides access to input actions defined in input action map "UI".
     /// </summary>
@@ -2400,6 +2466,14 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @OpenQuickslotRegistration => m_Wrapper.m_UI_OpenQuickslotRegistration;
         /// <summary>
+        /// Provides access to the underlying input action "UI/TabLeft".
+        /// </summary>
+        public InputAction @TabLeft => m_Wrapper.m_UI_TabLeft;
+        /// <summary>
+        /// Provides access to the underlying input action "UI/TabRight".
+        /// </summary>
+        public InputAction @TabRight => m_Wrapper.m_UI_TabRight;
+        /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
         public InputActionMap Get() { return m_Wrapper.m_UI; }
@@ -2479,6 +2553,12 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @OpenQuickslotRegistration.started += instance.OnOpenQuickslotRegistration;
             @OpenQuickslotRegistration.performed += instance.OnOpenQuickslotRegistration;
             @OpenQuickslotRegistration.canceled += instance.OnOpenQuickslotRegistration;
+            @TabLeft.started += instance.OnTabLeft;
+            @TabLeft.performed += instance.OnTabLeft;
+            @TabLeft.canceled += instance.OnTabLeft;
+            @TabRight.started += instance.OnTabRight;
+            @TabRight.performed += instance.OnTabRight;
+            @TabRight.canceled += instance.OnTabRight;
         }
 
         /// <summary>
@@ -2544,6 +2624,12 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @OpenQuickslotRegistration.started -= instance.OnOpenQuickslotRegistration;
             @OpenQuickslotRegistration.performed -= instance.OnOpenQuickslotRegistration;
             @OpenQuickslotRegistration.canceled -= instance.OnOpenQuickslotRegistration;
+            @TabLeft.started -= instance.OnTabLeft;
+            @TabLeft.performed -= instance.OnTabLeft;
+            @TabLeft.canceled -= instance.OnTabLeft;
+            @TabRight.started -= instance.OnTabRight;
+            @TabRight.performed -= instance.OnTabRight;
+            @TabRight.canceled -= instance.OnTabRight;
         }
 
         /// <summary>
@@ -2938,5 +3024,19 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnOpenQuickslotRegistration(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "TabLeft" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnTabLeft(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "TabRight" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnTabRight(InputAction.CallbackContext context);
     }
 }

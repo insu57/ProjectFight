@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: 7894886072742760587}
   - component: {fileID: 8968012954492850399}
   - component: {fileID: 112678730961460787}
+  - component: {fileID: 6118178728528837922}
   - component: {fileID: 7641029048191393880}
   m_Layer: 6
   m_Name: Player
@@ -253,6 +254,18 @@ MonoBehaviour:
   _guardPoiseRecoveryRate: 20
   _guardBreakDuration: 1.5
   _guardBreakMoveDistance: 1
+--- !u!114 &6118178728528837922
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4129976254972732029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a29e7167df80423e947e94817a355c11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
 --- !u!114 &7641029048191393880
 MonoBehaviour:
   m_ObjectHideFlags: 0

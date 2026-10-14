@@ -16,15 +16,22 @@ public sealed class WindowInputRouter : MonoBehaviour
 
     [Header("Input")]
     [SerializeField] private InputActionReference _cancelAction;
+    [SerializeField] private InputActionReference _tabLeftAction;
+    [SerializeField] private InputActionReference _tabRightAction;
 
     private bool _enabledCancelAction;
+    private bool _enabledTabLeftAction;
+    private bool _enabledTabRightAction;
     private bool _cancelRequested;
+    private bool _tabLeftRequested;
+    private bool _tabRightRequested;
     private bool _playerWindowRequested;
     private bool _optionWindowRequested;
     private bool _storeWindowRequested;
     private Store _pendingStore;
     private PlayerManager _pendingStorePlayer;
     private Action<Store, PlayerManager> _storeInteractionHandler;
+    private Action<InputAction.CallbackContext> _tabInputHandler;
 
     private void Awake()
     {
@@ -38,6 +45,10 @@ public sealed class WindowInputRouter : MonoBehaviour
 
     private void OnEnable()
     {
+        // 입력 콜백은 한 번 생성해 라우터를 다시 활성화할 때도 재사용한다.
+        _tabInputHandler ??= HandleTabInput;
+        SetTabActionEnabled(_tabLeftAction, true, ref _enabledTabLeftAction);
+        SetTabActionEnabled(_tabRightAction, true, ref _enabledTabRightAction);
         if (_stageManager)
         {
             _storeInteractionHandler ??= RequestStoreWindow;
@@ -67,6 +78,8 @@ public sealed class WindowInputRouter : MonoBehaviour
 
     private void OnDisable()
     {
+        SetTabActionEnabled(_tabLeftAction, false, ref _enabledTabLeftAction);
+        SetTabActionEnabled(_tabRightAction, false, ref _enabledTabRightAction);
         if (_stageManager)
         {
             _stageManager.StoreInteractionRequested -= _storeInteractionHandler;
@@ -100,6 +113,32 @@ public sealed class WindowInputRouter : MonoBehaviour
         }
     }
 
+    private void SetTabActionEnabled(InputActionReference actionReference, bool isEnabled, ref bool enabledByRouter)
+    {
+        InputAction action = actionReference ? actionReference.action : null;
+        if (action == null) return;
+
+        if (isEnabled)
+        {
+            action.performed += _tabInputHandler;
+            // 다른 UI가 이미 활성화한 액션은 라우터를 끌 때 비활성화하지 않는다.
+            enabledByRouter = !action.enabled;
+            if (enabledByRouter) action.Enable();
+        }
+        else
+        {
+            action.performed -= _tabInputHandler;
+            if (enabledByRouter) action.Disable();
+            enabledByRouter = false;
+        }
+    }
+
+    private void HandleTabInput(InputAction.CallbackContext context)
+    {
+        if (_tabLeftAction && context.action == _tabLeftAction.action) _tabLeftRequested = true;
+        if (_tabRightAction && context.action == _tabRightAction.action) _tabRightRequested = true;
+    }
+
     private void HandleCancelInput(InputAction.CallbackContext context)
     {
         _cancelRequested = true;
@@ -131,7 +170,8 @@ public sealed class WindowInputRouter : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (!_cancelRequested && !_playerWindowRequested && !_optionWindowRequested && !_storeWindowRequested)
+        if (!_cancelRequested && !_playerWindowRequested && !_optionWindowRequested && !_storeWindowRequested
+            && !_tabLeftRequested && !_tabRightRequested)
         {
             return;
         }
@@ -140,6 +180,8 @@ public sealed class WindowInputRouter : MonoBehaviour
         bool playerWindowRequested = _playerWindowRequested;
         bool optionWindowRequested = _optionWindowRequested;
         bool storeWindowRequested = _storeWindowRequested;
+        // 같은 프레임에 양쪽을 누르면 전환하지 않고, 반복 입력도 프레임당 한 번만 처리한다.
+        int tabDirection = (_tabRightRequested ? 1 : 0) - (_tabLeftRequested ? 1 : 0);
         Store pendingStore = _pendingStore;
         PlayerManager pendingStorePlayer = _pendingStorePlayer;
         ClearRequests();
@@ -193,6 +235,11 @@ public sealed class WindowInputRouter : MonoBehaviour
             return;
         }
 
+        if (tabDirection != 0 && _playerWindow && _playerWindow.IsOpen && (!_optionWindow || !_optionWindow.IsOpen))
+        {
+            _playerWindow.SelectAdjacentTab(tabDirection);
+        }
+
         // 플레이어가 없는 타이틀에서는 기존 뒤로 가기 동작을 유지한다.
         if (cancelRequested && !_playerManager && _optionWindow)
         {
@@ -239,6 +286,8 @@ public sealed class WindowInputRouter : MonoBehaviour
     private void ClearRequests()
     {
         _cancelRequested = false;
+        _tabLeftRequested = false;
+        _tabRightRequested = false;
         _playerWindowRequested = false;
         _optionWindowRequested = false;
         _storeWindowRequested = false;

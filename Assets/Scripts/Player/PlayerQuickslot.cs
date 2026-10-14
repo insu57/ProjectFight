@@ -6,7 +6,7 @@ public sealed class PlayerQuickslot : MonoBehaviour
 {
     public const int SlotCount = 4;
 
-    // 보유 수량은 PlayerManager에 두고, 각 칸은 소모품의 공유 Definition만 참조한다.
+    // 보유 수량은 PlayerInventory가 관리하고 Manager가 등록 가능 여부를 중개한다. 각 칸은 공유 Definition만 참조한다.
     [SerializeField] private ItemDefinition[] _items = new ItemDefinition[SlotCount];
 
     public event Action Changed;

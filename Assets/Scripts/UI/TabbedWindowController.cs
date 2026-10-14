@@ -14,6 +14,7 @@ public abstract class TabbedWindowController<TTab> : WindowControllerBase where 
 {
     private TTab _currentTab;
     private bool _hasSelectedTab;
+    private IWindowTabBinding<TTab> _selectedBinding;
 
     protected abstract TTab InitialTab { get; }
     protected abstract int TabBindingCount { get; }
@@ -51,6 +52,37 @@ public abstract class TabbedWindowController<TTab> : WindowControllerBase where 
         Debug.LogWarning($"등록되지 않은 창 탭입니다: {tabType}", this);
     }
 
+    public void SelectAdjacentTab(int direction)
+    {
+        int count = TabBindingCount;
+        if (!isActiveAndEnabled || !IsOpen || direction == 0 || count == 0) return;
+
+        int currentIndex = -1;
+        for (int i = 0; i < count; i++)
+        {
+            if (ReferenceEquals(GetTabBinding(i), _selectedBinding))
+            {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        int step = direction > 0 ? 1 : -1;
+        if (currentIndex < 0) currentIndex = step > 0 ? count - 1 : 0;
+        // enum 값 대신 Inspector 등록 순서로 순환하고 사용할 수 없는 탭은 건너뛴다.
+        for (int offset = 1; offset <= count; offset++)
+        {
+            IWindowTabBinding<TTab> binding = GetTabBinding((currentIndex + step * offset + count) % count);
+            if (binding == null || !binding.Content || !binding.Button || !binding.Button.isActiveAndEnabled
+                || !binding.Button.Button || !binding.Button.Button.IsActive() || !binding.Button.Button.IsInteractable()) continue;
+
+            SelectBinding(binding);
+            // 하위 콘텐츠의 선택 위치와 관계없이 전환한 상위 탭 버튼으로 실제 포커스를 옮긴다.
+            if (IsOpen && EventSystem.current && binding.Button) EventSystem.current.SetSelectedGameObject(binding.Button.gameObject);
+            return;
+        }
+    }
+
     protected override void FocusWindow()
     {
         if (!EventSystem.current)
@@ -82,6 +114,8 @@ public abstract class TabbedWindowController<TTab> : WindowControllerBase where 
 
     private void SelectBinding(IWindowTabBinding<TTab> selectedBinding)
     {
+        // 같은 enum 값이 여러 바인딩에 있어도 실제 선택한 바인딩의 위치를 기억한다.
+        _selectedBinding = selectedBinding;
         for (int i = 0; i < TabBindingCount; i++)
         {
             IWindowTabBinding<TTab> binding = GetTabBinding(i);
