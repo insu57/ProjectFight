@@ -5,6 +5,8 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class PlayerManager : MonoBehaviour, IHitStopReceiver
 {
+    private const int EquipmentSlotCount = (int)EquipmentSlot.Shoes + 1;
+
     private PlayerControl _playerControl;
     private PlayerState _playerState;
     private PlayerStat _playerStat;
@@ -19,6 +21,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private PlayerSkillTree _playerSkillTree;
     private PlayerQuickslot _playerQuickslot;
     private PlayerInventory _playerInventory;
+    // None은 비워 두고 실제 부위별 장착 장비를 같은 배열에 갱신하여 전달한다.
+    private readonly ItemDefinition[] _equippedItemsForStats = new ItemDefinition[EquipmentSlotCount];
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
     private bool _hasPendingGuardChange;
     // 범위 안의 후보는 유지하고, 표시와 입력에 사용할 가장 가까운 유효 대상을 공유한다.
@@ -62,6 +66,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         TryGetComponent(out _playerSkillTree);
         TryGetComponent(out _playerQuickslot);
         TryGetComponent(out _playerInventory);
+
+        if (_playerStat && _playerDodge)
+        {
+            // 아이템 효과를 적용하기 전에 원래 설정을 한 번만 기본 회피 횟수로 전달한다.
+            _playerStat.SetBaseMaxDodgeCount(_playerDodge.MaxDodgeCount);
+        }
 
         if (_playerInventory)
         {
@@ -114,6 +124,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         if (_playerStat)
         {
             _playerStat.StatsChanged += HandlePlayerStatsChanged;
+            // 비활성화 중 변경된 값도 재활성화 시 실제 이동·회피 컴포넌트와 맞춘다.
+            ApplyMovementStats(_playerStat.CurrentStats);
         }
 
         if (_playerQuickslot)
@@ -128,6 +140,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     {
         // 모든 컴포넌트의 Awake가 끝난 뒤 생성된 스킬 트리 Runtime 구독을 보장한다.
         SubscribeSkillTreeRuntime();
+        // 초기 보유 목록도 모든 컴포넌트의 Awake가 끝난 뒤 스탯과 동기화한다.
+        RefreshItemStatModifiers();
     }
 
     private void OnDisable()
@@ -528,9 +542,15 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     public void SetMaxDodgeCount(int maxDodgeCount)
     {
-        if (_playerDodge)
+        if (_playerStat)
         {
-            // 스킬 시스템은 PlayerManager를 통해 최대 회피 횟수를 변경한다.
+            // 스킬 등의 변경은 기본값에 반영하여 기존 아이템 보정이 유지되게 한다.
+            _playerStat.SetBaseMaxDodgeCount(maxDodgeCount);
+            ApplyMovementStats(_playerStat.CurrentStats);
+        }
+        else if (_playerDodge)
+        {
+            // Stat이 없는 기존 구성에서도 회피 횟수 변경은 계속 지원한다.
             _playerDodge.SetMaxDodgeCount(maxDodgeCount);
         }
     }
@@ -664,8 +684,28 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandleInventoryChanged(ItemType itemType)
     {
+        // 외부에 보유 변경을 알리기 전에 장착 장비와 유물의 최종 스탯을 먼저 반영한다.
+        if (itemType == ItemType.Relic) RefreshItemStatModifiers();
+
         // 기존 UI와 HUD가 하위 컴포넌트를 직접 구독하지 않도록 변경 알림을 중개한다.
         InventoryChanged?.Invoke(itemType);
+    }
+
+    private void RefreshItemStatModifiers()
+    {
+        if (!_playerStat || !_playerInventory) return;
+
+        // 전체 보유 장비가 아니라 각 부위의 현재 장착 항목만 선별한다. 해제된 부위는 null로 덮어쓴다.
+        for (int slotIndex = (int)EquipmentSlot.Head; slotIndex < _equippedItemsForStats.Length; slotIndex++)
+        {
+            _equippedItemsForStats[slotIndex] = _playerInventory.GetEquippedItem((EquipmentSlot)slotIndex);
+        }
+
+        // Inventory와 Stat은 서로 참조하지 않고 Manager가 두 출처를 함께 전달한다.
+        _playerStat.RebuildItemStatModifiers(_playerInventory.GetInventoryItems(ItemType.Relic), _equippedItemsForStats);
+
+        // 보유·장착 알림은 비활성화 중에도 받으므로 StatsChanged 구독이 없을 때 직접 동기화한다.
+        if (!isActiveAndEnabled) ApplyMovementStats(_playerStat.CurrentStats);
     }
 
     private void HandleItemAcquired(ItemDefinition item)
@@ -675,6 +715,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandleEquipmentChanged(EquipmentSlot equipmentSlot)
     {
+        // 장착·해제·교체 결과를 스탯에 반영한 뒤 UI 등에 장비 변경을 알린다.
+        RefreshItemStatModifiers();
         EquipmentChanged?.Invoke(equipmentSlot);
     }
 
@@ -832,9 +874,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         // 공격 설정을 판정 컴포넌트에 전달한 뒤 애니메이션을 시작한다.
         if (_attackHitbox)
         {
-            // 스탯은 Manager가 중개하며 콤보의 각 공격 시작 시 현재 공격력을 전달한다.
-            float attackPower = _playerStat ? _playerStat.CurrentStats.AttackPower : 0f;
-            _attackHitbox.BeginAttack(attackDefinition, attackPower);
+            // 콤보의 각 공격 시작 시 배율 적용 전 수치와 배율을 한 스냅샷에서 전달한다.
+            if (_playerStat)
+            {
+                PlayerStatSnapshot stats = _playerStat.CurrentStats;
+                _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier, stats.GuardPoiseDamageModifier);
+            }
+            else _attackHitbox.BeginAttack(attackDefinition);
         }
 
         _playerAnimation.PlayAttack(attackDefinition);
@@ -961,9 +1007,17 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandlePlayerStatsChanged(PlayerStatSnapshot stats)
     {
+        // UI 등에 알리기 전에 계산된 최종값을 하위 컴포넌트에 먼저 전달한다.
+        ApplyMovementStats(stats);
         if (stats.CurrentHealth <= 0f) HandleDied();
         // 플레이어 하위 컴포넌트의 변경 알림을 UI가 직접 구독하지 않도록 중개한다.
         PlayerStatsChanged?.Invoke(stats);
+    }
+
+    private void ApplyMovementStats(PlayerStatSnapshot stats)
+    {
+        if (_playerDodge) _playerDodge.SetMaxDodgeCount(stats.MaxDodgeCount);
+        if (_playerMove) _playerMove.SetSpeedMultiplier(stats.MoveSpeedMultiplier);
     }
 
     private void HandleSkillTreeNodeUnlocked(SkillTreeNodeRuntime node)

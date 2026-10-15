@@ -1,6 +1,25 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+// 공격 기본 피해에 더할 수치와 전체 피해 배율을 함께 복사하며, 공격 도중 스탯이 바뀌어도 값이 유지된다.
+public readonly struct AttackDamageModifier
+{
+    public float AdditiveValue { get; }
+    public float Multiplier { get; }
+
+    public AttackDamageModifier(float additiveValue, float multiplier)
+    {
+        // 음수 Flat도 공격 기본 피해에 반영되도록 합산 전에는 추가 수치를 제한하지 않는다.
+        AdditiveValue = additiveValue;
+        Multiplier = Mathf.Max(0f, multiplier);
+    }
+
+    public float ApplyTo(float baseDamage)
+    {
+        return Mathf.Max(0f, Mathf.Max(0f, baseDamage) + AdditiveValue) * Multiplier;
+    }
+}
+
 [DisallowMultipleComponent]
 [RequireComponent(typeof(BoxCollider))]
 [RequireComponent(typeof(Rigidbody))]
@@ -51,7 +70,13 @@ public sealed class AttackHitbox : MonoBehaviour
         _owner = owner;
     }
 
-    public void BeginAttack(AttackDefinition attackDefinition, float attackPower = 0f)
+    public void BeginAttack(AttackDefinition attackDefinition, float attackPower = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f)
+    {
+        // 적 등 기존 호출은 추가 피해만 전달하므로 배율 1로 기존 동작을 유지한다.
+        BeginAttack(attackDefinition, new AttackDamageModifier(Mathf.Max(0f, attackPower), 1f), new AttackDamageModifier(Mathf.Max(0f, poiseDamage), 1f), new AttackDamageModifier(Mathf.Max(0f, guardPoiseDamage), 1f));
+    }
+
+    public void BeginAttack(AttackDefinition attackDefinition, AttackDamageModifier attackPower, AttackDamageModifier poiseDamage, AttackDamageModifier guardPoiseDamage)
     {
         // 콤보 전환 시 이전 공격의 박스를 먼저 끈다.
         EndAttack();
@@ -60,10 +85,10 @@ public sealed class AttackHitbox : MonoBehaviour
 
         _currentAttack = attackDefinition;
 
-        // 공유 에셋은 유지하고 공격 시작 시 전달받은 공격력을 이번 공격의 체력 피해에 더한다.
-        _damage = Mathf.Max(0f, attackDefinition.BaseDamage) + Mathf.Max(0f, attackPower);
-        _poiseDamage = Mathf.Max(0f, attackDefinition.BasePoiseDamage);
-        _guardPoiseDamage = Mathf.Max(0f, attackDefinition.BaseGuardPoiseDamage);
+        // 공유 에셋은 유지하고 공격 기본 피해까지 합산한 뒤 각 피해의 배율을 한 번만 적용한다.
+        _damage = attackPower.ApplyTo(attackDefinition.BaseDamage);
+        _poiseDamage = poiseDamage.ApplyTo(attackDefinition.BasePoiseDamage);
+        _guardPoiseDamage = guardPoiseDamage.ApplyTo(attackDefinition.BaseGuardPoiseDamage);
         _hitbox.size = attackDefinition.HitboxSize;
         _hitbox.center = attackDefinition.HitboxOffset;
     }

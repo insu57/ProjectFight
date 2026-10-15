@@ -29,6 +29,8 @@ public class PlayerMove : MonoBehaviour
     private Vector3 _dodgeWorldDirection;
     private float _verticalVelocity;
     private float _dodgeElapsedTime;
+    // 일반 이동과 달리기의 기본 속도에 같은 아이템 배율을 적용한다.
+    private float _moveSpeedMultiplier = 1f;
 
     public float MoveAmount { get; private set; }
     public Vector2 LocalMoveDirection { get; private set; }
@@ -39,15 +41,20 @@ public class PlayerMove : MonoBehaviour
         TryGetComponent(out _characterController);
     }
 
+    public void SetSpeedMultiplier(float moveSpeedMultiplier)
+    {
+        _moveSpeedMultiplier = Mathf.Max(0f, moveSpeedMultiplier);
+    }
+
     public void Move(Vector2 moveInput, Quaternion cameraRotation, float deltaTime)
     {
-        MoveInternal(moveInput, cameraRotation, FacingMode.MoveDirection, _moveSpeed, deltaTime);
+        MoveInternal(moveInput, cameraRotation, FacingMode.MoveDirection, _moveSpeed * _moveSpeedMultiplier, deltaTime);
     }
 
     public void MoveSprint(Vector2 moveInput, Quaternion cameraRotation, float deltaTime)
     {
         // 달리기는 락온 여부와 관계없이 카메라 기준으로 이동하고 이동 방향을 바라본다.
-        MoveInternal(moveInput, cameraRotation, FacingMode.MoveDirection, _sprintSpeed, deltaTime);
+        MoveInternal(moveInput, cameraRotation, FacingMode.MoveDirection, _sprintSpeed * _moveSpeedMultiplier, deltaTime);
     }
 
     public void MoveLockedOn(Vector2 moveInput, Vector3 targetPosition, float deltaTime)
@@ -56,7 +63,7 @@ public class PlayerMove : MonoBehaviour
         targetDirection.y = 0f;
 
         Quaternion targetRotation = targetDirection.sqrMagnitude > 0f ? Quaternion.LookRotation(targetDirection) : transform.rotation;
-        MoveInternal(moveInput, targetRotation, FacingMode.ReferenceDirection, _moveSpeed, deltaTime);
+        MoveInternal(moveInput, targetRotation, FacingMode.ReferenceDirection, _moveSpeed * _moveSpeedMultiplier, deltaTime);
     }
 
     public void MoveAttack(Vector2 localDisplacement, float deltaTime)

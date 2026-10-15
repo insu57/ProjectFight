@@ -1,62 +1,101 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+
+// 생성 시 필드 이름으로 값을 채우는 내부 자료구조이며, 외부에는 읽기 전용 스냅샷만 전달한다.
+internal struct PlayerStatSnapshotData
+{
+    public int Level;
+    public int CurrentExp;
+    public int TargetExp;
+    public float MaxHealth;
+    public float CurrentHealth;
+    public float AttackPower;
+    public float DefensePower;
+    public float PoiseDamage;
+    public float GuardPoiseDamage;
+    public AttackDamageModifier AttackPowerModifier;
+    public AttackDamageModifier PoiseDamageModifier;
+    public AttackDamageModifier GuardPoiseDamageModifier;
+    public float MaxEnergy;
+    public float CurrentEnergy;
+
+    public float MaxPoise;
+    public float PoiseRecoveryDelay;
+    public float PoiseRecoveryRate;
+    public float StaggerDuration;
+    public float MaxGuardPoise;
+    public float GuardPoiseRecoveryDelay;
+    public float GuardPoiseRecoveryRate;
+    public float GuardBreakDuration;
+    public float CurrentPoise;
+    public float CurrentGuardPoise;
+    public float StaggerMoveDistance;
+    public float GuardBreakMoveDistance;
+    public int Money;
+    public int MaxDodgeCount;
+    public float MoveSpeedMultiplier;
+}
 
 public readonly struct PlayerStatSnapshot
 {
-    public int Level { get; }
-    public int CurrentExp { get; }
-    public int TargetExp { get; }
-    public float MaxHealth { get; }
-    public float CurrentHealth { get; }
-    public float AttackPower { get; }
-    public float DefensePower { get; }
-    public float MaxEnergy { get; }
-    public float CurrentEnergy { get; }
+    // 생성용 구조체를 값으로 복사하므로 이후 원본이나 PlayerStat이 바뀌어도 이 스냅샷은 유지된다.
+    private readonly PlayerStatSnapshotData _data;
 
-    public float MaxPoise { get; }
-    public float PoiseRecoveryDelay { get; }
-    public float PoiseRecoveryRate { get; }
-    public float StaggerDuration { get; }
-    public float MaxGuardPoise { get; }
-    public float GuardPoiseRecoveryDelay { get; }
-    public float GuardPoiseRecoveryRate { get; }
-    public float GuardBreakDuration { get; }
-    public float CurrentPoise { get; }
-    public float CurrentGuardPoise { get; }
-    public float StaggerMoveDistance { get; }
-    public float GuardBreakMoveDistance { get; }
-    public int Money { get; }
+    public int Level => _data.Level;
+    public int CurrentExp => _data.CurrentExp;
+    public int TargetExp => _data.TargetExp;
+    public float MaxHealth => _data.MaxHealth;
+    public float CurrentHealth => _data.CurrentHealth;
+    public float AttackPower => _data.AttackPower;
+    public float DefensePower => _data.DefensePower;
+    public float PoiseDamage => _data.PoiseDamage;
+    public float GuardPoiseDamage => _data.GuardPoiseDamage;
+    // 표시용 최종 스탯과 별도로 공격 기본 피해까지 배율을 적용할 계산값을 제공한다.
+    public AttackDamageModifier AttackPowerModifier => _data.AttackPowerModifier;
+    public AttackDamageModifier PoiseDamageModifier => _data.PoiseDamageModifier;
+    public AttackDamageModifier GuardPoiseDamageModifier => _data.GuardPoiseDamageModifier;
+    public float MaxEnergy => _data.MaxEnergy;
+    public float CurrentEnergy => _data.CurrentEnergy;
 
-    public PlayerStatSnapshot(int level, int currentExp, int targetExp, float maxHealth, float currentHealth, float attackPower, float defensePower, float maxEnergy, float currentEnergy, float maxPoise, float poiseRecoveryDelay, float poiseRecoveryRate, float staggerDuration, float maxGuardPoise, float guardPoiseRecoveryDelay, float guardPoiseRecoveryRate, float guardBreakDuration, float currentPoise, float currentGuardPoise, float staggerMoveDistance, float guardBreakMoveDistance, int money)
+    public float MaxPoise => _data.MaxPoise;
+    public float PoiseRecoveryDelay => _data.PoiseRecoveryDelay;
+    public float PoiseRecoveryRate => _data.PoiseRecoveryRate;
+    public float StaggerDuration => _data.StaggerDuration;
+    public float MaxGuardPoise => _data.MaxGuardPoise;
+    public float GuardPoiseRecoveryDelay => _data.GuardPoiseRecoveryDelay;
+    public float GuardPoiseRecoveryRate => _data.GuardPoiseRecoveryRate;
+    public float GuardBreakDuration => _data.GuardBreakDuration;
+    public float CurrentPoise => _data.CurrentPoise;
+    public float CurrentGuardPoise => _data.CurrentGuardPoise;
+    public float StaggerMoveDistance => _data.StaggerMoveDistance;
+    public float GuardBreakMoveDistance => _data.GuardBreakMoveDistance;
+    public int Money => _data.Money;
+    public int MaxDodgeCount => _data.MaxDodgeCount;
+    public float MoveSpeedMultiplier => _data.MoveSpeedMultiplier;
+
+    internal PlayerStatSnapshot(PlayerStatSnapshotData data)
     {
-        Level = level;
-        CurrentExp = currentExp;
-        TargetExp = targetExp;
-        MaxHealth = maxHealth;
-        CurrentHealth = currentHealth;
-        AttackPower = attackPower;
-        DefensePower = defensePower;
-        MaxEnergy = maxEnergy;
-        CurrentEnergy = currentEnergy;
-        MaxPoise = maxPoise;
-        PoiseRecoveryDelay = poiseRecoveryDelay;
-        PoiseRecoveryRate = poiseRecoveryRate;
-        StaggerDuration = staggerDuration;
-        MaxGuardPoise = maxGuardPoise;
-        GuardPoiseRecoveryDelay = guardPoiseRecoveryDelay;
-        GuardPoiseRecoveryRate = guardPoiseRecoveryRate;
-        GuardBreakDuration = guardBreakDuration;
-        CurrentPoise = currentPoise;
-        CurrentGuardPoise = currentGuardPoise;
-        StaggerMoveDistance = Mathf.Max(0f, staggerMoveDistance);
-        GuardBreakMoveDistance = Mathf.Max(0f, guardBreakMoveDistance);
-        Money = money;
+        // 기존 생성자의 값 제한 규칙은 복사본에 적용하여 그대로 유지한다.
+        data.StaggerMoveDistance = Mathf.Max(0f, data.StaggerMoveDistance);
+        data.GuardBreakMoveDistance = Mathf.Max(0f, data.GuardBreakMoveDistance);
+        data.MaxDodgeCount = Mathf.Max(1, data.MaxDodgeCount);
+        data.MoveSpeedMultiplier = Mathf.Max(0f, data.MoveSpeedMultiplier);
+        _data = data;
     }
 }
 
 [DisallowMultipleComponent]
 public class PlayerStat : MonoBehaviour
 {
+    private const int ItemStatCount = (int)ItemStatType.GuardPoiseDamage + 1;
+
+    private struct StatModifierTotals
+    {
+        public float FlatAdd;
+        public float PercentAdd;
+    }
+
     // CSV에서 변환한 성장표이며 플레이어의 현재 상태는 이 컴포넌트에 보관한다.
     [SerializeField] private PlayerProgressionDefinition _progressionDefinition;
     [SerializeField, Min(1)] private int _level = 1;
@@ -64,14 +103,21 @@ public class PlayerStat : MonoBehaviour
     [SerializeField, Min(0)] private int _targetExp = 100;
     // 보유 금액은 성장표와 별도로 유지하며 처치 보상으로 누적한다.
     [SerializeField, Min(0)] private int _money;
+    // 기존 직렬화 필드명은 유지하며 최대치와 회복 설정 등은 아이템 보정 전 기본값으로 보관한다.
     // 체력은 소수점 피해와 회복량을 그대로 보존한다.
     [SerializeField, Min(1f)] private float _maxHealth = 100f;
     [SerializeField, Min(0f)] private float _currentHealth = 100f;
 
     [SerializeField, Min(0f)] private float _baseAttackPower;
     [SerializeField, Min(0f)] private float _baseDefensePower;
+    // 각 공격의 기본 강인도 피해에 더할 기본값이며 PercentAdd는 공격 기본 피해까지 합산한 뒤 적용한다.
+    [SerializeField, Min(0f)] private float _basePoiseDamage;
+    [SerializeField, Min(0f)] private float _baseGuardPoiseDamage;
     [SerializeField, Min(0f)] private float _baseMaxEnergy = 100f;
     [SerializeField, Min(0f)] private float _currentEnergy;
+
+    // Inspector의 PlayerDodge 설정을 Manager가 최초에 전달하며, 이후 변경도 기본값으로 관리한다.
+    private int _baseMaxDodgeCount = 1;
 
     // 일반 강인도의 최대치, 회복 설정과 소진 시 경직 시간이다.
     [SerializeField, Min(0f)] private float _maxPoise = 100f;
@@ -99,7 +145,60 @@ public class PlayerStat : MonoBehaviour
     private float _poiseRecoveryRemaining;
     private float _guardPoiseRecoveryRemaining;
 
-    public PlayerStatSnapshot CurrentStats => new(_level, _currentExp, _targetExp, _maxHealth, _currentHealth, _baseAttackPower, _baseDefensePower, _baseMaxEnergy, _currentEnergy, _maxPoise, _poiseRecoveryDelay, _poiseRecoveryRate, _staggerDuration, _maxGuardPoise, _guardPoiseRecoveryDelay, _guardPoiseRecoveryRate, _guardBreakDuration, CurrentPoise, CurrentGuardPoise, _staggerMoveDistance, _guardBreakMoveDistance, _money);
+    // 보정 합계와 최종값 배열은 한 번 생성해 재사용하고, 조회할 때는 계산된 값만 읽는다.
+    private readonly StatModifierTotals[] _relicStatModifiers = new StatModifierTotals[ItemStatCount];
+    private readonly StatModifierTotals[] _equipmentStatModifiers = new StatModifierTotals[ItemStatCount];
+    [SerializeField] private float[] _finalStats = new float[ItemStatCount];
+    private AttackDamageModifier _attackPowerModifier;
+    private AttackDamageModifier _poiseDamageModifier;
+    private AttackDamageModifier _guardPoiseDamageModifier;
+    private bool _hasCalculatedStats;
+
+    // 저장된 계산 배열이 이전 스탯 개수여도 최초 조회에서 다시 준비한다.
+    private bool HasCalculatedStats => _hasCalculatedStats && _finalStats != null && _finalStats.Length == ItemStatCount;
+
+    public PlayerStatSnapshot CurrentStats => CreateSnapshot();
+
+    private PlayerStatSnapshot CreateSnapshot()
+    {
+        // 최초 조회에서는 현재량 제한까지 끝낸 뒤 모든 필드를 한 시점의 값으로 복사한다.
+        if (!HasCalculatedStats) RecalculateStats();
+
+        PlayerStatSnapshotData data = new()
+        {
+            Level = _level,
+            CurrentExp = _currentExp,
+            TargetExp = _targetExp,
+            MaxHealth = GetFinalStat(ItemStatType.MaxHealth),
+            CurrentHealth = _currentHealth,
+            AttackPower = GetFinalStat(ItemStatType.AttackPower),
+            DefensePower = GetFinalStat(ItemStatType.DefensePower),
+            PoiseDamage = GetFinalStat(ItemStatType.PoiseDamage),
+            GuardPoiseDamage = GetFinalStat(ItemStatType.GuardPoiseDamage),
+            AttackPowerModifier = _attackPowerModifier,
+            PoiseDamageModifier = _poiseDamageModifier,
+            GuardPoiseDamageModifier = _guardPoiseDamageModifier,
+            MaxEnergy = GetFinalStat(ItemStatType.MaxEnergy),
+            CurrentEnergy = _currentEnergy,
+            MaxPoise = GetFinalStat(ItemStatType.MaxPoise),
+            PoiseRecoveryDelay = GetFinalStat(ItemStatType.PoiseRecoveryDelay),
+            PoiseRecoveryRate = GetFinalStat(ItemStatType.PoiseRecoveryRate),
+            StaggerDuration = GetFinalStat(ItemStatType.StaggerDuration),
+            MaxGuardPoise = GetFinalStat(ItemStatType.MaxGuardPoise),
+            GuardPoiseRecoveryDelay = GetFinalStat(ItemStatType.GuardPoiseRecoveryDelay),
+            GuardPoiseRecoveryRate = GetFinalStat(ItemStatType.GuardPoiseRecoveryRate),
+            GuardBreakDuration = GetFinalStat(ItemStatType.GuardBreakDuration),
+            CurrentPoise = this.CurrentPoise,
+            CurrentGuardPoise = this.CurrentGuardPoise,
+            StaggerMoveDistance = GetFinalStat(ItemStatType.StaggerMoveDistance),
+            GuardBreakMoveDistance = GetFinalStat(ItemStatType.GuardBreakMoveDistance),
+            Money = _money,
+            MaxDodgeCount = GetFinalMaxDodgeCount(),
+            MoveSpeedMultiplier = GetFinalStat(ItemStatType.MoveSpeedMultiplier)
+        };
+
+        return new PlayerStatSnapshot(data);
+    }
 
     private void Awake()
     {
@@ -109,14 +208,156 @@ public class PlayerStat : MonoBehaviour
             _currentExp = _targetExp > 0 ? Mathf.Clamp(_currentExp, 0, _targetExp - 1) : 0;
         }
 
-        _currentHealth = _maxHealth;
+        RecalculateStats();
+        _currentHealth = GetFinalStat(ItemStatType.MaxHealth);
         _currentEnergy = 0f;
         _money = Mathf.Max(0, _money);
 
-        CurrentPoise = Mathf.Max(0f, _maxPoise);
-        CurrentGuardPoise = Mathf.Max(0f, _maxGuardPoise);
+        CurrentPoise = GetFinalStat(ItemStatType.MaxPoise);
+        CurrentGuardPoise = GetFinalStat(ItemStatType.MaxGuardPoise);
         _poiseRecoveryRemaining = 0f;
         _guardPoiseRecoveryRemaining = 0f;
+    }
+
+    public void RebuildRelicStatModifiers(IReadOnlyList<ItemDefinition> relicItems)
+    {
+        RebuildStatModifierTotals(relicItems, ItemType.Relic, _relicStatModifiers);
+        if (RecalculateStats()) NotifyStatsChanged();
+    }
+
+    public void SetBaseMaxDodgeCount(int maxDodgeCount)
+    {
+        int clampedMaxDodgeCount = Mathf.Max(1, maxDodgeCount);
+        if (_baseMaxDodgeCount == clampedMaxDodgeCount) return;
+
+        _baseMaxDodgeCount = clampedMaxDodgeCount;
+        if (RecalculateStats()) NotifyStatsChanged();
+    }
+
+    public void RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems)
+    {
+        // 두 출처의 합계를 모두 준비한 뒤 한 번 계산하여 중간 최대치로 현재량이 제한되지 않게 한다.
+        RebuildStatModifierTotals(relicItems, ItemType.Relic, _relicStatModifiers);
+        RebuildStatModifierTotals(equippedItems, ItemType.Equipment, _equipmentStatModifiers);
+        if (RecalculateStats()) NotifyStatsChanged();
+    }
+
+    private void RebuildStatModifierTotals(IReadOnlyList<ItemDefinition> items, ItemType itemType, StatModifierTotals[] totals)
+    {
+        // Awake보다 먼저 요청되어도 기존 기본값을 기준으로 변경 여부를 비교한다.
+        if (!HasCalculatedStats) RecalculateStats();
+
+        // 유물은 보유 목록, 장비는 Manager가 선별한 장착 목록에서 다시 집계한다.
+        Array.Clear(totals, 0, totals.Length);
+        if (items != null)
+        {
+            for (int i = 0; i < items.Count; i++)
+            {
+                ItemDefinition item = items[i];
+                if (!item || item.ItemType != itemType) continue;
+
+                IReadOnlyList<StatModifier> modifiers = item.StatModifiers;
+                for (int j = 0; j < modifiers.Count; j++)
+                {
+                    StatModifier modifier = modifiers[j];
+                    int statIndex = (int)modifier.Stat;
+                    if (statIndex < 0 || statIndex >= ItemStatCount || float.IsNaN(modifier.Value) || float.IsInfinity(modifier.Value)) continue;
+
+                    if (modifier.Operation == StatModifierOperation.FlatAdd) totals[statIndex].FlatAdd += modifier.Value;
+                    else if (modifier.Operation == StatModifierOperation.PercentAdd) totals[statIndex].PercentAdd += modifier.Value;
+                }
+            }
+        }
+    }
+
+    private float GetFinalStat(ItemStatType stat)
+    {
+        // 컴포넌트의 Awake 순서와 관계없이 최초 조회에서도 유효한 스탯을 반환한다.
+        if (!HasCalculatedStats) RecalculateStats();
+        return _finalStats[(int)stat];
+    }
+
+    private int GetFinalMaxDodgeCount()
+    {
+        float maxDodgeCount = GetFinalStat(ItemStatType.MaxDodgeCount);
+        // float의 정수 상한 반올림이나 큰 보정이 int 변환에서 음수가 되지 않게 제한한다.
+        return maxDodgeCount >= int.MaxValue ? int.MaxValue : (int)maxDodgeCount;
+    }
+
+    private bool RecalculateStats()
+    {
+        // Inspector에 저장된 캐시는 파생 값이므로 스탯 종류가 늘었을 때 한 번만 재생성한다.
+        if (_finalStats == null || _finalStats.Length != ItemStatCount) _finalStats = new float[ItemStatCount];
+
+        bool changed = SetFinalDamageStat(ItemStatType.AttackPower, _baseAttackPower, ref _attackPowerModifier);
+        changed |= SetFinalStat(ItemStatType.DefensePower, _baseDefensePower);
+        changed |= SetFinalDamageStat(ItemStatType.PoiseDamage, _basePoiseDamage, ref _poiseDamageModifier);
+        changed |= SetFinalDamageStat(ItemStatType.GuardPoiseDamage, _baseGuardPoiseDamage, ref _guardPoiseDamageModifier);
+        changed |= SetFinalStat(ItemStatType.MaxHealth, _maxHealth, 1f);
+        changed |= SetFinalStat(ItemStatType.MaxEnergy, _baseMaxEnergy);
+        changed |= SetFinalStat(ItemStatType.MaxPoise, _maxPoise);
+        changed |= SetFinalStat(ItemStatType.PoiseRecoveryDelay, _poiseRecoveryDelay);
+        changed |= SetFinalStat(ItemStatType.PoiseRecoveryRate, _poiseRecoveryRate);
+        changed |= SetFinalStat(ItemStatType.StaggerDuration, _staggerDuration);
+        changed |= SetFinalStat(ItemStatType.MaxGuardPoise, _maxGuardPoise);
+        changed |= SetFinalStat(ItemStatType.GuardPoiseRecoveryDelay, _guardPoiseRecoveryDelay);
+        changed |= SetFinalStat(ItemStatType.GuardPoiseRecoveryRate, _guardPoiseRecoveryRate);
+        changed |= SetFinalStat(ItemStatType.GuardBreakDuration, _guardBreakDuration);
+        changed |= SetFinalStat(ItemStatType.StaggerMoveDistance, _staggerMoveDistance);
+        changed |= SetFinalStat(ItemStatType.GuardBreakMoveDistance, _guardBreakMoveDistance);
+        changed |= SetFinalStat(ItemStatType.MaxDodgeCount, _baseMaxDodgeCount, 1f);
+        changed |= SetFinalStat(ItemStatType.MoveSpeedMultiplier, 1f);
+        _hasCalculatedStats = true;
+
+        // 보유·장착 효과는 현재량을 회복시키지 않는다. 최대치가 줄어든 경우에만 범위 안으로 제한한다.
+        float nextHealth = Mathf.Clamp(_currentHealth, 0f, _finalStats[(int)ItemStatType.MaxHealth]);
+        float nextEnergy = Mathf.Clamp(_currentEnergy, 0f, _finalStats[(int)ItemStatType.MaxEnergy]);
+        float nextPoise = Mathf.Clamp(CurrentPoise, 0f, _finalStats[(int)ItemStatType.MaxPoise]);
+        float nextGuardPoise = Mathf.Clamp(CurrentGuardPoise, 0f, _finalStats[(int)ItemStatType.MaxGuardPoise]);
+        changed |= _currentHealth != nextHealth || _currentEnergy != nextEnergy || CurrentPoise != nextPoise || CurrentGuardPoise != nextGuardPoise;
+        _currentHealth = nextHealth;
+        _currentEnergy = nextEnergy;
+        CurrentPoise = nextPoise;
+        CurrentGuardPoise = nextGuardPoise;
+        return changed;
+    }
+
+    private void GetStatCalculation(ItemStatType stat, float baseValue, out float valueBeforeMultiplier, out float multiplier)
+    {
+        int statIndex = (int)stat;
+        StatModifierTotals relicModifiers = _relicStatModifiers[statIndex];
+        StatModifierTotals equipmentModifiers = _equipmentStatModifiers[statIndex];
+        float flatAdd = relicModifiers.FlatAdd + equipmentModifiers.FlatAdd;
+        float percentAdd = relicModifiers.PercentAdd + equipmentModifiers.PercentAdd;
+        // 비율은 0.2를 20%로 더하며, -100% 아래에서도 배율이 음수로 뒤집히지 않게 한다.
+        multiplier = Mathf.Max(0f, 1f + percentAdd);
+        valueBeforeMultiplier = baseValue + flatAdd;
+    }
+
+    private bool SetFinalDamageStat(ItemStatType stat, float baseValue, ref AttackDamageModifier damageModifier)
+    {
+        GetStatCalculation(stat, baseValue, out float valueBeforeMultiplier, out float multiplier);
+        // 추가 스탯이 0이어도 배율은 공격 기본 피해를 바꾸므로 계산값의 변경도 알린다.
+        bool changed = damageModifier.AdditiveValue != valueBeforeMultiplier || damageModifier.Multiplier != multiplier;
+        damageModifier = new AttackDamageModifier(valueBeforeMultiplier, multiplier);
+        float finalValue = Mathf.Max(0f, valueBeforeMultiplier * multiplier);
+        int statIndex = (int)stat;
+        changed |= _finalStats[statIndex] != finalValue;
+        _finalStats[statIndex] = finalValue;
+        return changed;
+    }
+
+    private bool SetFinalStat(ItemStatType stat, float baseValue, float minimumValue = 0f)
+    {
+        GetStatCalculation(stat, baseValue, out float valueBeforeMultiplier, out float multiplier);
+        float finalValue = Mathf.Max(minimumValue, valueBeforeMultiplier * multiplier);
+        // 회피 횟수는 계산을 모두 마친 뒤 소수점을 내리며 최소 1회를 유지한다.
+        if (stat == ItemStatType.MaxDodgeCount) finalValue = Mathf.Floor(finalValue);
+        int statIndex = (int)stat;
+        if (_finalStats[statIndex] == finalValue) return false;
+
+        _finalStats[statIndex] = finalValue;
+        return true;
     }
 
     public void TakePoiseDamage(float amount)
@@ -124,7 +365,7 @@ public class PlayerStat : MonoBehaviour
         if (amount <= 0f || _currentHealth <= 0f) return;
 
         // 이미 0이어도 추가 강인도 피해를 받으면 회복 대기를 다시 시작한다.
-        _poiseRecoveryRemaining = Mathf.Max(0f, _poiseRecoveryDelay);
+        _poiseRecoveryRemaining = GetFinalStat(ItemStatType.PoiseRecoveryDelay);
 
         float nextPoise = Mathf.Max(0f, CurrentPoise - amount);
 
@@ -138,7 +379,7 @@ public class PlayerStat : MonoBehaviour
     {
         if (amount <= 0f || _currentHealth <= 0f) return;
 
-        _guardPoiseRecoveryRemaining = Mathf.Max(0f, _guardPoiseRecoveryDelay);
+        _guardPoiseRecoveryRemaining = GetFinalStat(ItemStatType.GuardPoiseRecoveryDelay);
 
         float nextGuardPoise = Mathf.Max(0f, CurrentGuardPoise - amount);
 
@@ -155,12 +396,12 @@ public class PlayerStat : MonoBehaviour
         // 종료된 반응에 해당하는 강인도와 회복 대기만 초기화한다.
         if (isGuardBreak)
         {
-            CurrentGuardPoise = Mathf.Max(0f, _maxGuardPoise);
+            CurrentGuardPoise = GetFinalStat(ItemStatType.MaxGuardPoise);
             _guardPoiseRecoveryRemaining = 0f;
         }
         else
         {
-            CurrentPoise = Mathf.Max(0f, _maxPoise);
+            CurrentPoise = GetFinalStat(ItemStatType.MaxPoise);
             _poiseRecoveryRemaining = 0f;
         }
 
@@ -171,8 +412,8 @@ public class PlayerStat : MonoBehaviour
     {
         if (deltaTime <= 0f || _currentHealth <= 0f) return;
 
-        float nextPoise = RecoverPoise(CurrentPoise, _maxPoise, _poiseRecoveryRate, ref _poiseRecoveryRemaining, deltaTime);
-        float nextGuardPoise = RecoverPoise(CurrentGuardPoise, _maxGuardPoise, _guardPoiseRecoveryRate, ref _guardPoiseRecoveryRemaining, deltaTime);
+        float nextPoise = RecoverPoise(CurrentPoise, GetFinalStat(ItemStatType.MaxPoise), GetFinalStat(ItemStatType.PoiseRecoveryRate), ref _poiseRecoveryRemaining, deltaTime);
+        float nextGuardPoise = RecoverPoise(CurrentGuardPoise, GetFinalStat(ItemStatType.MaxGuardPoise), GetFinalStat(ItemStatType.GuardPoiseRecoveryRate), ref _guardPoiseRecoveryRemaining, deltaTime);
 
         if (nextPoise == CurrentPoise && nextGuardPoise == CurrentGuardPoise) return;
 
@@ -275,19 +516,19 @@ public class PlayerStat : MonoBehaviour
 
     private void ApplyLevelData(PlayerLevelData data, bool restoreHealthIncrease)
     {
-        float healthIncrease = Mathf.Max(0f, data.MaxHealth - _maxHealth);
+        float previousMaxHealth = GetFinalStat(ItemStatType.MaxHealth);
         _level = data.Level;
         _targetExp = data.TargetExp;
         _maxHealth = data.MaxHealth;
         _baseAttackPower = data.AttackPower;
         _baseDefensePower = data.DefensePower;
         _baseMaxEnergy = data.MaxEnergy;
+        RecalculateStats();
 
-        // 레벨업으로 늘어난 체력만 보충하고, 사망한 플레이어는 되살리지 않는다.
-        if (restoreHealthIncrease && _currentHealth > 0f) _currentHealth = Mathf.Min(_maxHealth, _currentHealth + healthIncrease);
-        else _currentHealth = Mathf.Min(_currentHealth, _maxHealth);
-
-        _currentEnergy = Mathf.Min(_currentEnergy, _baseMaxEnergy);
+        // 아이템 보정을 유지한 최종 최대 체력의 레벨업 증가분만 보충하고, 사망자는 되살리지 않는다.
+        float maxHealth = GetFinalStat(ItemStatType.MaxHealth);
+        float healthIncrease = Mathf.Max(0f, maxHealth - previousMaxHealth);
+        if (restoreHealthIncrease && _currentHealth > 0f) _currentHealth = Mathf.Min(maxHealth, _currentHealth + healthIncrease);
     }
 
     public void SetLevel(int level, int targetExp)
@@ -332,12 +573,13 @@ public class PlayerStat : MonoBehaviour
 
     public void RestoreHealth(float amount)
     {
-        if (amount <= 0f || _currentHealth >= _maxHealth)
+        float maxHealth = GetFinalStat(ItemStatType.MaxHealth);
+        if (amount <= 0f || _currentHealth >= maxHealth)
         {
             return;
         }
 
-        _currentHealth = Mathf.Min(_maxHealth, _currentHealth + amount);
+        _currentHealth = Mathf.Min(maxHealth, _currentHealth + amount);
         NotifyStatsChanged();
     }
 
@@ -351,8 +593,7 @@ public class PlayerStat : MonoBehaviour
         }
 
         _maxHealth = clampedMaxHealth;
-        _currentHealth = Mathf.Min(_currentHealth, _maxHealth);
-        NotifyStatsChanged();
+        if (RecalculateStats()) NotifyStatsChanged();
     }
 
     public bool TryConsumeEnergy(float amount)
@@ -369,16 +610,17 @@ public class PlayerStat : MonoBehaviour
 
     public void RestoreEnergy(float amount)
     {
-        if (amount <= 0f || _currentEnergy >= _baseMaxEnergy)
+        float maxEnergy = GetFinalStat(ItemStatType.MaxEnergy);
+        if (amount <= 0f || _currentEnergy >= maxEnergy)
         {
             return;
         }
 
-        _currentEnergy = Mathf.Min(_baseMaxEnergy, _currentEnergy + amount);
+        _currentEnergy = Mathf.Min(maxEnergy, _currentEnergy + amount);
         NotifyStatsChanged();
     }
 
-    public void SetBaseStats(float attackPower, float defensePower, float maxEnergy) //수정필.
+    public void SetBaseStats(float attackPower, float defensePower, float maxEnergy)
     {
         float clampedAttackPower = Mathf.Max(0f, attackPower);
         float clampedDefensePower = Mathf.Max(0f, defensePower);
@@ -393,8 +635,7 @@ public class PlayerStat : MonoBehaviour
         _baseAttackPower = clampedAttackPower;
         _baseDefensePower = clampedDefensePower;
         _baseMaxEnergy = clampedMaxEnergy;
-        _currentEnergy = Mathf.Min(_currentEnergy, _baseMaxEnergy);
-        NotifyStatsChanged();
+        if (RecalculateStats()) NotifyStatsChanged();
     }
 
     private void NotifyStatsChanged()

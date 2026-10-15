@@ -17,7 +17,14 @@ public enum ItemStatType
     GuardPoiseRecoveryRate = 10,
     GuardBreakDuration = 11,
     StaggerMoveDistance = 12,
-    GuardBreakMoveDistance = 13
+    GuardBreakMoveDistance = 13,
+    // 기존 아이템 SO의 스탯 번호를 유지하고 새 항목은 뒤에 추가한다.
+    MaxDodgeCount = 14,
+    // 일반·락온 이동과 달리기의 각 기본 속도에 공통으로 곱할 배율이다. 기본값은 1이다.
+    MoveSpeedMultiplier = 15,
+    // FlatAdd는 공격 고유의 강인도 피해에 더하고, PercentAdd는 합산한 전체 피해에 적용한다. 기본값은 0이다.
+    PoiseDamage = 16,
+    GuardPoiseDamage = 17
 }
 
 public enum StatModifierOperation
@@ -38,7 +45,8 @@ public struct StatModifier
     public StatModifierOperation Operation => _operation;
     public float Value => _value;
 
-    // 최종값은 (레벨 기본값 + FlatAdd 합계) * (1 + PercentAdd 합계)로 계산한다.
+    // 표시용 최종값은 (기본값 + FlatAdd 합계) * (1 + PercentAdd 합계)로 계산한다.
+    // 공격력·일반/가드 강인도 피해는 실제 타격 시 AttackDefinition의 기본 피해도 더한 뒤 배율을 적용한다.
     public StatModifier(ItemStatType stat, StatModifierOperation operation, float value)
     {
         _stat = stat;
