@@ -387,7 +387,18 @@ public sealed class InventoryView : MonoBehaviour
             || (_tabController && grid.ItemType != _tabController.CurrentItemType)) return;
 
         // 보유 항목의 인덱스와 현재 Definition을 함께 검증해 다른 복사본이나 오래된 입력을 구분한다.
-        _playerManager.TryToggleEquipment(slot.InventoryIndex, slot.Item);
+        ItemDefinition item = slot.Item;
+        if (!item) return;
+
+        switch (item.ItemType)
+        {
+            case ItemType.Equipment:
+                _playerManager.TryToggleEquipment(slot.InventoryIndex, item);
+                break;
+            case ItemType.Consumable:
+                _playerManager.TryUseItem(slot.InventoryIndex, item);
+                break;
+        }
     }
 
     private void HandleEquipmentChanged(EquipmentSlot equipmentSlot)

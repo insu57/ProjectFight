@@ -18,6 +18,27 @@ MonoBehaviour:
   <ItemIcon>k__BackingField: {fileID: 21300000, guid: 7f2455442d02d77488eeec896bb104c6, type: 3}
   <ItemType>k__BackingField: 1
   <EquipmentSlot>k__BackingField: 0
-  <Rarity>k__BackingField: 0
-  <BasePrice>k__BackingField: 25
-  _maxStackCount: 1
+  <Rarity>k__BackingField: 1
+  <BasePrice>k__BackingField: 50
+  _maxStackCount: 5
+  _statModifiers: []
+  _useEffectData:
+  - rid: 3955778221650477184
+  - rid: 3955778221650477185
+  _acquireEffectData: []
+  _passiveEffectData: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 3955778221650477184
+      type: {class: RestoreHealthEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _amount:
+          _mode: 0
+          _value: 30
+    - rid: 3955778221650477185
+      type: {class: RestoreEnergyEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _amount:
+          _mode: 0
+          _value: 20

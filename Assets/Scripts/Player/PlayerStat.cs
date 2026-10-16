@@ -88,7 +88,9 @@ public readonly struct PlayerStatSnapshot
 [DisallowMultipleComponent]
 public class PlayerStat : MonoBehaviour
 {
-    private const int ItemStatCount = (int)ItemStatType.GuardPoiseDamage + 1;
+    // 스탯 목록은 형식 초기화 때 한 번만 준비하고 계산 시에는 배열을 순회한다.
+    private static readonly ItemStatType[] StatTypes = (ItemStatType[])Enum.GetValues(typeof(ItemStatType));
+    private static readonly int ItemStatCount = (int)StatTypes[StatTypes.Length - 1] + 1;
 
     private struct StatModifierTotals
     {
@@ -148,6 +150,8 @@ public class PlayerStat : MonoBehaviour
     // 보정 합계와 최종값 배열은 한 번 생성해 재사용하고, 조회할 때는 계산된 값만 읽는다.
     private readonly StatModifierTotals[] _relicStatModifiers = new StatModifierTotals[ItemStatCount];
     private readonly StatModifierTotals[] _equipmentStatModifiers = new StatModifierTotals[ItemStatCount];
+    private readonly StatModifierTotals[] _timedStatModifiers = new StatModifierTotals[ItemStatCount];
+    private readonly StatModifierTotals[] _modifierTotalsBuffer = new StatModifierTotals[ItemStatCount];
     [SerializeField] private float[] _finalStats = new float[ItemStatCount];
     private AttackDamageModifier _attackPowerModifier;
     private AttackDamageModifier _poiseDamageModifier;
@@ -221,8 +225,7 @@ public class PlayerStat : MonoBehaviour
 
     public void RebuildRelicStatModifiers(IReadOnlyList<ItemDefinition> relicItems)
     {
-        RebuildStatModifierTotals(relicItems, ItemType.Relic, _relicStatModifiers);
-        if (RecalculateStats()) NotifyStatsChanged();
+        if (RebuildStatModifierTotals(relicItems, ItemType.Relic, _relicStatModifiers) && RecalculateStats()) NotifyStatsChanged();
     }
 
     public void SetBaseMaxDodgeCount(int maxDodgeCount)
@@ -237,18 +240,44 @@ public class PlayerStat : MonoBehaviour
     public void RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems)
     {
         // 두 출처의 합계를 모두 준비한 뒤 한 번 계산하여 중간 최대치로 현재량이 제한되지 않게 한다.
-        RebuildStatModifierTotals(relicItems, ItemType.Relic, _relicStatModifiers);
-        RebuildStatModifierTotals(equippedItems, ItemType.Equipment, _equipmentStatModifiers);
-        if (RecalculateStats()) NotifyStatsChanged();
+        bool modifiersChanged = RebuildStatModifierTotals(relicItems, ItemType.Relic, _relicStatModifiers);
+        modifiersChanged |= RebuildStatModifierTotals(equippedItems, ItemType.Equipment, _equipmentStatModifiers);
+        if (modifiersChanged && RecalculateStats())
+        {
+            NotifyStatsChanged();
+        }
     }
 
-    private void RebuildStatModifierTotals(IReadOnlyList<ItemDefinition> items, ItemType itemType, StatModifierTotals[] totals)
+    public void RebuildTimedStatModifiers(IReadOnlyList<StatModifier> modifiers)
+    {
+        if (!HasCalculatedStats)
+        {
+            RecalculateStats();
+        }
+
+        // 버퍼에서 새 합계를 완성한 뒤 비교하므로 시간만 갱신한 버프는 재계산하지 않는다.
+        Array.Clear(_modifierTotalsBuffer, 0, _modifierTotalsBuffer.Length);
+        if (modifiers != null)
+        {
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                AccumulateStatModifier(modifiers[i], _modifierTotalsBuffer);
+            }
+        }
+
+        if (CommitModifierTotals(_timedStatModifiers) && RecalculateStats())
+        {
+            NotifyStatsChanged();
+        }
+    }
+
+    private bool RebuildStatModifierTotals(IReadOnlyList<ItemDefinition> items, ItemType itemType, StatModifierTotals[] totals)
     {
         // Awake보다 먼저 요청되어도 기존 기본값을 기준으로 변경 여부를 비교한다.
         if (!HasCalculatedStats) RecalculateStats();
 
         // 유물은 보유 목록, 장비는 Manager가 선별한 장착 목록에서 다시 집계한다.
-        Array.Clear(totals, 0, totals.Length);
+        Array.Clear(_modifierTotalsBuffer, 0, _modifierTotalsBuffer.Length);
         if (items != null)
         {
             for (int i = 0; i < items.Count; i++)
@@ -259,15 +288,36 @@ public class PlayerStat : MonoBehaviour
                 IReadOnlyList<StatModifier> modifiers = item.StatModifiers;
                 for (int j = 0; j < modifiers.Count; j++)
                 {
-                    StatModifier modifier = modifiers[j];
-                    int statIndex = (int)modifier.Stat;
-                    if (statIndex < 0 || statIndex >= ItemStatCount || float.IsNaN(modifier.Value) || float.IsInfinity(modifier.Value)) continue;
-
-                    if (modifier.Operation == StatModifierOperation.FlatAdd) totals[statIndex].FlatAdd += modifier.Value;
-                    else if (modifier.Operation == StatModifierOperation.PercentAdd) totals[statIndex].PercentAdd += modifier.Value;
+                    AccumulateStatModifier(modifiers[j], _modifierTotalsBuffer);
                 }
             }
         }
+
+        return CommitModifierTotals(totals);
+    }
+
+    private bool CommitModifierTotals(StatModifierTotals[] totals)
+    {
+        bool changed = false;
+        for (int i = 0; i < totals.Length; i++)
+        {
+            StatModifierTotals next = _modifierTotalsBuffer[i];
+            if (totals[i].FlatAdd == next.FlatAdd && totals[i].PercentAdd == next.PercentAdd) continue;
+
+            totals[i] = next;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private static void AccumulateStatModifier(StatModifier modifier, StatModifierTotals[] totals)
+    {
+        int statIndex = (int)modifier.Stat;
+        if (statIndex < 0 || statIndex >= ItemStatCount || float.IsNaN(modifier.Value) || float.IsInfinity(modifier.Value)) return;
+
+        if (modifier.Operation == StatModifierOperation.FlatAdd) totals[statIndex].FlatAdd += modifier.Value;
+        else if (modifier.Operation == StatModifierOperation.PercentAdd) totals[statIndex].PercentAdd += modifier.Value;
     }
 
     private float GetFinalStat(ItemStatType stat)
@@ -286,35 +336,80 @@ public class PlayerStat : MonoBehaviour
 
     private bool RecalculateStats()
     {
+        bool changed = RecalculateFinalStats();
+        _hasCalculatedStats = true;
+        // 모든 최대치를 확정한 뒤 현재량을 한 번만 제한해 중간 값으로 현재량이 줄어들지 않게 한다.
+        changed |= ClampCurrentResources();
+        return changed;
+    }
+
+    private bool RecalculateFinalStats()
+    {
         // Inspector에 저장된 캐시는 파생 값이므로 스탯 종류가 늘었을 때 한 번만 재생성한다.
         if (_finalStats == null || _finalStats.Length != ItemStatCount) _finalStats = new float[ItemStatCount];
 
-        bool changed = SetFinalDamageStat(ItemStatType.AttackPower, _baseAttackPower, ref _attackPowerModifier);
-        changed |= SetFinalStat(ItemStatType.DefensePower, _baseDefensePower);
-        changed |= SetFinalDamageStat(ItemStatType.PoiseDamage, _basePoiseDamage, ref _poiseDamageModifier);
-        changed |= SetFinalDamageStat(ItemStatType.GuardPoiseDamage, _baseGuardPoiseDamage, ref _guardPoiseDamageModifier);
-        changed |= SetFinalStat(ItemStatType.MaxHealth, _maxHealth, 1f);
-        changed |= SetFinalStat(ItemStatType.MaxEnergy, _baseMaxEnergy);
-        changed |= SetFinalStat(ItemStatType.MaxPoise, _maxPoise);
-        changed |= SetFinalStat(ItemStatType.PoiseRecoveryDelay, _poiseRecoveryDelay);
-        changed |= SetFinalStat(ItemStatType.PoiseRecoveryRate, _poiseRecoveryRate);
-        changed |= SetFinalStat(ItemStatType.StaggerDuration, _staggerDuration);
-        changed |= SetFinalStat(ItemStatType.MaxGuardPoise, _maxGuardPoise);
-        changed |= SetFinalStat(ItemStatType.GuardPoiseRecoveryDelay, _guardPoiseRecoveryDelay);
-        changed |= SetFinalStat(ItemStatType.GuardPoiseRecoveryRate, _guardPoiseRecoveryRate);
-        changed |= SetFinalStat(ItemStatType.GuardBreakDuration, _guardBreakDuration);
-        changed |= SetFinalStat(ItemStatType.StaggerMoveDistance, _staggerMoveDistance);
-        changed |= SetFinalStat(ItemStatType.GuardBreakMoveDistance, _guardBreakMoveDistance);
-        changed |= SetFinalStat(ItemStatType.MaxDodgeCount, _baseMaxDodgeCount, 1f);
-        changed |= SetFinalStat(ItemStatType.MoveSpeedMultiplier, 1f);
-        _hasCalculatedStats = true;
+        bool changed = false;
+        for (int i = 0; i < StatTypes.Length; i++)
+        {
+            ItemStatType stat = StatTypes[i];
+            float baseValue = GetBaseStatValue(stat);
+            // 피해 스탯은 표시값이 같아도 공격 고유 피해에 적용할 배율 변경을 따로 감지한다.
+            switch (stat)
+            {
+                case ItemStatType.AttackPower:
+                    changed |= SetFinalDamageStat(stat, baseValue, ref _attackPowerModifier);
+                    break;
+                case ItemStatType.PoiseDamage:
+                    changed |= SetFinalDamageStat(stat, baseValue, ref _poiseDamageModifier);
+                    break;
+                case ItemStatType.GuardPoiseDamage:
+                    changed |= SetFinalDamageStat(stat, baseValue, ref _guardPoiseDamageModifier);
+                    break;
+                default:
+                    changed |= SetFinalStat(stat, baseValue);
+                    break;
+            }
+        }
 
-        // 보유·장착 효과는 현재량을 회복시키지 않는다. 최대치가 줄어든 경우에만 범위 안으로 제한한다.
+        return changed;
+    }
+
+    private float GetBaseStatValue(ItemStatType stat)
+    {
+        return stat switch
+        {
+            ItemStatType.AttackPower => _baseAttackPower,
+            ItemStatType.DefensePower => _baseDefensePower,
+            ItemStatType.MaxHealth => _maxHealth,
+            ItemStatType.MaxEnergy => _baseMaxEnergy,
+            ItemStatType.MaxPoise => _maxPoise,
+            ItemStatType.PoiseRecoveryDelay => _poiseRecoveryDelay,
+            ItemStatType.PoiseRecoveryRate => _poiseRecoveryRate,
+            ItemStatType.StaggerDuration => _staggerDuration,
+            ItemStatType.MaxGuardPoise => _maxGuardPoise,
+            ItemStatType.GuardPoiseRecoveryDelay => _guardPoiseRecoveryDelay,
+            ItemStatType.GuardPoiseRecoveryRate => _guardPoiseRecoveryRate,
+            ItemStatType.GuardBreakDuration => _guardBreakDuration,
+            ItemStatType.StaggerMoveDistance => _staggerMoveDistance,
+            ItemStatType.GuardBreakMoveDistance => _guardBreakMoveDistance,
+            ItemStatType.MaxDodgeCount => _baseMaxDodgeCount,
+            ItemStatType.MoveSpeedMultiplier => 1f,
+            ItemStatType.PoiseDamage => _basePoiseDamage,
+            ItemStatType.GuardPoiseDamage => _baseGuardPoiseDamage,
+            // 새 스탯의 기본값 설정을 빠뜨리면 조용히 0으로 처리하지 않고 알린다.
+            _ => throw new ArgumentOutOfRangeException(nameof(stat), stat, "스탯 기본값을 지정해야 합니다.")
+        };
+    }
+
+    private bool ClampCurrentResources()
+    {
+        // 보유·장착·시간제 효과는 현재량을 회복시키지 않는다. 최대치가 줄어든 경우에만 범위 안으로 제한한다.
         float nextHealth = Mathf.Clamp(_currentHealth, 0f, _finalStats[(int)ItemStatType.MaxHealth]);
         float nextEnergy = Mathf.Clamp(_currentEnergy, 0f, _finalStats[(int)ItemStatType.MaxEnergy]);
         float nextPoise = Mathf.Clamp(CurrentPoise, 0f, _finalStats[(int)ItemStatType.MaxPoise]);
         float nextGuardPoise = Mathf.Clamp(CurrentGuardPoise, 0f, _finalStats[(int)ItemStatType.MaxGuardPoise]);
-        changed |= _currentHealth != nextHealth || _currentEnergy != nextEnergy || CurrentPoise != nextPoise || CurrentGuardPoise != nextGuardPoise;
+        bool changed = _currentHealth != nextHealth || _currentEnergy != nextEnergy
+            || CurrentPoise != nextPoise || CurrentGuardPoise != nextGuardPoise;
         _currentHealth = nextHealth;
         _currentEnergy = nextEnergy;
         CurrentPoise = nextPoise;
@@ -327,8 +422,9 @@ public class PlayerStat : MonoBehaviour
         int statIndex = (int)stat;
         StatModifierTotals relicModifiers = _relicStatModifiers[statIndex];
         StatModifierTotals equipmentModifiers = _equipmentStatModifiers[statIndex];
-        float flatAdd = relicModifiers.FlatAdd + equipmentModifiers.FlatAdd;
-        float percentAdd = relicModifiers.PercentAdd + equipmentModifiers.PercentAdd;
+        StatModifierTotals timedModifiers = _timedStatModifiers[statIndex];
+        float flatAdd = relicModifiers.FlatAdd + equipmentModifiers.FlatAdd + timedModifiers.FlatAdd;
+        float percentAdd = relicModifiers.PercentAdd + equipmentModifiers.PercentAdd + timedModifiers.PercentAdd;
         // 비율은 0.2를 20%로 더하며, -100% 아래에서도 배율이 음수로 뒤집히지 않게 한다.
         multiplier = Mathf.Max(0f, 1f + percentAdd);
         valueBeforeMultiplier = baseValue + flatAdd;
@@ -347,9 +443,10 @@ public class PlayerStat : MonoBehaviour
         return changed;
     }
 
-    private bool SetFinalStat(ItemStatType stat, float baseValue, float minimumValue = 0f)
+    private bool SetFinalStat(ItemStatType stat, float baseValue)
     {
         GetStatCalculation(stat, baseValue, out float valueBeforeMultiplier, out float multiplier);
+        float minimumValue = stat == ItemStatType.MaxHealth || stat == ItemStatType.MaxDodgeCount ? 1f : 0f;
         float finalValue = Mathf.Max(minimumValue, valueBeforeMultiplier * multiplier);
         // 회피 횟수는 계산을 모두 마친 뒤 소수점을 내리며 최소 1회를 유지한다.
         if (stat == ItemStatType.MaxDodgeCount) finalValue = Mathf.Floor(finalValue);
@@ -412,8 +509,10 @@ public class PlayerStat : MonoBehaviour
     {
         if (deltaTime <= 0f || _currentHealth <= 0f) return;
 
-        float nextPoise = RecoverPoise(CurrentPoise, GetFinalStat(ItemStatType.MaxPoise), GetFinalStat(ItemStatType.PoiseRecoveryRate), ref _poiseRecoveryRemaining, deltaTime);
-        float nextGuardPoise = RecoverPoise(CurrentGuardPoise, GetFinalStat(ItemStatType.MaxGuardPoise), GetFinalStat(ItemStatType.GuardPoiseRecoveryRate), ref _guardPoiseRecoveryRemaining, deltaTime);
+        float nextPoise = RecoverPoise(CurrentPoise, GetFinalStat(ItemStatType.MaxPoise),
+            GetFinalStat(ItemStatType.PoiseRecoveryRate), ref _poiseRecoveryRemaining, deltaTime);
+        float nextGuardPoise = RecoverPoise(CurrentGuardPoise, GetFinalStat(ItemStatType.MaxGuardPoise),
+            GetFinalStat(ItemStatType.GuardPoiseRecoveryRate), ref _guardPoiseRecoveryRemaining, deltaTime);
 
         if (nextPoise == CurrentPoise && nextGuardPoise == CurrentGuardPoise) return;
 
@@ -556,7 +655,8 @@ public class PlayerStat : MonoBehaviour
             _targetExp = clampedTargetExp;
         }
 
-        _currentExp = hasProgressionData ? (_targetExp > 0 ? Mathf.Clamp(_currentExp, 0, _targetExp - 1) : 0) : Mathf.Min(_currentExp, _targetExp);
+        _currentExp = hasProgressionData ? (_targetExp > 0 ?
+            Mathf.Clamp(_currentExp, 0, _targetExp - 1) : 0) : Mathf.Min(_currentExp, _targetExp);
         NotifyStatsChanged();
     }
 

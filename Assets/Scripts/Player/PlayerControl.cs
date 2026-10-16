@@ -31,6 +31,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public event Action PlayerWindowPressed;
     public event Action OptionWindowPressed;
     public event Action InteractPressed;
+    public event Action<int> QuickslotPressed;
 
     private void Awake()
     {
@@ -105,6 +106,10 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
             _inputActions.Player.HeavyAttack.Enable();
             _inputActions.Player.GrabAttack.Enable();
             _inputActions.Player.Interact.Enable();
+            _inputActions.Player.QuickSlot1.Enable();
+            _inputActions.Player.QuickSlot2.Enable();
+            _inputActions.Player.QuickSlot3.Enable();
+            _inputActions.Player.QuickSlot4.Enable();
             return;
         }
 
@@ -119,6 +124,10 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
         _inputActions.Player.HeavyAttack.Disable();
         _inputActions.Player.GrabAttack.Disable();
         _inputActions.Player.Interact.Disable();
+        _inputActions.Player.QuickSlot1.Disable();
+        _inputActions.Player.QuickSlot2.Disable();
+        _inputActions.Player.QuickSlot3.Disable();
+        _inputActions.Player.QuickSlot4.Disable();
     }
 
     public void OnMove(InputAction.CallbackContext context)
@@ -211,6 +220,34 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
         {
             InteractPressed?.Invoke();
         }
+    }
+
+    public void OnQuickSlot1(InputAction.CallbackContext context)
+    {
+        HandleQuickslotInput(context, 1);
+    }
+
+    public void OnQuickSlot2(InputAction.CallbackContext context)
+    {
+        HandleQuickslotInput(context, 2);
+    }
+
+    public void OnQuickSlot3(InputAction.CallbackContext context)
+    {
+        HandleQuickslotInput(context, 3);
+    }
+
+    public void OnQuickSlot4(InputAction.CallbackContext context)
+    {
+        HandleQuickslotInput(context, 4);
+    }
+
+    private void HandleQuickslotInput(InputAction.CallbackContext context, int slotNumber)
+    {
+        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !context.performed) return;
+
+        // 입력 단계에서는 슬롯 번호만 알리고 보유 확인과 효과 실행은 Manager가 중개한다.
+        QuickslotPressed?.Invoke(slotNumber);
     }
 
     public void OnPlayerWindow(InputAction.CallbackContext context)

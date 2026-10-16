@@ -60,7 +60,7 @@ public sealed class QuickslotPanelView : MonoBehaviour
 
     public void Refresh(PlayerManager player)
     {
-        // 장비 패널과 동일하게 InventoryView가 갱신을 중개하며 현재 선택과 관계없이 등록 상태를 표시한다.
+        // 인벤토리와 HUD의 상위 UI가 갱신을 중개하며 현재 선택과 관계없이 등록 상태를 표시한다.
         for (int i = 0; i < (_slotBindings?.Length ?? 0); i++)
         {
             QuickslotSlotBinding binding = _slotBindings[i];

@@ -18,6 +18,8 @@ Canvas (기존 WindowInputRouter)
       │  └─ StoreItemView 3 (Button + StoreItemView)
       ├─ RerollBtn (Button)
       │  └─ RerollPriceTxt (TextMeshProUGUI)
+      ├─ PurchaseMessageRoot (RectTransform)
+      │  └─ PurchaseMessageText (TextMeshProUGUI)
       └─ CloseButton (Button)
          └─ Text (TextMeshProUGUI)
 ```
@@ -39,6 +41,9 @@ Canvas (기존 WindowInputRouter)
 | StoreWindowController | Reroll Btn | RerollBtn |
 | StoreWindowController | Reroll Price Txt | RerollPriceTxt의 TMP_Text |
 | StoreWindowController | Item Views | 사전 배치한 StoreItemView 4개를 표시 순서대로 연결 |
+| StoreWindowController | Purchase Message Root | TMP 텍스트를 자식으로 둔 PurchaseMessageRoot GameObject |
+| StoreWindowController | Purchase Message Text | PurchaseMessageText의 TMP_Text |
+| StoreWindowController | Purchase Message Duration | 구매 제한 알림 표시 시간. 기본 1.5초 |
 | StoreItemView | Button | 상품 루트의 Button |
 | StoreItemView | Content Root | 아이콘·테두리·텍스트·가격을 묶은 표시용 자식 부모 |
 | StoreItemView | Icon | Icon의 Image |
@@ -52,6 +57,8 @@ Canvas (기존 WindowInputRouter)
 기존 `Assets/Prefabs/UI/StoreItemView.prefab`의 루트에 `StoreItemView` 컴포넌트를 붙이고 표시 필드를 연결한다. `StoreItemGrid`에 상품 뷰를 총 4개 사전 배치한 뒤 컨트롤러의 `Item Views` 배열에 연결한다. 창을 열고 닫을 때 상품 뷰를 생성하거나 반환하지 않으며, 닫을 때 데이터와 표시만 비운다.
 
 상품 루트의 자식으로 `ContentRoot`를 만들고 아이콘·테두리·이름·종류·희귀도·설명·가격 오브젝트를 그 아래로 묶은 뒤 `Content Root`에 연결한다. Button과 StoreItemView는 상품 루트에 유지하고, ContentRoot는 기존 표시 영역에 맞춰 RectTransform을 설정한다. 상품 루트 자체를 Content Root에 연결하지 않는다.
+
+`StoreWindowPanel` 안에 `PurchaseMessageRoot` 부모 오브젝트를 만들고 그 자식으로 `PurchaseMessageText` TMP 텍스트를 배치한다. 컨트롤러의 `Purchase Message Root`에는 부모 GameObject를, `Purchase Message Text`에는 자식 TMP_Text를 연결한다. 기존 한글 지원 폰트를 지정하고, 상품 버튼을 가리지 않는 위치에 충분한 가로 폭을 확보한다. TMP의 Raycast Target은 끈다. 부모는 기본 비활성으로 두고 TMP 자식의 Active는 켜 둔다. 컨트롤러는 활성 상태인 `StoreWindow`에 유지하며 알림 부모에 붙이지 않는다. 코드는 메시지 표시 시 부모를 활성화하고 표시 시간이 지나면 부모를 비활성화한다. 두 참조를 모두 연결해야 화면 알림이 표시된다.
 
 CloseButton의 클릭 이벤트는 코드가 등록하므로 Inspector의 On Click에 닫기 함수를 중복 등록하지 않는다. 닫기 버튼을 연결하지 않아도 `UI.Cancel`로 닫을 수 있다.
 
@@ -70,8 +77,10 @@ EventSystem과 Canvas의 GraphicRaycaster를 유지하고 InputSystemUIInputModu
 - 같은 상점을 다시 열거나 같은 그래프에서 매니저를 재활성화하면 상품 목록을 유지한다. 새 그래프가 생성되면 사전 지정 상점의 상품도 다시 추첨한다. StageDefinition이 없는 테스트 씬에서는 유효한 전체 아이템을 균등 선택한다.
 - 사전 배치한 상품 뷰의 아이콘·이름·종류·희귀도·설명을 갱신하고 테두리에 희귀도 색상을 적용한다. 아이콘이 없는 상품은 아이콘 표시만 끈다.
 - 상품 버튼을 누르면 해당 칸의 현재 아이템과 표시한 아이템을 확인하고, PlayerManager를 통해 `BasePrice`를 지불한 뒤 해당 종류의 인벤토리에 1개 추가한다. Money가 가격과 같아도 구매할 수 있으며, 부족하거나 추가할 수 없는 종류이면 상품과 잔액을 유지한다.
+- 소모품은 같은 Definition의 현재 보유 수량이 `MaxStackCount` 이상이면 결제 전에 구매를 거부한다. 상품·보유 수량·Money를 유지하고 `이미 최대 보유 수량(MaxStack)입니다.`를 기본 1.5초 표시한다. 같은 상품이 여러 칸에 있어도 보유 수량을 공유하므로 상한을 넘겨 구매할 수 없다. 소모품을 사용해 수량이 줄면 다시 구매할 수 있다. 공통 인벤토리 추가 경로에도 같은 상한을 적용한다.
+- 구매 제한 알림은 `Time.unscaledDeltaTime`으로 시간을 계산하여 상점의 일시정지 중에도 부모 GameObject가 비활성화된다. 반복 클릭 또는 Submit은 표시 시간을 갱신하고, 구매·리롤 성공이나 창 닫기·재개방·컨트롤러 비활성화 시에도 알림 부모를 비활성화한다.
 - 구매한 칸은 `Bind(null)`로 아이템 참조를 비우고 버튼을 비활성화하며, Content Root를 숨긴 뒤 개별 표시 갱신을 생략한다. 상품 루트는 유지하므로 4칸 배치는 그대로 남는다. Content Root가 연결되지 않은 뷰는 기존처럼 각 표시를 비운다.
-- 같은 아이템이 다른 칸에 있으면 각각 구매할 수 있으며, 같은 상점을 다시 열거나 같은 스테이지에서 매니저를 재활성화해도 품절 상태를 유지한다. 리롤에 성공하거나 새 스테이지가 시작되면 내용을 갱신한 뒤 Content Root를 다시 표시한다.
+- 같은 아이템이 다른 칸에 있으면 소모품의 최대 보유 수량 범위 안에서 각각 구매할 수 있으며, 같은 상점을 다시 열거나 같은 스테이지에서 매니저를 재활성화해도 품절 상태를 유지한다. 리롤에 성공하거나 새 스테이지가 시작되면 내용을 갱신한 뒤 Content Root를 다시 표시한다.
 - 구매 후 기존 `InventoryChanged`·`ItemAcquired` 알림으로 인벤토리와 획득 HUD를 갱신하고, 리롤 가격의 지불 가능 색상과 남은 첫 상품의 포커스를 갱신한다. 남은 상품이 없으면 리롤, 닫기 순서로 포커스를 지정한다.
 - 리롤 설정은 StageManager가 각 Store에 주입한다. 리롤 버튼은 Store를 통해 StageManager에 요청하며, 플레이어 Money가 현재 `RerollPrice` 이상이면 기존 가중치로 상품 4개를 재추첨한다. 같은 금액도 지불할 수 있다.
 - 재추첨에 성공하면 PlayerManager의 `TrySpendMoney`로 비용을 차감하고 해당 Store의 다음 리롤 가격에 증가 비용을 더한다. 잔액 부족이나 추첨 실패 시 기존 상품·잔액·가격은 유지한다. 가격 누적은 int 상한까지 허용한다.
@@ -103,5 +112,7 @@ EventSystem과 Canvas의 GraphicRaycaster를 유지하고 InputSystemUIInputModu
 13. Money가 상품 가격보다 부족할 때 상품과 잔액이 유지되는지, 가격과 같거나 많을 때 정확한 비용 차감과 해당 종류 인벤토리 추가 및 획득 HUD 알림이 한 번씩 발생하는지 확인한다.
 14. 구매한 칸이 비활성화되고 포커스가 남은 상품으로 이동하는지 확인한다. 전부 구매한 뒤에는 리롤 버튼으로 이동하고, 재입장에는 품절 상태가 유지되며 리롤에 성공하면 다시 4개 상품을 구매할 수 있는지 확인한다.
 15. 구매하거나 창을 닫아 빈 상태가 되면 Content Root만 숨겨지고 상품 루트와 4칸 배치가 유지되는지 확인한다. 리롤 또는 재개방 시 새 상품의 내용으로 갱신된 뒤 표시용 부모가 다시 활성화되는지 확인한다.
+16. 소모품을 `MaxStackCount`까지 구매한 뒤 같은 소모품의 다른 상품을 클릭하거나 Submit하여, 상품·수량·Money가 유지되고 알림 부모가 활성화된 뒤 약 1.5초 후 비활성화되는지 확인한다. 반복 입력 시 표시 시간이 갱신되는지도 확인한다.
+17. 최대 수량인 소모품을 사용한 뒤 다시 구매할 수 있는지, 다른 소모품은 각자의 최대 수량으로 별도 제한되는지 확인한다. 알림 중 구매·리롤 성공, 창 닫기·재개방, 컨트롤러 비활성화 시 알림 부모가 비활성화되어 있는지 확인한다.
 
 CLI 소스 컴파일과 스텁 검사는 실제 Canvas/EventSystem 표시, Inspector 연결, Input System의 키·게임패드 입력 및 Play Mode 동작을 검증하지 않는다.

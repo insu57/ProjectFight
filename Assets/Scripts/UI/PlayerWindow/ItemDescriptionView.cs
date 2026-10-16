@@ -1,3 +1,4 @@
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,6 +12,10 @@ public sealed class ItemDescriptionView : MonoBehaviour
     [SerializeField] private TMP_Text _nameText;
     [SerializeField] private TMP_Text _rarityText;
     [SerializeField] private TMP_Text _descriptionText;
+
+    // 선택 변경과 수량 갱신 시 버퍼를 재사용해 효과·설명 결합 문자열을 별도로 만들지 않는다.
+    private readonly StringBuilder _descriptionBuilder = new(256);
+    private readonly char[] _descriptionNumberBuffer = new char[64];
 
     [Header("타입 라벨")]
     [SerializeField, Tooltip("아이템 타입 라벨의 배경과 텍스트를 포함하는 루트입니다.")]
@@ -101,7 +106,9 @@ public sealed class ItemDescriptionView : MonoBehaviour
 
         if (_descriptionText)
         {
-            _descriptionText.SetText(item.ItemDescription);
+            ItemDisplayUtility.BuildItemDescription(_descriptionBuilder, item, _descriptionNumberBuffer);
+            if (!_descriptionText.richText) _descriptionText.richText = true;
+            _descriptionText.SetText(_descriptionBuilder);
         }
 
         bool isConsumable = item.ItemType == ItemType.Consumable;

@@ -25,12 +25,16 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     private readonly ItemDefinition[] _equippedItemsForStats = new ItemDefinition[EquipmentSlotCount];
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
     private bool _hasPendingGuardChange;
+    // 능력치와 인벤토리 알림에서 같은 사용 요청이 재진입하지 않도록 한다.
+    private bool _isUsingItem;
     // 범위 안의 후보는 유지하고, 표시와 입력에 사용할 가장 가까운 유효 대상을 공유한다.
     private readonly List<IInteractable> _interactionCandidates = new(4);
     private IInteractable _currentInteraction;
     private bool _isGameplayInputEnabled = true;
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
     private readonly PoiseReactionRuntime _poiseReaction = new();
+    private readonly RecoveryOverTimeRuntime _recoveryOverTime = new();
+    private readonly TimedStatModifierRuntime _timedStatModifiers = new();
 
     private bool IsHitStopped => _playerAnimation && _playerAnimation.IsHitStopped;
     private bool IsInPoiseReaction => _playerState && (_playerState.ActionState == PlayerActionState.Stunned
@@ -119,6 +123,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
             _playerControl.OptionWindowPressed += HandleOptionWindowPressed;
             _playerControl.InteractPressed += HandleInteractPressed;
+            _playerControl.QuickslotPressed += HandleQuickslotPressed;
         }
 
         if (_playerStat)
@@ -146,6 +151,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void OnDisable()
     {
+        _recoveryOverTime.Clear();
+        ClearTimedStatModifiers();
         _hasPendingGuardChange = false;
         _interactionCandidates.Clear();
         SetInteractionTarget(null);
@@ -182,6 +189,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
             _playerControl.OptionWindowPressed -= HandleOptionWindowPressed;
             _playerControl.InteractPressed -= HandleInteractPressed;
+            _playerControl.QuickslotPressed -= HandleQuickslotPressed;
         }
 
         if (_playerStat)
@@ -218,6 +226,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandlePlayerActionStateChanged(PlayerActionState actionState)
     {
+        if (actionState == PlayerActionState.Dead)
+        {
+            _recoveryOverTime.Clear();
+            ClearTimedStatModifiers();
+        }
         RefreshInteractionTarget();
         if (!_hurtbox) return;
 
@@ -289,6 +302,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandleDied()
     {
+        _recoveryOverTime.Clear();
+        ClearTimedStatModifiers();
         if (!_playerState || _playerState.ActionState == PlayerActionState.Dead) return;
 
         // 체력 변경 알림과 피격 경로가 겹쳐도 사망은 한 번만 처리한다.
@@ -428,6 +443,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     {
         // 직접 체력 변경이나 재활성화 시에도 사망 상태를 보장한다.
         if (_playerStat && _playerStat.CurrentStats.CurrentHealth <= 0f) HandleDied();
+        // 이번 프레임에 만료된 최대치 보정을 제거한 뒤 지속 회복량을 계산한다.
+        UpdateTimedStatModifiers(Time.deltaTime);
+        UpdateRecoveryOverTime(Time.deltaTime);
         if (_playerAnimation)
         {
             _playerAnimation.UpdateHitStop();
@@ -581,7 +599,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     {
         if (!_playerStat) return;
 
-        // 처치 보상은 Manager를 통해 전달하고 기존 스탯 변경 알림으로 UI를 갱신한다.
+        // 처치 보상과 아이템 경험치는 같은 성장 경로로 전달하고 기존 스탯 변경 알림으로 UI를 갱신한다.
         _playerStat.AddExperience(amount);
     }
 
@@ -612,9 +630,205 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         return _playerInventory ? _playerInventory.GetConsumableCount(item) : 0;
     }
 
+    public bool IsConsumableStackFull(ItemDefinition item)
+    {
+        // 상점 UI는 하위 Inventory를 직접 참조하지 않고 Manager를 통해 구매 제한을 조회한다.
+        return _playerInventory && _playerInventory.IsConsumableStackFull(item);
+    }
+
+    public bool TryUseItem(int inventoryIndex, ItemDefinition expectedItem)
+    {
+        if (_isUsingItem || !isActiveAndEnabled || !_playerStat || !_playerInventory || !expectedItem
+            || expectedItem.ItemType != ItemType.Consumable) return false;
+        if (_playerStat.CurrentStats.CurrentHealth <= 0f
+            || (_playerState && _playerState.ActionState == PlayerActionState.Dead)) return false;
+
+        IReadOnlyList<ItemEffectData> effects = expectedItem.UseEffects;
+        bool hasApplicableEffect = false;
+        for (int i = 0; i < effects.Count; i++)
+        {
+            if (!CanApplyUseEffect(effects[i])) continue;
+
+            hasApplicableEffect = true;
+            break;
+        }
+
+        // 즉시 실행하거나 시간 효과를 시작할 수 있는 효과가 없으면 수량을 차감하지 않는다.
+        PlayerInventory inventory = _playerInventory;
+        if (!hasApplicableEffect || !inventory.TryConsumeConsumable(inventoryIndex, expectedItem)) return false;
+
+        _isUsingItem = true;
+        try
+        {
+            ApplyUseEffects(expectedItem, effects);
+        }
+        finally
+        {
+            try
+            {
+                // 슬롯 재대여는 효과 실행 후에 알리고 알림 중에도 중복 사용을 막는다.
+                inventory.NotifyConsumableCountChanged();
+            }
+            finally
+            {
+                _isUsingItem = false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool CanApplyUseEffect(ItemEffectData effect)
+    {
+        PlayerStatSnapshot stats = _playerStat.CurrentStats;
+        if (stats.CurrentHealth <= 0f) return false;
+
+        return effect switch
+        {
+            RestoreHealthEffectData health => GetRecoveryAmount(health.Amount, stats.MaxHealth) > 0f,
+            RestoreEnergyEffectData energy => GetRecoveryAmount(energy.Amount, stats.MaxEnergy) > 0f,
+            AddSkillPointsEffectData points => points.Amount > 0 && SkillTreeRuntime != null && SkillTreeRuntime.AvailablePoints < int.MaxValue,
+            AddMoneyEffectData money => money.Amount > 0 && stats.Money < int.MaxValue,
+            // 성장표의 최대 레벨은 요구 경험치가 0이므로 지급할 수 없는 효과만으로 아이템을 소모하지 않는다.
+            AddExperienceEffectData experience => experience.Amount > 0 && stats.TargetExp > 0,
+
+            RecoveryOverTimeEffectData recovery => isActiveAndEnabled
+            && (!_playerState || _playerState.ActionState != PlayerActionState.Dead) && RecoveryOverTimeRuntime.CanStart(recovery),
+
+            TimedStatModifierEffectData timed => isActiveAndEnabled && (!_playerState || _playerState.ActionState != PlayerActionState.Dead)
+            && TimedStatModifierRuntime.CanStart(timed),
+            _ => false
+        };
+    }
+
+    private void ApplyUseEffects(ItemDefinition item, IReadOnlyList<ItemEffectData> effects)
+    {
+        for (int i = 0; i < effects.Count; i++)
+        {
+            ItemEffectData effect = effects[i];
+            // 앞 효과가 최대치에 도달했을 수 있으므로 각 효과 직전에 현재 상태를 확인한다.
+            if (!CanApplyUseEffect(effect)) continue;
+
+            switch (effect)
+            {
+                case RestoreHealthEffectData health:
+                    _playerStat.RestoreHealth(GetRecoveryAmount(health.Amount, _playerStat.CurrentStats.MaxHealth));
+                    break;
+                case RestoreEnergyEffectData energy:
+                    _playerStat.RestoreEnergy(GetRecoveryAmount(energy.Amount, _playerStat.CurrentStats.MaxEnergy));
+                    break;
+                case AddSkillPointsEffectData points:
+                    // 기존 포인트 API에 넘기기 전에 남은 정수 범위로 제한한다.
+                    AddSkillPoints(Math.Min(points.Amount, int.MaxValue - SkillTreeRuntime.AvailablePoints));
+                    break;
+                case AddMoneyEffectData money:
+                    AddMoney(money.Amount);
+                    break;
+                case AddExperienceEffectData experience:
+                    AddExperience(experience.Amount);
+                    break;
+                case RecoveryOverTimeEffectData recovery:
+                    _recoveryOverTime.TryStart(item, i, recovery);
+                    break;
+                case TimedStatModifierEffectData timed:
+                    if (_timedStatModifiers.TryStart(item, i, timed)) _playerStat.RebuildTimedStatModifiers(_timedStatModifiers.StatModifiers);
+                    break;
+            }
+        }
+    }
+
+    private void UpdateTimedStatModifiers(float deltaTime)
+    {
+        if (!_timedStatModifiers.HasEffects) return;
+        if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f
+            || (_playerState && _playerState.ActionState == PlayerActionState.Dead))
+        {
+            ClearTimedStatModifiers();
+            return;
+        }
+
+        if (_timedStatModifiers.Advance(deltaTime)) _playerStat.RebuildTimedStatModifiers(_timedStatModifiers.StatModifiers);
+    }
+
+    private void ClearTimedStatModifiers()
+    {
+        // 실행 목록을 먼저 비워 스탯 알림에서 사망·비활성화가 재진입해도 한 번만 해제한다.
+        if (!_timedStatModifiers.Clear()) return;
+        if (_playerStat) _playerStat.RebuildTimedStatModifiers(_timedStatModifiers.StatModifiers);
+    }
+
+    private void UpdateRecoveryOverTime(float deltaTime)
+    {
+        if (!_recoveryOverTime.HasEffects) return;
+        if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f
+            || (_playerState && _playerState.ActionState == PlayerActionState.Dead))
+        {
+            _recoveryOverTime.Clear();
+            return;
+        }
+
+        _recoveryOverTime.Advance(deltaTime);
+        while (_recoveryOverTime.TryTakeRecovery(out ItemRecoveryTarget target, out ItemRecoveryAmount amount))
+        {
+            // 회복 알림에서 사망하거나 비활성화되면 남은 회복도 즉시 정리한다.
+            if (!isActiveAndEnabled || _playerStat.CurrentStats.CurrentHealth <= 0f
+                || (_playerState && _playerState.ActionState == PlayerActionState.Dead))
+            {
+                _recoveryOverTime.Clear();
+                break;
+            }
+
+            PlayerStatSnapshot stats = _playerStat.CurrentStats;
+            switch (target)
+            {
+                case ItemRecoveryTarget.Health:
+                    _playerStat.RestoreHealth(GetRecoveryAmount(amount, stats.MaxHealth));
+                    break;
+                case ItemRecoveryTarget.Energy:
+                    _playerStat.RestoreEnergy(GetRecoveryAmount(amount, stats.MaxEnergy));
+                    break;
+            }
+        }
+    }
+
+    private static float GetRecoveryAmount(ItemRecoveryAmount amount, float maximum)
+    {
+        if (amount.Value <= 0f || float.IsNaN(amount.Value) || float.IsInfinity(amount.Value)) return 0f;
+
+        // 최대치 비율은 장비·유물·시간제 보정이 반영된 실행 시점의 최종 최대값을 기준으로 한다.
+        return amount.Mode switch
+        {
+            ItemRecoveryMode.Fixed => amount.Value,
+            ItemRecoveryMode.MaxRatio => maximum * Mathf.Min(1f, amount.Value),
+            _ => 0f
+        };
+    }
+
     public ItemDefinition GetQuickslotItem(int slotNumber)
     {
         return _playerQuickslot ? _playerQuickslot.GetItem(slotNumber) : null;
+    }
+
+    public bool TryUseQuickslot(int slotNumber)
+    {
+        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !_playerQuickslot || !_playerQuickslot.isActiveAndEnabled) return false;
+
+        ItemDefinition item = _playerQuickslot.GetItem(slotNumber);
+        if (!item || GetConsumableCount(item) <= 0) return false;
+
+        // 소모로 목록 인덱스가 바뀔 수 있으므로 등록된 Definition의 현재 보유 위치를 다시 확인한다.
+        IReadOnlyList<ItemDefinition> items = GetInventoryItems(ItemType.Consumable);
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (items[i] == item) return TryUseItem(i, item);
+        }
+
+        return false;
+    }
+
+    private void HandleQuickslotPressed(int slotNumber)
+    {
+        TryUseQuickslot(slotNumber);
     }
 
     public int GetQuickslotNumber(ItemDefinition item)
@@ -673,7 +887,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     {
         if (!isActiveAndEnabled || !_playerStat || !_playerInventory || !item || item.BasePrice < 0) return false;
 
-        // 결제 전에 보유 처리 담당과 아이템 종류를 확정한다. Inventory는 PlayerStat을 직접 참조하지 않는다.
+        // 최대 보유 수량을 포함해 추가 가능 여부를 먼저 확인한 뒤 결제한다. Inventory는 PlayerStat을 직접 참조하지 않는다.
         PlayerInventory inventory = _playerInventory;
         if (!inventory.TryPrepareItemAddition(item, out ItemType itemType) || !TrySpendMoney(item.BasePrice)) return false;
 
@@ -686,6 +900,16 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     {
         // 외부에 보유 변경을 알리기 전에 장착 장비와 유물의 최종 스탯을 먼저 반영한다.
         if (itemType == ItemType.Relic) RefreshItemStatModifiers();
+
+        if (itemType == ItemType.Consumable && _playerQuickslot)
+        {
+            // 마지막 소모품을 사용한 경로와 관계없이 등록을 해제해 HUD와 인벤토리의 아이콘을 함께 비운다.
+            for (int slotNumber = 1; slotNumber <= PlayerQuickslot.SlotCount; slotNumber++)
+            {
+                ItemDefinition item = _playerQuickslot.GetItem(slotNumber);
+                if (item && GetConsumableCount(item) <= 0) _playerQuickslot.TryUnregister(item);
+            }
+        }
 
         // 기존 UI와 HUD가 하위 컴포넌트를 직접 구독하지 않도록 변경 알림을 중개한다.
         InventoryChanged?.Invoke(itemType);
@@ -1007,9 +1231,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandlePlayerStatsChanged(PlayerStatSnapshot stats)
     {
+        if (stats.CurrentHealth <= 0f)
+        {
+            HandleDied();
+            // 사망 중 시간제 보정 해제가 추가 알림을 발생시켜도 이전 버프 수치로 UI를 덮어쓰지 않는다.
+            stats = _playerStat.CurrentStats;
+        }
         // UI 등에 알리기 전에 계산된 최종값을 하위 컴포넌트에 먼저 전달한다.
         ApplyMovementStats(stats);
-        if (stats.CurrentHealth <= 0f) HandleDied();
         // 플레이어 하위 컴포넌트의 변경 알림을 UI가 직접 구독하지 않도록 중개한다.
         PlayerStatsChanged?.Invoke(stats);
     }

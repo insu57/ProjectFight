@@ -33,6 +33,38 @@ public sealed class PlayerInventory : MonoBehaviour
         return item && item.ItemType == ItemType.Consumable && _consumableItemCounts.TryGetValue(item, out int count) ? count : 0;
     }
 
+    public bool IsConsumableStackFull(ItemDefinition item)
+    {
+        // 장비와 유물은 개별 항목으로 보관하며 소모품에만 종류별 보유 상한을 적용한다.
+        return item && item.ItemType == ItemType.Consumable && GetConsumableCount(item) >= Mathf.Max(1, item.MaxStackCount);
+    }
+
+    internal bool TryConsumeConsumable(int inventoryIndex, ItemDefinition expectedItem)
+    {
+        if (!isActiveAndEnabled || !expectedItem || expectedItem.ItemType != ItemType.Consumable
+            || inventoryIndex < 0 || inventoryIndex >= _consumableItems.Count || _consumableItems[inventoryIndex] != expectedItem) return false;
+        if (!_consumableItemCounts.TryGetValue(expectedItem, out int count) || count <= 0) return false;
+
+        // 효과 알림보다 먼저 1개를 확보해 같은 보유분이 중복 사용되지 않도록 한다.
+        if (count > 1)
+        {
+            _consumableItemCounts[expectedItem] = count - 1;
+        }
+        else
+        {
+            _consumableItemCounts.Remove(expectedItem);
+            _consumableItems.RemoveAt(inventoryIndex);
+        }
+
+        return true;
+    }
+
+    internal void NotifyConsumableCountChanged()
+    {
+        // Manager가 효과 실행까지 마친 뒤 목록과 능력치가 모두 반영된 상태를 UI에 전달한다.
+        InventoryChanged?.Invoke(ItemType.Consumable);
+    }
+
     public ItemDefinition GetEquippedItem(EquipmentSlot equipmentSlot)
     {
         int slotIndex = (int)equipmentSlot;
@@ -83,8 +115,8 @@ public sealed class PlayerInventory : MonoBehaviour
     internal bool TryPrepareItemAddition(ItemDefinition item, out ItemType itemType)
     {
         itemType = item ? item.ItemType : default;
-        // 구매를 중개하는 Manager도 결제 전에 추가 가능 여부와 종류를 확정할 수 있게 한다.
-        return isActiveAndEnabled && item && GetInventoryList(itemType) != null;
+        // 구매를 중개하는 Manager도 결제 전에 최대 수량을 포함한 추가 가능 여부와 종류를 확정한다.
+        return isActiveAndEnabled && item && GetInventoryList(itemType) != null && !IsConsumableStackFull(item);
     }
 
     internal void CommitItemAddition(ItemDefinition item, ItemType itemType)

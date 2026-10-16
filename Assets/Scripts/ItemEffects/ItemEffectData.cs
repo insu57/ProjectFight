@@ -17,7 +17,7 @@ public enum ItemRecoveryTarget
     [InspectorName("에너지")] Energy = 1
 }
 
-// 동일 아이템의 동일 효과 항목을 다시 시작할 때 사용할 정책이며, 실행 상태는 런타임에서 관리한다.
+// 효과를 다시 시작할 때 사용할 정책이다. 중복 판정 기준은 각 효과의 런타임에서 정한다.
 public enum ItemEffectStackingPolicy
 {
     [InspectorName("지속시간 갱신")] RefreshDuration = 0,
@@ -104,7 +104,7 @@ public sealed class RecoveryOverTimeEffectData : ItemEffectData
     [SerializeField, Tooltip("매 회복 시점에 적용할 회복량입니다. MaxRatio는 해당 시점의 최대 체력 또는 최대 에너지 비율입니다.")]
     private ItemRecoveryAmount _amount = new(ItemRecoveryMode.Fixed, 5f);
 
-    [SerializeField, Tooltip("동일 아이템의 동일 효과를 재사용할 때 지속시간을 갱신하거나 각 사용을 별도로 중첩합니다.")]
+    [SerializeField, Tooltip("갱신은 같은 회복 대상(체력/에너지)의 갱신형 효과를 새 회복량·방식·간격·지속시간으로 교체합니다. 첫 회복은 새 간격 이후이며, 개별 중첩은 별도로 유지합니다.")]
     private ItemEffectStackingPolicy _stackingPolicy = ItemEffectStackingPolicy.RefreshDuration;
 
     public ItemRecoveryTarget Target => _target;
@@ -144,7 +144,7 @@ public sealed class TimedStatModifierEffectData : ItemEffectData
     [SerializeField, Tooltip("기본 스탯과 별도로 합산할 보정입니다. FlatAdd는 고정값, PercentAdd는 비율입니다.")]
     private StatModifier[] _statModifiers = Array.Empty<StatModifier>();
 
-    [SerializeField, Tooltip("동일 아이템의 동일 효과를 재사용할 때 지속시간을 갱신하거나 각 사용을 별도로 중첩합니다.")]
+    [SerializeField, Tooltip("갱신은 아이템과 관계없이 같은 스탯의 갱신형 보정 묶음(FlatAdd/PercentAdd)을 새 값과 지속시간으로 교체합니다. 다른 스탯과 개별 중첩 효과는 유지합니다.")]
     private ItemEffectStackingPolicy _stackingPolicy = ItemEffectStackingPolicy.RefreshDuration;
 
     public float Duration => _duration;
@@ -198,6 +198,27 @@ public sealed class AddMoneyEffectData : ItemEffectData
     public AddMoneyEffectData() { }
 
     public AddMoneyEffectData(int amount)
+    {
+        _amount = amount;
+    }
+
+    public override void Validate()
+    {
+        _amount = Mathf.Max(0, _amount);
+    }
+}
+
+[Serializable, ItemEffectName("경험치 지급")]
+public sealed class AddExperienceEffectData : ItemEffectData
+{
+    // 공유 데이터에는 지급량만 보관하고 레벨업과 초과 경험치 처리는 기존 플레이어 성장 경로에서 수행한다.
+    [SerializeField, Min(0)] private int _amount;
+
+    public int Amount => _amount;
+
+    public AddExperienceEffectData() { }
+
+    public AddExperienceEffectData(int amount)
     {
         _amount = amount;
     }

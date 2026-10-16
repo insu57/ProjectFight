@@ -24,7 +24,7 @@ MonoBehaviour:
   _statModifiers:
   - _stat: 15
     _operation: 0
-    _value: 1
+    _value: 0.2
   _useEffectData: []
   _acquireEffectData: []
   _passiveEffectData: []

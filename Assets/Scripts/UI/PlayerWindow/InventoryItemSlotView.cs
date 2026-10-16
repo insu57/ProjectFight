@@ -281,14 +281,12 @@ public sealed class InventoryItemSlotView : PoolableObject, IPointerEnterHandler
             return;
         }
 
-        // 장착은 소유 그리드와 InventoryView를 통해 PlayerManager에 전달한다.
+        // 장착과 사용은 소유 그리드와 InventoryView를 통해 PlayerManager에 전달한다.
         switch (item.ItemType)
         {
             case ItemType.Equipment:
-                Interacted?.Invoke(this);
-                break;
             case ItemType.Consumable:
-                Debug.Log("사용", this);
+                Interacted?.Invoke(this);
                 break;
         }
     }

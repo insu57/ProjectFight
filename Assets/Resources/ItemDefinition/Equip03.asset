@@ -21,7 +21,10 @@ MonoBehaviour:
   <Rarity>k__BackingField: 0
   <BasePrice>k__BackingField: 0
   _maxStackCount: 1
-  _statModifiers: []
+  _statModifiers:
+  - _stat: 2
+    _operation: 0
+    _value: 50
   _useEffectData: []
   _acquireEffectData: []
   _passiveEffectData: []

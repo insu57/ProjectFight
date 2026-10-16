@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -20,6 +21,10 @@ public sealed class StoreItemView : MonoBehaviour
     [SerializeField] private TMP_Text _itemPriceTxt;
 
     private UnityAction _clickHandler;
+
+    // 상품을 다시 표시할 때 효과·설명과 숫자 포맷 버퍼를 재사용한다.
+    private readonly StringBuilder _descriptionBuilder = new(256);
+    private readonly char[] _descriptionNumberBuffer = new char[64];
 
     public ItemDefinition Item { get; private set; }
     public Button Button => _button;
@@ -103,7 +108,9 @@ public sealed class StoreItemView : MonoBehaviour
 
         if (_descriptionText)
         {
-            _descriptionText.SetText(item ? item.ItemDescription : string.Empty);
+            ItemDisplayUtility.BuildItemDescription(_descriptionBuilder, item, _descriptionNumberBuffer);
+            if (!_descriptionText.richText) _descriptionText.richText = true;
+            _descriptionText.SetText(_descriptionBuilder);
         }
 
         if (_itemPriceTxt)
