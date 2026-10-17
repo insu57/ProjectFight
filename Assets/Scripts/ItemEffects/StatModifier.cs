@@ -24,7 +24,12 @@ public enum ItemStatType
     MoveSpeedMultiplier = 15,
     // FlatAdd는 공격 고유의 강인도 피해에 더하고, PercentAdd는 합산한 전체 피해에 적용한다. 기본값은 0이다.
     PoiseDamage = 16,
-    GuardPoiseDamage = 17
+    GuardPoiseDamage = 17,
+    // 공격별 기본 에너지 회복량에 더하며, 비율 보정은 기본 회복량까지 포함한 합계에 적용한다.
+    EnergyRecoveryOnHit = 18,
+    // 가드와 일반 피격의 회복량은 별도 스탯으로 관리하여 각각 보정한다.
+    EnergyRecoveryOnGuard = 19,
+    EnergyRecoveryOnDamageTaken = 20
 }
 
 public enum StatModifierOperation

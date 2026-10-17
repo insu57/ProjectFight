@@ -14,9 +14,13 @@ internal struct PlayerStatSnapshotData
     public float DefensePower;
     public float PoiseDamage;
     public float GuardPoiseDamage;
+    public float EnergyRecoveryOnHit;
+    public float EnergyRecoveryOnGuard;
+    public float EnergyRecoveryOnDamageTaken;
     public AttackDamageModifier AttackPowerModifier;
     public AttackDamageModifier PoiseDamageModifier;
     public AttackDamageModifier GuardPoiseDamageModifier;
+    public AttackDamageModifier EnergyRecoveryOnHitModifier;
     public float MaxEnergy;
     public float CurrentEnergy;
 
@@ -51,6 +55,9 @@ public readonly struct PlayerStatSnapshot
     public float DefensePower => _data.DefensePower;
     public float PoiseDamage => _data.PoiseDamage;
     public float GuardPoiseDamage => _data.GuardPoiseDamage;
+    public float EnergyRecoveryOnHit => _data.EnergyRecoveryOnHit;
+    public float EnergyRecoveryOnGuard => _data.EnergyRecoveryOnGuard;
+    public float EnergyRecoveryOnDamageTaken => _data.EnergyRecoveryOnDamageTaken;
     // 표시용 최종 스탯과 별도로 공격 기본 피해까지 배율을 적용할 계산값을 제공한다.
     public AttackDamageModifier AttackPowerModifier => _data.AttackPowerModifier;
     public AttackDamageModifier PoiseDamageModifier => _data.PoiseDamageModifier;
@@ -73,6 +80,12 @@ public readonly struct PlayerStatSnapshot
     public int Money => _data.Money;
     public int MaxDodgeCount => _data.MaxDodgeCount;
     public float MoveSpeedMultiplier => _data.MoveSpeedMultiplier;
+
+    public float CalculateEnergyRecoveryOnHit(float attackBaseRecovery)
+    {
+        // 공격 기본 회복량도 스냅샷의 고정·비율 보정에 포함하며 표시용 추가 스탯과 구분한다.
+        return _data.EnergyRecoveryOnHitModifier.ApplyTo(attackBaseRecovery);
+    }
 
     internal PlayerStatSnapshot(PlayerStatSnapshotData data)
     {
@@ -115,6 +128,11 @@ public class PlayerStat : MonoBehaviour
     // 각 공격의 기본 강인도 피해에 더할 기본값이며 PercentAdd는 공격 기본 피해까지 합산한 뒤 적용한다.
     [SerializeField, Min(0f)] private float _basePoiseDamage;
     [SerializeField, Min(0f)] private float _baseGuardPoiseDamage;
+    // 각 공격의 기본 회복량에 더할 플레이어 스탯이며 아이템 보정과 별도로 보관한다.
+    [SerializeField, Min(0f)] private float _baseEnergyRecoveryOnHit;
+    // 가드 보상을 피격보다 높게 조정할 수 있도록 두 기본 회복량을 독립적으로 보관한다.
+    [SerializeField, Min(0f)] private float _baseEnergyRecoveryOnGuard;
+    [SerializeField, Min(0f)] private float _baseEnergyRecoveryOnDamageTaken;
     [SerializeField, Min(0f)] private float _baseMaxEnergy = 100f;
     [SerializeField, Min(0f)] private float _currentEnergy;
 
@@ -156,6 +174,7 @@ public class PlayerStat : MonoBehaviour
     private AttackDamageModifier _attackPowerModifier;
     private AttackDamageModifier _poiseDamageModifier;
     private AttackDamageModifier _guardPoiseDamageModifier;
+    private AttackDamageModifier _energyRecoveryOnHitModifier;
     private bool _hasCalculatedStats;
 
     // 저장된 계산 배열이 이전 스탯 개수여도 최초 조회에서 다시 준비한다.
@@ -179,9 +198,13 @@ public class PlayerStat : MonoBehaviour
             DefensePower = GetFinalStat(ItemStatType.DefensePower),
             PoiseDamage = GetFinalStat(ItemStatType.PoiseDamage),
             GuardPoiseDamage = GetFinalStat(ItemStatType.GuardPoiseDamage),
+            EnergyRecoveryOnHit = GetFinalStat(ItemStatType.EnergyRecoveryOnHit),
+            EnergyRecoveryOnGuard = GetFinalStat(ItemStatType.EnergyRecoveryOnGuard),
+            EnergyRecoveryOnDamageTaken = GetFinalStat(ItemStatType.EnergyRecoveryOnDamageTaken),
             AttackPowerModifier = _attackPowerModifier,
             PoiseDamageModifier = _poiseDamageModifier,
             GuardPoiseDamageModifier = _guardPoiseDamageModifier,
+            EnergyRecoveryOnHitModifier = _energyRecoveryOnHitModifier,
             MaxEnergy = GetFinalStat(ItemStatType.MaxEnergy),
             CurrentEnergy = _currentEnergy,
             MaxPoise = GetFinalStat(ItemStatType.MaxPoise),
@@ -353,7 +376,7 @@ public class PlayerStat : MonoBehaviour
         {
             ItemStatType stat = StatTypes[i];
             float baseValue = GetBaseStatValue(stat);
-            // 피해 스탯은 표시값이 같아도 공격 고유 피해에 적용할 배율 변경을 따로 감지한다.
+            // 공격별 기본값에 적용할 보정은 표시 스탯이 같아도 배율 변경을 따로 감지한다.
             switch (stat)
             {
                 case ItemStatType.AttackPower:
@@ -364,6 +387,10 @@ public class PlayerStat : MonoBehaviour
                     break;
                 case ItemStatType.GuardPoiseDamage:
                     changed |= SetFinalDamageStat(stat, baseValue, ref _guardPoiseDamageModifier);
+                    break;
+                case ItemStatType.EnergyRecoveryOnHit:
+                    // 회복도 공격 기본값을 포함한 합계에 배율을 적용하므로 같은 계산값 형식을 재사용한다.
+                    changed |= SetFinalDamageStat(stat, baseValue, ref _energyRecoveryOnHitModifier);
                     break;
                 default:
                     changed |= SetFinalStat(stat, baseValue);
@@ -396,6 +423,9 @@ public class PlayerStat : MonoBehaviour
             ItemStatType.MoveSpeedMultiplier => 1f,
             ItemStatType.PoiseDamage => _basePoiseDamage,
             ItemStatType.GuardPoiseDamage => _baseGuardPoiseDamage,
+            ItemStatType.EnergyRecoveryOnHit => _baseEnergyRecoveryOnHit,
+            ItemStatType.EnergyRecoveryOnGuard => _baseEnergyRecoveryOnGuard,
+            ItemStatType.EnergyRecoveryOnDamageTaken => _baseEnergyRecoveryOnDamageTaken,
             // 새 스탯의 기본값 설정을 빠뜨리면 조용히 0으로 처리하지 않고 알린다.
             _ => throw new ArgumentOutOfRangeException(nameof(stat), stat, "스탯 기본값을 지정해야 합니다.")
         };
@@ -433,7 +463,7 @@ public class PlayerStat : MonoBehaviour
     private bool SetFinalDamageStat(ItemStatType stat, float baseValue, ref AttackDamageModifier damageModifier)
     {
         GetStatCalculation(stat, baseValue, out float valueBeforeMultiplier, out float multiplier);
-        // 추가 스탯이 0이어도 배율은 공격 기본 피해를 바꾸므로 계산값의 변경도 알린다.
+        // 추가 스탯이 0이어도 배율은 공격 기본 피해·회복량을 바꾸므로 계산값의 변경도 알린다.
         bool changed = damageModifier.AdditiveValue != valueBeforeMultiplier || damageModifier.Multiplier != multiplier;
         damageModifier = new AttackDamageModifier(valueBeforeMultiplier, multiplier);
         float finalValue = Mathf.Max(0f, valueBeforeMultiplier * multiplier);

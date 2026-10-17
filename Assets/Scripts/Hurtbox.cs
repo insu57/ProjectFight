@@ -8,16 +8,27 @@ public readonly struct DamageInfo
     public float HitStopDuration { get; }
     public float PoiseDamage { get; }
     public float GuardPoiseDamage { get; }
+    public float EnergyRecoveryOnHit { get; }
 
     public bool HasDamage => Damage > 0f || PoiseDamage > 0f || GuardPoiseDamage > 0f;
 
-    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f)
+    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f, float energyRecoveryOnHit = 0f)
     {
         Attacker = attacker;
         Damage = Mathf.Max(0f, damage);
         HitStopDuration = hitStopDuration;
         PoiseDamage = Mathf.Max(0f, poiseDamage);
         GuardPoiseDamage = Mathf.Max(0f, guardPoiseDamage);
+        EnergyRecoveryOnHit = Mathf.Max(0f, energyRecoveryOnHit);
+    }
+
+    public void ConfirmHit(bool wasBlocked)
+    {
+        // 충돌만으로 발동하지 않고 대상 Manager가 유효한 일반 피격 또는 가드를 처리한 뒤 확정한다.
+        if (Attacker && Attacker.isActiveAndEnabled && Attacker is IAttackHitReceiver receiver)
+        {
+            receiver.OnAttackHit(EnergyRecoveryOnHit, wasBlocked);
+        }
     }
 
     public void ApplyHitStop(IHitStopReceiver target)

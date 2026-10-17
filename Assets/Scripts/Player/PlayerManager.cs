@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public class PlayerManager : MonoBehaviour, IHitStopReceiver
+public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 {
     private const int EquipmentSlotCount = (int)EquipmentSlot.Shoes + 1;
 
@@ -224,6 +224,16 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         RefreshInteractionTarget();
     }
 
+    public void OnAttackHit(float energyRecoveryOnHit, bool wasBlocked)
+    {
+        if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f) return;
+        if (_playerState && _playerState.ActionState == PlayerActionState.Dead) return;
+        if (energyRecoveryOnHit <= 0f || float.IsNaN(energyRecoveryOnHit) || float.IsInfinity(energyRecoveryOnHit)) return;
+
+        // 확정된 일반 타격은 전량, 가드로 막힌 타격은 최종 회복량의 50%를 회복한다.
+        _playerStat.RestoreEnergy(energyRecoveryOnHit * (wasBlocked ? 0.5f : 1f));
+    }
+
     private void HandlePlayerActionStateChanged(PlayerActionState actionState)
     {
         if (actionState == PlayerActionState.Dead)
@@ -253,7 +263,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
     {
         if (!isActiveAndEnabled || !_playerStat || !_playerState) return;
         if (_playerState.ActionState == PlayerActionState.Dead) return;
-        if (_playerStat.CurrentStats.CurrentHealth <= 0f) return;
+        // 피격 직전의 기본값·아이템 보정이 반영된 회복량을 해당 타격 전체에서 사용한다.
+        PlayerStatSnapshot stats = _playerStat.CurrentStats;
+        if (stats.CurrentHealth <= 0f) return;
         if (!damageInfo.HasDamage) return;
 
         if (CanBlock(damageInfo))
@@ -271,6 +283,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
                 BeginPoiseReaction(true, damageInfo.Attacker);
             }
 
+            // 가드 브레이크도 가드로 막은 타격이므로 가드 회복량만 적용한다.
+            RestoreEnergyOnReceivedHit(stats.EnergyRecoveryOnGuard);
+            damageInfo.ConfirmHit(true);
             return;
         }
 
@@ -294,10 +309,24 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
                 BeginPoiseReaction(false, damageInfo.Attacker);
             }
 
+            // 일반 피격에서 살아남은 경우에만 피격 회복량을 적용한다.
+            RestoreEnergyOnReceivedHit(stats.EnergyRecoveryOnDamageTaken);
+            damageInfo.ConfirmHit(false);
             return;
         }
 
         HandleDied();
+        damageInfo.ConfirmHit(false);
+    }
+
+    private void RestoreEnergyOnReceivedHit(float recoveryAmount)
+    {
+        if (recoveryAmount <= 0f || float.IsNaN(recoveryAmount) || float.IsInfinity(recoveryAmount)) return;
+        // 피해·경직 알림 중 사망하거나 비활성화된 경우에도 회복을 지급하지 않는다.
+        if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f) return;
+        if (_playerState && _playerState.ActionState == PlayerActionState.Dead) return;
+
+        _playerStat.RestoreEnergy(recoveryAmount);
     }
 
     private void HandleDied()
@@ -647,7 +676,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         bool hasApplicableEffect = false;
         for (int i = 0; i < effects.Count; i++)
         {
-            if (!CanApplyUseEffect(effects[i])) continue;
+            if (!CanApplyItemEffect(effects[i])) continue;
 
             hasApplicableEffect = true;
             break;
@@ -660,7 +689,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         _isUsingItem = true;
         try
         {
-            ApplyUseEffects(expectedItem, effects);
+            ApplyItemEffects(expectedItem, effects);
         }
         finally
         {
@@ -678,8 +707,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         return true;
     }
 
-    private bool CanApplyUseEffect(ItemEffectData effect)
+    private bool CanApplyItemEffect(ItemEffectData effect)
     {
+        // 사용과 획득이 같은 실행 조건을 공유하며, 능력치 컴포넌트가 없으면 효과만 건너뛴다.
+        if (!_playerStat) return false;
+
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
         if (stats.CurrentHealth <= 0f) return false;
 
@@ -701,13 +733,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
         };
     }
 
-    private void ApplyUseEffects(ItemDefinition item, IReadOnlyList<ItemEffectData> effects)
+    private void ApplyItemEffects(ItemDefinition item, IReadOnlyList<ItemEffectData> effects)
     {
         for (int i = 0; i < effects.Count; i++)
         {
             ItemEffectData effect = effects[i];
             // 앞 효과가 최대치에 도달했을 수 있으므로 각 효과 직전에 현재 상태를 확인한다.
-            if (!CanApplyUseEffect(effect)) continue;
+            if (!CanApplyItemEffect(effect)) continue;
 
             switch (effect)
             {
@@ -934,6 +966,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
 
     private void HandleItemAcquired(ItemDefinition item)
     {
+        if (item && item.ItemType == ItemType.Relic)
+        {
+            // 보유 스탯이 반영된 뒤 실제 획득마다 한 번 실행한다. 같은 유물의 추가 획득도 별도로 발동한다.
+            ApplyItemEffects(item, item.AcquireEffects);
+        }
+
+        // 획득 효과까지 반영한 상태를 HUD 등 외부 구독자에게 전달한다.
         ItemAcquired?.Invoke(item);
     }
 
@@ -1102,7 +1141,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver
             if (_playerStat)
             {
                 PlayerStatSnapshot stats = _playerStat.CurrentStats;
-                _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier, stats.GuardPoiseDamageModifier);
+                _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier, stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
             }
             else _attackHitbox.BeginAttack(attackDefinition);
         }

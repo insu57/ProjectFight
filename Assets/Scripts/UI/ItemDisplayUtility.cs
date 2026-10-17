@@ -14,7 +14,9 @@ public static class ItemDisplayUtility
         if (!item) return;
 
         AppendStatModifiersDescription(builder, item.StatModifiers, numberBuffer);
-        if (item.ItemType == ItemType.Consumable) AppendUseEffectsDescription(builder, item.UseEffects, numberBuffer);
+        if (item.ItemType == ItemType.Consumable) AppendItemEffectsDescription(builder, item.UseEffects, numberBuffer);
+        // 유물 획득 효과는 보유 스탯과 함께 표시하되, 일회성 발동 시점을 각 줄에 명시한다.
+        else if (item.ItemType == ItemType.Relic) AppendItemEffectsDescription(builder, item.AcquireEffects, numberBuffer, "획득 시 ");
         if (builder.Length > 0)
         {
             // 효과에만 밝은 노란색을 적용하고 닫는 태그 뒤에는 TMP의 기본 글자색을 사용한다.
@@ -30,7 +32,7 @@ public static class ItemDisplayUtility
         }
     }
 
-    public static void AppendStatModifiersDescription(StringBuilder builder, IReadOnlyList<StatModifier> modifiers, char[] numberBuffer, float duration = 0f)
+    public static void AppendStatModifiersDescription(StringBuilder builder, IReadOnlyList<StatModifier> modifiers, char[] numberBuffer, float duration = 0f, string prefix = null)
     {
         if (modifiers == null) return;
 
@@ -42,6 +44,7 @@ public static class ItemDisplayUtility
             if (modifier.Operation != StatModifierOperation.FlatAdd && modifier.Operation != StatModifierOperation.PercentAdd) continue;
 
             if (builder.Length > 0) builder.Append('\n');
+            builder.Append(prefix);
             if (duration > 0f)
             {
                 // 여러 스탯을 보정하는 효과도 각 줄에서 유지 시간을 확인할 수 있게 한다.
@@ -59,47 +62,48 @@ public static class ItemDisplayUtility
         }
     }
 
-    private static void AppendUseEffectsDescription(StringBuilder builder, IReadOnlyList<ItemEffectData> effects, char[] numberBuffer)
+    private static void AppendItemEffectsDescription(StringBuilder builder, IReadOnlyList<ItemEffectData> effects, char[] numberBuffer, string prefix = null)
     {
         if (effects == null) return;
 
-        // 공유 데이터를 실행하거나 변경하지 않고 등록 순서대로 사용 효과를 설명한다.
+        // 사용·획득 효과는 같은 수치 표기를 사용하며 공유 데이터를 변경하지 않고 등록 순서대로 설명한다.
         for (int i = 0; i < effects.Count; i++)
         {
             switch (effects[i])
             {
                 case RestoreHealthEffectData health:
-                    AppendRecoveryDescription(builder, "체력", health.Amount, numberBuffer);
+                    AppendRecoveryDescription(builder, "체력", health.Amount, numberBuffer, prefix: prefix);
                     break;
                 case RestoreEnergyEffectData energy:
-                    AppendRecoveryDescription(builder, "에너지", energy.Amount, numberBuffer);
+                    AppendRecoveryDescription(builder, "에너지", energy.Amount, numberBuffer, prefix: prefix);
                     break;
                 case AddSkillPointsEffectData points:
-                    AppendGrantedAmountDescription(builder, "스킬 포인트", points.Amount, numberBuffer);
+                    AppendGrantedAmountDescription(builder, "스킬 포인트", points.Amount, numberBuffer, prefix);
                     break;
                 case AddMoneyEffectData money:
-                    AppendGrantedAmountDescription(builder, "돈", money.Amount, numberBuffer);
+                    AppendGrantedAmountDescription(builder, "돈", money.Amount, numberBuffer, prefix);
                     break;
                 case AddExperienceEffectData experience:
-                    AppendGrantedAmountDescription(builder, "경험치", experience.Amount, numberBuffer);
+                    AppendGrantedAmountDescription(builder, "경험치", experience.Amount, numberBuffer, prefix);
                     break;
                 // 시간 효과는 실제 시작 가능 판정과 맞춰 잘못된 시간·간격·대상의 설명을 건너뛴다.
                 case RecoveryOverTimeEffectData recovery when RecoveryOverTimeRuntime.CanStart(recovery):
-                    AppendRecoveryDescription(builder, recovery.Target == ItemRecoveryTarget.Health ? "체력" : "에너지", recovery.Amount, numberBuffer, recovery.Duration, recovery.Interval);
+                    AppendRecoveryDescription(builder, recovery.Target == ItemRecoveryTarget.Health ? "체력" : "에너지", recovery.Amount, numberBuffer, recovery.Duration, recovery.Interval, prefix);
                     break;
                 case TimedStatModifierEffectData timed when TimedStatModifierRuntime.CanStart(timed):
-                    AppendStatModifiersDescription(builder, timed.StatModifiers, numberBuffer, timed.Duration);
+                    AppendStatModifiersDescription(builder, timed.StatModifiers, numberBuffer, timed.Duration, prefix);
                     break;
             }
         }
     }
 
-    private static void AppendRecoveryDescription(StringBuilder builder, string targetName, ItemRecoveryAmount amount, char[] numberBuffer, float duration = 0f, float interval = 0f)
+    private static void AppendRecoveryDescription(StringBuilder builder, string targetName, ItemRecoveryAmount amount, char[] numberBuffer, float duration = 0f, float interval = 0f, string prefix = null)
     {
         if (amount.Value <= 0f || float.IsNaN(amount.Value) || float.IsInfinity(amount.Value)) return;
         if (amount.Mode != ItemRecoveryMode.Fixed && amount.Mode != ItemRecoveryMode.MaxRatio) return;
 
         if (builder.Length > 0) builder.Append('\n');
+        builder.Append(prefix);
         if (duration > 0f)
         {
             AppendDescriptionNumber(builder, duration, numberBuffer);
@@ -116,11 +120,12 @@ public static class ItemDisplayUtility
         builder.Append(isPercent ? "% 회복" : " 회복");
     }
 
-    private static void AppendGrantedAmountDescription(StringBuilder builder, string amountName, int amount, char[] numberBuffer)
+    private static void AppendGrantedAmountDescription(StringBuilder builder, string amountName, int amount, char[] numberBuffer, string prefix = null)
     {
         if (amount <= 0) return;
 
         if (builder.Length > 0) builder.Append('\n');
+        builder.Append(prefix);
         builder.Append(amountName).Append(" +");
         AppendDescriptionNumber(builder, amount, numberBuffer);
     }
@@ -161,6 +166,9 @@ public static class ItemDisplayUtility
             ItemStatType.MoveSpeedMultiplier => "이동 속도 배율",
             ItemStatType.PoiseDamage => "강인도 피해",
             ItemStatType.GuardPoiseDamage => "가드 강인도 피해",
+            ItemStatType.EnergyRecoveryOnHit => "타격 시 에너지 회복",
+            ItemStatType.EnergyRecoveryOnGuard => "가드 시 에너지 회복",
+            ItemStatType.EnergyRecoveryOnDamageTaken => "피격 시 에너지 회복",
             _ => string.Empty
         };
     }

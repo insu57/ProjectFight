@@ -360,6 +360,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
                 BeginPoiseReaction(true, damageInfo.Attacker);
             }
 
+            damageInfo.ConfirmHit(true);
             return;
         }
 
@@ -381,6 +382,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         }
 
         TryBeginMovementHitPause();
+        // 치명타로 적이 사망한 경우에도 이번에 확정된 타격의 회복량은 공격자에게 전달한다.
+        damageInfo.ConfirmHit(false);
     }
 
     private void TryBeginMovementHitPause()

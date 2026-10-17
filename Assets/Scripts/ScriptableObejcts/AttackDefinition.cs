@@ -12,6 +12,8 @@ public class AttackDefinition : ScriptableObject
     // 공격자 스탯과 아이템 보정을 적용하기 전의 강인도 감소량이다.
     [field: SerializeField, Min(0f)] public float BasePoiseDamage { get; private set; }
     [field: SerializeField, Min(0f)] public float BaseGuardPoiseDamage { get; private set; }
+    // 일반 타격에서 회복할 기본 에너지이며, 가드에 막히면 최종 회복량의 절반을 회복한다.
+    [field: SerializeField, Min(0f)] public float BaseEnergyRecoveryOnHit { get; private set; }
     // 타격 성공 시 공격자와 피격자에게 동일하게 적용할 정지 시간이다.
     [field: SerializeField, Min(0f)] public float HitStopDuration { get; private set; }
     [field: SerializeField, Min(0f)] public float TransitionDuration { get; private set; } = 0.1f;
@@ -39,6 +41,8 @@ public class AttackDefinition : ScriptableObject
     private void OnValidate()
     {
         AnimationSpeed = Mathf.Max(0.01f, AnimationSpeed);
+        BaseEnergyRecoveryOnHit = float.IsNaN(BaseEnergyRecoveryOnHit) || float.IsInfinity(BaseEnergyRecoveryOnHit)
+            ? 0f : Mathf.Max(0f, BaseEnergyRecoveryOnHit);
 
         // 입력 허용 시작, 연계 실행, 입력 허용 종료 순서가 뒤집히지 않도록 보정한다.
         ComboInputStartNormalizedTime = Mathf.Clamp01(ComboInputStartNormalizedTime);

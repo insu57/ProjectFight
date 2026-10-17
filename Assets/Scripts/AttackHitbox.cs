@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// 공격 기본 피해에 더할 수치와 전체 피해 배율을 함께 복사하며, 공격 도중 스탯이 바뀌어도 값이 유지된다.
+// 공격 기본 수치에 더할 값과 전체 배율을 함께 복사한다. 피해와 타격 회복량은 같은 합산 순서를 사용한다.
 public readonly struct AttackDamageModifier
 {
     public float AdditiveValue { get; }
@@ -36,6 +36,7 @@ public sealed class AttackHitbox : MonoBehaviour
     private float _damage;
     private float _poiseDamage;
     private float _guardPoiseDamage;
+    private float _energyRecoveryOnHit;
 
     private void Awake()
     {
@@ -73,10 +74,12 @@ public sealed class AttackHitbox : MonoBehaviour
     public void BeginAttack(AttackDefinition attackDefinition, float attackPower = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f)
     {
         // 적 등 기존 호출은 추가 피해만 전달하므로 배율 1로 기존 동작을 유지한다.
-        BeginAttack(attackDefinition, new AttackDamageModifier(Mathf.Max(0f, attackPower), 1f), new AttackDamageModifier(Mathf.Max(0f, poiseDamage), 1f), new AttackDamageModifier(Mathf.Max(0f, guardPoiseDamage), 1f));
+        BeginAttack(attackDefinition, new AttackDamageModifier(Mathf.Max(0f, attackPower), 1f),
+            new AttackDamageModifier(Mathf.Max(0f, poiseDamage), 1f), new AttackDamageModifier(Mathf.Max(0f, guardPoiseDamage), 1f));
     }
 
-    public void BeginAttack(AttackDefinition attackDefinition, AttackDamageModifier attackPower, AttackDamageModifier poiseDamage, AttackDamageModifier guardPoiseDamage)
+    public void BeginAttack(AttackDefinition attackDefinition, AttackDamageModifier attackPower,
+        AttackDamageModifier poiseDamage, AttackDamageModifier guardPoiseDamage, float energyRecoveryOnHit = 0f)
     {
         // 콤보 전환 시 이전 공격의 박스를 먼저 끈다.
         EndAttack();
@@ -89,6 +92,8 @@ public sealed class AttackHitbox : MonoBehaviour
         _damage = attackPower.ApplyTo(attackDefinition.BaseDamage);
         _poiseDamage = poiseDamage.ApplyTo(attackDefinition.BasePoiseDamage);
         _guardPoiseDamage = guardPoiseDamage.ApplyTo(attackDefinition.BaseGuardPoiseDamage);
+        // PlayerManager에서 확정한 회복량을 복사해 공격 도중 장비나 스탯이 변해도 유지한다.
+        _energyRecoveryOnHit = Mathf.Max(0f, energyRecoveryOnHit);
         _hitbox.size = attackDefinition.HitboxSize;
         _hitbox.center = attackDefinition.HitboxOffset;
     }
@@ -118,6 +123,7 @@ public sealed class AttackHitbox : MonoBehaviour
         _damage = 0f;
         _poiseDamage = 0f;
         _guardPoiseDamage = 0f;
+        _energyRecoveryOnHit = 0f;
         _hitOwnerIds.Clear();
 
         if (_hitbox)
@@ -140,7 +146,8 @@ public sealed class AttackHitbox : MonoBehaviour
 
         if (!_hitOwnerIds.Add(ownerId)) return;
 
-        DamageInfo damageInfo = new DamageInfo(_owner, _damage, _currentAttack.HitStopDuration, _poiseDamage, _guardPoiseDamage);
+        DamageInfo damageInfo = new DamageInfo(_owner, _damage, _currentAttack.HitStopDuration,
+            _poiseDamage, _guardPoiseDamage, _energyRecoveryOnHit);
         hurtbox.ReceiveDamage(damageInfo);
     }
 }
