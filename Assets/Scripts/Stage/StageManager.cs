@@ -30,6 +30,8 @@ public class StageManager : MonoBehaviour
     private readonly HashSet<StageNode> _visitedRooms = new();
     // 방문 기록과 전투 시작 기록을 분리해 재입장이나 순간이동에도 편성을 다시 뽑지 않는다.
     private readonly Dictionary<Room, RoomEncounterRuntime> _roomEncounters = new();
+    private readonly HashSet<Room> _clearedEncounterRooms = new();
+    private readonly List<Room> _pendingRoomClearNotifications = new(4);
     // 런타임에 추가한 항목만 추적하여 스테이지 갱신 시 사전 지정 상자를 보존한다.
     private readonly List<RewardChest> _runtimeRewardChests = new();
     private readonly List<Store> _runtimeStores = new();
@@ -130,12 +132,21 @@ public class StageManager : MonoBehaviour
         if (deltaTime <= 0f) return;
 
         // Dictionary의 값 형식 열거자를 사용하여 매 프레임 임시 컬렉션을 만들지 않는다.
+        _pendingRoomClearNotifications.Clear();
         foreach (KeyValuePair<Room, RoomEncounterRuntime> entry in _roomEncounters)
         {
             entry.Value.Tick(deltaTime);
             // 생존 적이 잠시 0이어도 다음 그룹이나 미스폰 적이 남아 있으면 문을 잠근다.
             if (entry.Key) entry.Key.SetDoorOpeningBlocked(!entry.Value.IsComplete);
+            if (entry.Key && entry.Value.IsComplete && _clearedEncounterRooms.Add(entry.Key)) _pendingRoomClearNotifications.Add(entry.Key);
         }
+        // 패시브 알림에서 스테이지가 변경되어도 Dictionary 순회가 중단되지 않게 밖에서 전달한다.
+        for (int i = 0; i < _pendingRoomClearNotifications.Count; i++)
+        {
+            Room room = _pendingRoomClearNotifications[i];
+            if (room && _roomEncounters.ContainsKey(room) && _playerManager) _playerManager.NotifyRoomCleared();
+        }
+        _pendingRoomClearNotifications.Clear();
     }
 
     private void OnDestroy()
@@ -153,6 +164,8 @@ public class StageManager : MonoBehaviour
         }
 
         _roomEncounters.Clear();
+        _clearedEncounterRooms.Clear();
+        _pendingRoomClearNotifications.Clear();
     }
 
     private void LoadItems()

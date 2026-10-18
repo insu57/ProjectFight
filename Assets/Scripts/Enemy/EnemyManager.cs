@@ -642,6 +642,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         {
             rewardRecipient.AddExperience(experienceReward);
             rewardRecipient.AddMoney(moneyReward);
+            // 보상 유무와 관계없이 이번 사망의 실제 처치자에게 한 번만 패시브 이벤트를 전달한다.
+            rewardRecipient.NotifyEnemyKilled();
         }
         // 생존 적 수는 사망 연출과 풀 반환을 기다리지 않고 실제 사망 시점에 감소한다.
         Died?.Invoke(this);

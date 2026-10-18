@@ -169,6 +169,7 @@ public class PlayerStat : MonoBehaviour
     private readonly StatModifierTotals[] _relicStatModifiers = new StatModifierTotals[ItemStatCount];
     private readonly StatModifierTotals[] _equipmentStatModifiers = new StatModifierTotals[ItemStatCount];
     private readonly StatModifierTotals[] _timedStatModifiers = new StatModifierTotals[ItemStatCount];
+    private readonly StatModifierTotals[] _passiveStatModifiers = new StatModifierTotals[ItemStatCount];
     private readonly StatModifierTotals[] _modifierTotalsBuffer = new StatModifierTotals[ItemStatCount];
     [SerializeField] private float[] _finalStats = new float[ItemStatCount];
     private AttackDamageModifier _attackPowerModifier;
@@ -260,11 +261,14 @@ public class PlayerStat : MonoBehaviour
         if (RecalculateStats()) NotifyStatsChanged();
     }
 
-    public void RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems)
+    public void RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems,
+        IReadOnlyList<StatModifier> passiveModifiers = null)
     {
         // 두 출처의 합계를 모두 준비한 뒤 한 번 계산하여 중간 최대치로 현재량이 제한되지 않게 한다.
         bool modifiersChanged = RebuildStatModifierTotals(relicItems, ItemType.Relic, _relicStatModifiers);
         modifiersChanged |= RebuildStatModifierTotals(equippedItems, ItemType.Equipment, _equipmentStatModifiers);
+        // 장비 교체 시 이전 조건부 보정도 함께 교체해 중간 최대치로 현재량이 잘리지 않게 한다.
+        if (passiveModifiers != null) modifiersChanged |= RebuildModifierTotals(passiveModifiers, _passiveStatModifiers);
         if (modifiersChanged && RecalculateStats())
         {
             NotifyStatsChanged();
@@ -273,12 +277,23 @@ public class PlayerStat : MonoBehaviour
 
     public void RebuildTimedStatModifiers(IReadOnlyList<StatModifier> modifiers)
     {
+        if (RebuildModifierTotals(modifiers, _timedStatModifiers) && RecalculateStats()) NotifyStatsChanged();
+    }
+
+    public void RebuildPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers)
+    {
+        // 패시브 보정은 시간제 버프와 별도 합계로 유지하여 서로 해제하지 않는다.
+        if (RebuildModifierTotals(modifiers, _passiveStatModifiers) && RecalculateStats()) NotifyStatsChanged();
+    }
+
+    private bool RebuildModifierTotals(IReadOnlyList<StatModifier> modifiers, StatModifierTotals[] totals)
+    {
         if (!HasCalculatedStats)
         {
             RecalculateStats();
         }
 
-        // 버퍼에서 새 합계를 완성한 뒤 비교하므로 시간만 갱신한 버프는 재계산하지 않는다.
+        // 버퍼에서 새 합계를 완성한 뒤 비교하므로 같은 보정은 재계산하지 않는다.
         Array.Clear(_modifierTotalsBuffer, 0, _modifierTotalsBuffer.Length);
         if (modifiers != null)
         {
@@ -288,10 +303,7 @@ public class PlayerStat : MonoBehaviour
             }
         }
 
-        if (CommitModifierTotals(_timedStatModifiers) && RecalculateStats())
-        {
-            NotifyStatsChanged();
-        }
+        return CommitModifierTotals(totals);
     }
 
     private bool RebuildStatModifierTotals(IReadOnlyList<ItemDefinition> items, ItemType itemType, StatModifierTotals[] totals)
@@ -453,8 +465,9 @@ public class PlayerStat : MonoBehaviour
         StatModifierTotals relicModifiers = _relicStatModifiers[statIndex];
         StatModifierTotals equipmentModifiers = _equipmentStatModifiers[statIndex];
         StatModifierTotals timedModifiers = _timedStatModifiers[statIndex];
-        float flatAdd = relicModifiers.FlatAdd + equipmentModifiers.FlatAdd + timedModifiers.FlatAdd;
-        float percentAdd = relicModifiers.PercentAdd + equipmentModifiers.PercentAdd + timedModifiers.PercentAdd;
+        StatModifierTotals passiveModifiers = _passiveStatModifiers[statIndex];
+        float flatAdd = relicModifiers.FlatAdd + equipmentModifiers.FlatAdd + timedModifiers.FlatAdd + passiveModifiers.FlatAdd;
+        float percentAdd = relicModifiers.PercentAdd + equipmentModifiers.PercentAdd + timedModifiers.PercentAdd + passiveModifiers.PercentAdd;
         // 비율은 0.2를 20%로 더하며, -100% 아래에서도 배율이 음수로 뒤집히지 않게 한다.
         multiplier = Mathf.Max(0f, 1f + percentAdd);
         valueBeforeMultiplier = baseValue + flatAdd;

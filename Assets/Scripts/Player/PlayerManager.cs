@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
+public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver, IPlayerItemEffectHost
 {
     private const int EquipmentSlotCount = (int)EquipmentSlot.Shoes + 1;
 
@@ -33,8 +33,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private bool _isGameplayInputEnabled = true;
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
     private readonly PoiseReactionRuntime _poiseReaction = new();
-    private readonly RecoveryOverTimeRuntime _recoveryOverTime = new();
-    private readonly TimedStatModifierRuntime _timedStatModifiers = new();
+    // 효과 실행 상태는 일반 C# 실행기가 소유하고 컴포넌트 접근은 이 Manager가 중개한다.
+    private PlayerItemEffects _itemEffects;
+    private bool _hasStarted;
 
     private bool IsHitStopped => _playerAnimation && _playerAnimation.IsHitStopped;
     private bool IsInPoiseReaction => _playerState && (_playerState.ActionState == PlayerActionState.Stunned
@@ -58,6 +59,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void Awake()
     {
+        _itemEffects = new PlayerItemEffects(this);
         TryGetComponent(out _playerControl);
         TryGetComponent(out _playerState);
         TryGetComponent(out _playerStat);
@@ -139,10 +141,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         }
 
         SubscribeSkillTreeRuntime();
+        if (_hasStarted) RefreshItemStatModifiers();
     }
 
     private void Start()
     {
+        _hasStarted = true;
         // 모든 컴포넌트의 Awake가 끝난 뒤 생성된 스킬 트리 Runtime 구독을 보장한다.
         SubscribeSkillTreeRuntime();
         // 초기 보유 목록도 모든 컴포넌트의 Awake가 끝난 뒤 스탯과 동기화한다.
@@ -151,8 +155,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void OnDisable()
     {
-        _recoveryOverTime.Clear();
-        ClearTimedStatModifiers();
+        _itemEffects?.Clear();
         _hasPendingGuardChange = false;
         _interactionCandidates.Clear();
         SetInteractionTarget(null);
@@ -228,18 +231,33 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f) return;
         if (_playerState && _playerState.ActionState == PlayerActionState.Dead) return;
-        if (energyRecoveryOnHit <= 0f || float.IsNaN(energyRecoveryOnHit) || float.IsInfinity(energyRecoveryOnHit)) return;
+        PlayerStatSnapshot stats = _playerStat.CurrentStats;
+        if (energyRecoveryOnHit > 0f && !float.IsNaN(energyRecoveryOnHit) && !float.IsInfinity(energyRecoveryOnHit))
+        {
+            // 확정된 일반 타격은 전량, 가드로 막힌 타격은 최종 회복량의 50%를 회복한다.
+            _playerStat.RestoreEnergy(energyRecoveryOnHit * (wasBlocked ? 0.5f : 1f));
+        }
+        // 기본 회복량이 0이어도 확정된 타격(가드에 막힌 타격 포함)은 패시브를 발동한다.
+        _itemEffects?.Trigger(ItemEffectTrigger.AttackHit, stats);
+    }
 
-        // 확정된 일반 타격은 전량, 가드로 막힌 타격은 최종 회복량의 50%를 회복한다.
-        _playerStat.RestoreEnergy(energyRecoveryOnHit * (wasBlocked ? 0.5f : 1f));
+    public void NotifyEnemyKilled()
+    {
+        // EnemyManager의 사망 중복 방지와 처치자 판정이 끝난 뒤에만 전달받는다.
+        _itemEffects?.Trigger(ItemEffectTrigger.EnemyKilled, CurrentPlayerStats);
+    }
+
+    public void NotifyRoomCleared()
+    {
+        // 전투방 전체 편성이 끝났다는 StageManager의 확정 알림만 사용한다.
+        _itemEffects?.Trigger(ItemEffectTrigger.RoomCleared, CurrentPlayerStats);
     }
 
     private void HandlePlayerActionStateChanged(PlayerActionState actionState)
     {
         if (actionState == PlayerActionState.Dead)
         {
-            _recoveryOverTime.Clear();
-            ClearTimedStatModifiers();
+            _itemEffects?.Clear();
         }
         RefreshInteractionTarget();
         if (!_hurtbox) return;
@@ -284,7 +302,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
             }
 
             // 가드 브레이크도 가드로 막은 타격이므로 가드 회복량만 적용한다.
+            PlayerStatSnapshot guardStats = _playerStat.CurrentStats;
             RestoreEnergyOnReceivedHit(stats.EnergyRecoveryOnGuard);
+            _itemEffects?.Trigger(ItemEffectTrigger.GuardSucceeded, guardStats);
             damageInfo.ConfirmHit(true);
             return;
         }
@@ -310,7 +330,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
             }
 
             // 일반 피격에서 살아남은 경우에만 피격 회복량을 적용한다.
+            PlayerStatSnapshot damagedStats = _playerStat.CurrentStats;
             RestoreEnergyOnReceivedHit(stats.EnergyRecoveryOnDamageTaken);
+            _itemEffects?.Trigger(ItemEffectTrigger.DamageTaken, damagedStats);
             damageInfo.ConfirmHit(false);
             return;
         }
@@ -331,8 +353,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void HandleDied()
     {
-        _recoveryOverTime.Clear();
-        ClearTimedStatModifiers();
+        _itemEffects?.Clear();
         if (!_playerState || _playerState.ActionState == PlayerActionState.Dead) return;
 
         // 체력 변경 알림과 피격 경로가 겹쳐도 사망은 한 번만 처리한다.
@@ -472,9 +493,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         // 직접 체력 변경이나 재활성화 시에도 사망 상태를 보장한다.
         if (_playerStat && _playerStat.CurrentStats.CurrentHealth <= 0f) HandleDied();
-        // 이번 프레임에 만료된 최대치 보정을 제거한 뒤 지속 회복량을 계산한다.
-        UpdateTimedStatModifiers(Time.deltaTime);
-        UpdateRecoveryOverTime(Time.deltaTime);
+        _itemEffects?.Tick(Time.deltaTime);
         if (_playerAnimation)
         {
             _playerAnimation.UpdateHitStop();
@@ -673,23 +692,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
             || (_playerState && _playerState.ActionState == PlayerActionState.Dead)) return false;
 
         IReadOnlyList<ItemEffectData> effects = expectedItem.UseEffects;
-        bool hasApplicableEffect = false;
-        for (int i = 0; i < effects.Count; i++)
-        {
-            if (!CanApplyItemEffect(effects[i])) continue;
-
-            hasApplicableEffect = true;
-            break;
-        }
-
         // 즉시 실행하거나 시간 효과를 시작할 수 있는 효과가 없으면 수량을 차감하지 않는다.
         PlayerInventory inventory = _playerInventory;
-        if (!hasApplicableEffect || !inventory.TryConsumeConsumable(inventoryIndex, expectedItem)) return false;
+        if (_itemEffects == null || !_itemEffects.CanApplyAny(effects) || !inventory.TryConsumeConsumable(inventoryIndex, expectedItem)) return false;
 
         _isUsingItem = true;
         try
         {
-            ApplyItemEffects(expectedItem, effects);
+            _itemEffects.Apply(expectedItem, effects);
         }
         finally
         {
@@ -705,135 +715,6 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         }
 
         return true;
-    }
-
-    private bool CanApplyItemEffect(ItemEffectData effect)
-    {
-        // 사용과 획득이 같은 실행 조건을 공유하며, 능력치 컴포넌트가 없으면 효과만 건너뛴다.
-        if (!_playerStat) return false;
-
-        PlayerStatSnapshot stats = _playerStat.CurrentStats;
-        if (stats.CurrentHealth <= 0f) return false;
-
-        return effect switch
-        {
-            RestoreHealthEffectData health => GetRecoveryAmount(health.Amount, stats.MaxHealth) > 0f,
-            RestoreEnergyEffectData energy => GetRecoveryAmount(energy.Amount, stats.MaxEnergy) > 0f,
-            AddSkillPointsEffectData points => points.Amount > 0 && SkillTreeRuntime != null && SkillTreeRuntime.AvailablePoints < int.MaxValue,
-            AddMoneyEffectData money => money.Amount > 0 && stats.Money < int.MaxValue,
-            // 성장표의 최대 레벨은 요구 경험치가 0이므로 지급할 수 없는 효과만으로 아이템을 소모하지 않는다.
-            AddExperienceEffectData experience => experience.Amount > 0 && stats.TargetExp > 0,
-
-            RecoveryOverTimeEffectData recovery => isActiveAndEnabled
-            && (!_playerState || _playerState.ActionState != PlayerActionState.Dead) && RecoveryOverTimeRuntime.CanStart(recovery),
-
-            TimedStatModifierEffectData timed => isActiveAndEnabled && (!_playerState || _playerState.ActionState != PlayerActionState.Dead)
-            && TimedStatModifierRuntime.CanStart(timed),
-            _ => false
-        };
-    }
-
-    private void ApplyItemEffects(ItemDefinition item, IReadOnlyList<ItemEffectData> effects)
-    {
-        for (int i = 0; i < effects.Count; i++)
-        {
-            ItemEffectData effect = effects[i];
-            // 앞 효과가 최대치에 도달했을 수 있으므로 각 효과 직전에 현재 상태를 확인한다.
-            if (!CanApplyItemEffect(effect)) continue;
-
-            switch (effect)
-            {
-                case RestoreHealthEffectData health:
-                    _playerStat.RestoreHealth(GetRecoveryAmount(health.Amount, _playerStat.CurrentStats.MaxHealth));
-                    break;
-                case RestoreEnergyEffectData energy:
-                    _playerStat.RestoreEnergy(GetRecoveryAmount(energy.Amount, _playerStat.CurrentStats.MaxEnergy));
-                    break;
-                case AddSkillPointsEffectData points:
-                    // 기존 포인트 API에 넘기기 전에 남은 정수 범위로 제한한다.
-                    AddSkillPoints(Math.Min(points.Amount, int.MaxValue - SkillTreeRuntime.AvailablePoints));
-                    break;
-                case AddMoneyEffectData money:
-                    AddMoney(money.Amount);
-                    break;
-                case AddExperienceEffectData experience:
-                    AddExperience(experience.Amount);
-                    break;
-                case RecoveryOverTimeEffectData recovery:
-                    _recoveryOverTime.TryStart(item, i, recovery);
-                    break;
-                case TimedStatModifierEffectData timed:
-                    if (_timedStatModifiers.TryStart(item, i, timed)) _playerStat.RebuildTimedStatModifiers(_timedStatModifiers.StatModifiers);
-                    break;
-            }
-        }
-    }
-
-    private void UpdateTimedStatModifiers(float deltaTime)
-    {
-        if (!_timedStatModifiers.HasEffects) return;
-        if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f
-            || (_playerState && _playerState.ActionState == PlayerActionState.Dead))
-        {
-            ClearTimedStatModifiers();
-            return;
-        }
-
-        if (_timedStatModifiers.Advance(deltaTime)) _playerStat.RebuildTimedStatModifiers(_timedStatModifiers.StatModifiers);
-    }
-
-    private void ClearTimedStatModifiers()
-    {
-        // 실행 목록을 먼저 비워 스탯 알림에서 사망·비활성화가 재진입해도 한 번만 해제한다.
-        if (!_timedStatModifiers.Clear()) return;
-        if (_playerStat) _playerStat.RebuildTimedStatModifiers(_timedStatModifiers.StatModifiers);
-    }
-
-    private void UpdateRecoveryOverTime(float deltaTime)
-    {
-        if (!_recoveryOverTime.HasEffects) return;
-        if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f
-            || (_playerState && _playerState.ActionState == PlayerActionState.Dead))
-        {
-            _recoveryOverTime.Clear();
-            return;
-        }
-
-        _recoveryOverTime.Advance(deltaTime);
-        while (_recoveryOverTime.TryTakeRecovery(out ItemRecoveryTarget target, out ItemRecoveryAmount amount))
-        {
-            // 회복 알림에서 사망하거나 비활성화되면 남은 회복도 즉시 정리한다.
-            if (!isActiveAndEnabled || _playerStat.CurrentStats.CurrentHealth <= 0f
-                || (_playerState && _playerState.ActionState == PlayerActionState.Dead))
-            {
-                _recoveryOverTime.Clear();
-                break;
-            }
-
-            PlayerStatSnapshot stats = _playerStat.CurrentStats;
-            switch (target)
-            {
-                case ItemRecoveryTarget.Health:
-                    _playerStat.RestoreHealth(GetRecoveryAmount(amount, stats.MaxHealth));
-                    break;
-                case ItemRecoveryTarget.Energy:
-                    _playerStat.RestoreEnergy(GetRecoveryAmount(amount, stats.MaxEnergy));
-                    break;
-            }
-        }
-    }
-
-    private static float GetRecoveryAmount(ItemRecoveryAmount amount, float maximum)
-    {
-        if (amount.Value <= 0f || float.IsNaN(amount.Value) || float.IsInfinity(amount.Value)) return 0f;
-
-        // 최대치 비율은 장비·유물·시간제 보정이 반영된 실행 시점의 최종 최대값을 기준으로 한다.
-        return amount.Mode switch
-        {
-            ItemRecoveryMode.Fixed => amount.Value,
-            ItemRecoveryMode.MaxRatio => maximum * Mathf.Min(1f, amount.Value),
-            _ => 0f
-        };
     }
 
     public ItemDefinition GetQuickslotItem(int slotNumber)
@@ -951,17 +832,55 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         if (!_playerStat || !_playerInventory) return;
 
-        // 전체 보유 장비가 아니라 각 부위의 현재 장착 항목만 선별한다. 해제된 부위는 null로 덮어쓴다.
+        // 장착·보유 데이터 조회는 Manager가 중개하고 효과의 동기화 규칙은 실행기가 관리한다.
         for (int slotIndex = (int)EquipmentSlot.Head; slotIndex < _equippedItemsForStats.Length; slotIndex++)
         {
             _equippedItemsForStats[slotIndex] = _playerInventory.GetEquippedItem((EquipmentSlot)slotIndex);
         }
-
-        // Inventory와 Stat은 서로 참조하지 않고 Manager가 두 출처를 함께 전달한다.
-        _playerStat.RebuildItemStatModifiers(_playerInventory.GetInventoryItems(ItemType.Relic), _equippedItemsForStats);
+        _itemEffects.SynchronizeSources(_playerInventory.GetInventoryItems(ItemType.Relic), _equippedItemsForStats);
 
         // 보유·장착 알림은 비활성화 중에도 받으므로 StatsChanged 구독이 없을 때 직접 동기화한다.
         if (!isActiveAndEnabled) ApplyMovementStats(_playerStat.CurrentStats);
+        else HandlePlayerStatsChanged(_playerStat.CurrentStats);
+    }
+
+    // 실행기는 이 계약만 사용하며 Stat·SkillTree 등 하위 컴포넌트에는 직접 접근하지 않는다.
+    bool IPlayerItemEffectHost.CanRunItemEffects => isActiveAndEnabled && _playerStat && _playerStat.CurrentStats.CurrentHealth > 0f
+        && (!_playerState || _playerState.ActionState != PlayerActionState.Dead);
+
+    int IPlayerItemEffectHost.RemainingSkillPointCapacity
+    {
+        get
+        {
+            SkillTreeRuntime runtime = SkillTreeRuntime;
+            return runtime != null ? int.MaxValue - runtime.AvailablePoints : 0;
+        }
+    }
+
+    void IPlayerItemEffectHost.RestoreHealth(float amount)
+    {
+        if (_playerStat) _playerStat.RestoreHealth(amount);
+    }
+
+    void IPlayerItemEffectHost.RestoreEnergy(float amount)
+    {
+        if (_playerStat) _playerStat.RestoreEnergy(amount);
+    }
+
+    void IPlayerItemEffectHost.RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems,
+        IReadOnlyList<ItemDefinition> equippedItems, IReadOnlyList<StatModifier> passiveModifiers)
+    {
+        if (_playerStat) _playerStat.RebuildItemStatModifiers(relicItems, equippedItems, passiveModifiers);
+    }
+
+    void IPlayerItemEffectHost.RebuildTimedStatModifiers(IReadOnlyList<StatModifier> modifiers)
+    {
+        if (_playerStat) _playerStat.RebuildTimedStatModifiers(modifiers);
+    }
+
+    void IPlayerItemEffectHost.RebuildPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers)
+    {
+        if (_playerStat) _playerStat.RebuildPassiveStatModifiers(modifiers);
     }
 
     private void HandleItemAcquired(ItemDefinition item)
@@ -969,7 +888,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         if (item && item.ItemType == ItemType.Relic)
         {
             // 보유 스탯이 반영된 뒤 실제 획득마다 한 번 실행한다. 같은 유물의 추가 획득도 별도로 발동한다.
-            ApplyItemEffects(item, item.AcquireEffects);
+            _itemEffects?.Apply(item, item.AcquireEffects);
         }
 
         // 획득 효과까지 반영한 상태를 HUD 등 외부 구독자에게 전달한다.
@@ -1270,10 +1189,17 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void HandlePlayerStatsChanged(PlayerStatSnapshot stats)
     {
+        // 조건부 스탯 계산 중 발생한 알림은 바깥 처리에서 최종 스냅샷으로 한 번만 전달한다.
+        if (_itemEffects != null && _itemEffects.IsRefreshingStats) return;
         if (stats.CurrentHealth <= 0f)
         {
             HandleDied();
             // 사망 중 시간제 보정 해제가 추가 알림을 발생시켜도 이전 버프 수치로 UI를 덮어쓰지 않는다.
+            stats = _playerStat.CurrentStats;
+        }
+        else
+        {
+            _itemEffects?.RefreshConditionalStats(stats);
             stats = _playerStat.CurrentStats;
         }
         // UI 등에 알리기 전에 계산된 최종값을 하위 컴포넌트에 먼저 전달한다.

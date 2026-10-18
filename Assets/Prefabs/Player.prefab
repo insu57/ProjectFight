@@ -242,6 +242,11 @@ MonoBehaviour:
   _currentHealth: 100
   _baseAttackPower: 0
   _baseDefensePower: 0
+  _basePoiseDamage: 0
+  _baseGuardPoiseDamage: 0
+  _baseEnergyRecoveryOnHit: 0
+  _baseEnergyRecoveryOnGuard: 15
+  _baseEnergyRecoveryOnDamageTaken: 10
   _baseMaxEnergy: 100
   _currentEnergy: 0
   _maxPoise: 100
@@ -254,6 +259,28 @@ MonoBehaviour:
   _guardPoiseRecoveryRate: 20
   _guardBreakDuration: 1.5
   _guardBreakMoveDistance: 1
+  _finalStats:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
 --- !u!114 &6118178728528837922
 MonoBehaviour:
   m_ObjectHideFlags: 0
