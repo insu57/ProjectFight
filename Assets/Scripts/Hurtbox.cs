@@ -9,10 +9,11 @@ public readonly struct DamageInfo
     public float PoiseDamage { get; }
     public float GuardPoiseDamage { get; }
     public float EnergyRecoveryOnHit { get; }
+    public SoundDefinition HitSound { get; }
 
     public bool HasDamage => Damage > 0f || PoiseDamage > 0f || GuardPoiseDamage > 0f;
 
-    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f, float energyRecoveryOnHit = 0f)
+    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f, float energyRecoveryOnHit = 0f, SoundDefinition hitSound = null)
     {
         Attacker = attacker;
         Damage = Mathf.Max(0f, damage);
@@ -20,6 +21,7 @@ public readonly struct DamageInfo
         PoiseDamage = Mathf.Max(0f, poiseDamage);
         GuardPoiseDamage = Mathf.Max(0f, guardPoiseDamage);
         EnergyRecoveryOnHit = Mathf.Max(0f, energyRecoveryOnHit);
+        HitSound = hitSound;
     }
 
     public void ConfirmHit(bool wasBlocked)

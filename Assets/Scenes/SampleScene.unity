@@ -11064,7 +11064,7 @@ MonoBehaviour:
   _masterVolumeParameter: MasterVolume
   _bgmVolumeParameter: BgmVolume
   _sfxVolumeParameter: SfxVolume
-  _sfxSourcePrefab: {fileID: 0}
+  _sfxSourcePrefab: {fileID: 1824897139700724705, guid: 163b28dfdfc7bf944a18684811e6afe6, type: 3}
   _sfxPrewarmCount: 16
   _maxConcurrentSfx: 32
   _masterVolume: 1
@@ -11079,7 +11079,7 @@ AudioSource:
   m_GameObject: {fileID: 1124393150}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
+  OutputAudioMixerGroup: {fileID: 8921418033259271448, guid: e9f0584ce1e4726429b9c3e541991b7e, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 1
@@ -21642,7 +21642,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2495296684415982692, guid: a93b34066de58da4ab194568fc6b668d, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.0007829837
+      value: 0.00004456461
       objectReference: {fileID: 0}
     - target: {fileID: 5502399782082763497, guid: a93b34066de58da4ab194568fc6b668d, type: 3}
       propertyPath: m_Pivot.x

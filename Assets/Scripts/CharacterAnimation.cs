@@ -15,6 +15,8 @@ public abstract class CharacterAnimation : MonoBehaviour
     private int _locomotionStateHash;
     private bool _isAttackRequested;
     private bool _hasEnteredAttackState;
+    private SoundDefinition _pendingAttackSound;
+    private float _attackSoundNormalizedTime;
     private double _hitStopEndTime;
     private float _speedBeforeHitStop;
     private bool _isDeathPlaying;
@@ -83,6 +85,7 @@ public abstract class CharacterAnimation : MonoBehaviour
         // 비활성화 후 재사용할 때 정지 상태가 남지 않게 한다.
         ClearHitStop();
         ResetDeathState();
+        _pendingAttackSound = null;
     }
 
     public virtual bool TryPlayDeath()
@@ -120,6 +123,8 @@ public abstract class CharacterAnimation : MonoBehaviour
 
     public bool TryPlayAttack(AttackDefinition attackDefinition, float attackSpeedMultiplier = 1f)
     {
+        // 새 요청이 실패하더라도 이전 공격의 미재생 요청을 이어받지 않는다.
+        _pendingAttackSound = null;
         if (!CharacterAnimator || !attackDefinition)
         {
             return false;
@@ -131,6 +136,21 @@ public abstract class CharacterAnimation : MonoBehaviour
         CharacterAnimator.CrossFadeInFixedTime(attackDefinition.AnimationStateHash, attackDefinition.TransitionDuration, 0);
         _isAttackRequested = true;
         _hasEnteredAttackState = false;
+        _pendingAttackSound = attackDefinition.AttackSound;
+        _attackSoundNormalizedTime = attackDefinition.AttackSoundNormalizedTime;
+        return true;
+    }
+
+    public bool TryConsumeAttackSound(bool hasNormalizedTime, float normalizedTime, out SoundDefinition sound)
+    {
+        sound = null;
+        if (!isActiveAndEnabled || !CharacterAnimator || IsHitStopped || !_pendingAttackSound) return false;
+        // 0은 상태 진입을 기다리지 않고 재생하며, 지연음은 진행도가 지정 시점을 지난 최초 갱신에서 소비한다.
+        if (_attackSoundNormalizedTime > 0f && (!hasNormalizedTime || !(normalizedTime >= _attackSoundNormalizedTime))) return false;
+
+        sound = _pendingAttackSound;
+        // 풀 상한 등으로 재생이 거절되어도 같은 공격음을 반복 요청하지 않는다.
+        _pendingAttackSound = null;
         return true;
     }
 
@@ -228,6 +248,8 @@ public abstract class CharacterAnimation : MonoBehaviour
     {
         _isAttackRequested = false;
         _hasEnteredAttackState = false;
+        _pendingAttackSound = null;
+        _attackSoundNormalizedTime = 0f;
 
         // 공격 종료, 피격 중단, 풀 재사용 시 이전 공격의 배속을 정리한다.
         if (CharacterAnimator)

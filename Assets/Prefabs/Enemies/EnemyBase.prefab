@@ -22078,6 +22078,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyManager
   _enemyDefinition: {fileID: 11400000, guid: f6d0da68762f0fd41a637801e1d223e6, type: 2}
   _movementHitPauseDuration: 0.5
+  _sceneNavigationRoom: {fileID: 0}
+  _footstepSound: {fileID: 11400000, guid: b7f952f3b0cc1e74fad5a40e517524d3, type: 2}
+  _footstepDistance: 1.8
 --- !u!114 &4003446771134710899
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -22134,6 +22137,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyMove
   _moveSpeed: 3.5
   _rotationSpeed: 540
+  _pathRefreshInterval: 0.2
+  _cornerReachDistance: 0.1
+  _circleLookAheadDistance: 2
   _gravity: -25
   _groundedVerticalVelocity: -2
 --- !u!114 &3818605799476956104

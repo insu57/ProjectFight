@@ -35,6 +35,8 @@ public class PlayerMove : MonoBehaviour
     public float MoveAmount { get; private set; }
     public Vector2 LocalMoveDirection { get; private set; }
     public Vector2 DodgeLocalDirection { get; private set; }
+    public bool IsGrounded => _characterController && _characterController.isGrounded;
+    public float HorizontalMoveDistance { get; private set; }
 
     private void Awake()
     {
@@ -68,6 +70,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveAttack(Vector2 localDisplacement, float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         // 공격 데이터의 X는 좌우, Y는 전후 방향의 실제 이동 거리로 적용한다.
         Vector3 displacement = transform.right * localDisplacement.x + transform.forward * localDisplacement.y;
 
@@ -79,6 +82,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MovePoiseReaction(Vector3 worldDisplacement, float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         if (deltaTime <= 0f) return;
 
         // 피격 이동을 걷기 애니메이션의 이동 입력으로 사용하지 않는다.
@@ -93,6 +97,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveStationary(float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         MoveAmount = 0f;
         LocalMoveDirection = Vector2.zero;
 
@@ -118,6 +123,7 @@ public class PlayerMove : MonoBehaviour
 
     public bool UpdateDodge(float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         if (_dodgeDuration <= 0f)
         {
             EndDodge();
@@ -165,7 +171,13 @@ public class PlayerMove : MonoBehaviour
         moveDirection *= moveSpeed;
         moveDirection.y = _verticalVelocity;
 
+        Vector3 previousPosition = transform.position;
         _characterController.Move(moveDirection * deltaTime);
+
+        // 입력량이 아닌 충돌 처리 후의 실제 이동을 측정하고 중력에 의한 수직 이동은 제외한다.
+        Vector3 horizontalDisplacement = transform.position - previousPosition;
+        horizontalDisplacement.y = 0f;
+        HorizontalMoveDistance = horizontalDisplacement.magnitude;
     }
 
     private void BeginDodgeInternal(Vector2 moveInput, Quaternion referenceRotation)

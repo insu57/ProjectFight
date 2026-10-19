@@ -22,6 +22,10 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     [SerializeField, Min(0f)] private float _movementHitPauseDuration = 0.2f;
     // 씬에 직접 배치한 적은 Inspector에서 방을 지정하고, 풀 스폰은 SpawnManager가 전달한다.
     [SerializeField] private Room _sceneNavigationRoom;
+    [Header("발소리")]
+    [SerializeField] private SoundDefinition _footstepSound;
+    [SerializeField, Min(0.1f), Tooltip("추적과 주변 돌기 중 발소리 한 번마다 이동할 수평 거리입니다.")]
+    private float _footstepDistance = 1.5f;
     private EnemyDefinition _defaultEnemyDefinition;
     private EnemyState _enemyState;
     private EnemyStat _enemyStat;
@@ -32,6 +36,9 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private bool _hasStarted;
     private float _circleBlockedTime;
     private float _movementHitPauseRemaining;
+    private float _distanceSinceFootstep;
+    // 일반 이동을 수행한 프레임의 거리만 LateUpdate에 전달한다.
+    private float _footstepMoveDistance;
     // 캐릭터마다 한 번 생성하고 피격 시 재사용한다.
     private readonly PoiseReactionRuntime _poiseReaction = new();
 
@@ -113,6 +120,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _target = null;
         _circleBlockedTime = 0f;
         _movementHitPauseRemaining = 0f;
+        _distanceSinceFootstep = 0f;
+        _footstepMoveDistance = 0f;
         _poiseReaction.Reset();
         _attackHitbox?.EndAttack();
 
@@ -137,6 +146,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     protected override void OnPoolDespawned()
     {
         _target = null;
+        _distanceSinceFootstep = 0f;
+        _footstepMoveDistance = 0f;
 
         // 이전 스폰에서 예약한 작업이 재사용 이후 실행되지 않도록 정리한다.
         CancelInvoke();
@@ -154,6 +165,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
         _movementHitPauseRemaining = 0f;
+        _distanceSinceFootstep = 0f;
+        _footstepMoveDistance = 0f;
 
         if (_enemyAnimation)
         {
@@ -186,6 +199,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void Update()
     {
+        _footstepMoveDistance = 0f;
         if (_enemyStat && _enemyStat.IsDead && !_deathPresentationStarted) HandleDied();
         if (!isActiveAndEnabled) return;
         if (_enemyState && _enemyState.ActionState == EnemyActionState.Dead)
@@ -275,6 +289,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             }
 
             _enemyMove.MoveTowards(_target.position, deltaTime);
+            _footstepMoveDistance = _enemyMove.HorizontalMoveDistance;
             _enemyAnimation.SetMoveAmount(_enemyMove.MoveAmount);
             return;
         }
@@ -282,6 +297,12 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _enemyState.SetBehaviorState(EnemyBehaviorState.Combat);
         _enemyMove.FaceTarget(_target.position, deltaTime);
         UpdateStationary(deltaTime);
+    }
+
+    private void LateUpdate()
+    {
+        // AI 갱신이 조기 종료되어도 발소리 조건을 확인하여 정지 중에는 보폭을 누적하지 않는다.
+        UpdateFootsteps(_footstepMoveDistance);
     }
 
     public void SetTarget(Transform target)
@@ -368,6 +389,12 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         if (damageInfo.Damage <= 0f && damageInfo.PoiseDamage <= 0f) return;
 
         damageInfo.ApplyHitStop(this);
+        // 치명타로 즉시 풀에 반환되더라도 실제 피격 위치에서 타격음이 재생되어야 한다.
+        if (damageInfo.HitSound)
+        {
+            AudioManager audioManager = AudioManager.Instance;
+            if (audioManager) audioManager.PlaySfx(damageInfo.HitSound, transform.position);
+        }
 
         _enemyStat.TakePoiseDamage(damageInfo.PoiseDamage);
 
@@ -420,6 +447,11 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             return;
         }
 
+        float normalizedTime = 0f;
+        bool hasNormalizedTime = _patternExecutor.IsAttackPlaying && _enemyAnimation.TryGetAttackNormalizedTime(out normalizedTime);
+        // 패턴 종료가 공격 상태를 초기화하기 전에 마지막 프레임의 공격음도 확인한다.
+        if (_patternExecutor.IsAttackPlaying) TryPlayAttackSound(hasNormalizedTime, normalizedTime);
+
         EnemyPatternStep step = _patternExecutor.CurrentStep;
         bool animationFinished = step.Type switch
         {
@@ -460,9 +492,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         if (_patternExecutor.IsAttackPlaying)
         {
-            float normalizedTime = 0f;
             // 새 공격 요청 프레임에는 이전 공격의 진행도를 사용하지 않는다.
-            bool hasNormalizedTime = !stepStarted && _enemyAnimation.TryGetAttackNormalizedTime(out normalizedTime);
+            hasNormalizedTime &= !stepStarted;
             if (hasNormalizedTime && _patternExecutor.TryGetAttackMoveDisplacement(normalizedTime, out Vector2 displacement))
             {
                 _enemyMove.MoveAttack(displacement, deltaTime);
@@ -491,6 +522,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
             step = _patternExecutor.CurrentStep;
             Vector2 movement = _enemyMove.MoveCircleTarget(_target.position, step.CircleSpeed, step.CircleDistance, step.CircleDistanceTolerance, _patternExecutor.CircleDirectionSign, deltaTime);
+            _footstepMoveDistance = _enemyMove.HorizontalMoveDistance;
             _enemyAnimation.SetMovement(movement, deltaTime);
 
             // 이동을 요청했는데 일정 시간 거의 움직이지 못하면 패턴을 종료한다.
@@ -523,6 +555,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
                 if (!_enemyAnimation.TryPlayAttack(step.Attack, _enemyStat.AttackSpeed)) return false;
                 _enemyState.SetActionState(EnemyActionState.Attacking);
                 _attackHitbox?.BeginAttack(step.Attack, _enemyStat.AttackPower);
+                TryPlayAttackSound(false, 0f);
                 return true;
             case EnemyPatternStepType.Guard:
                 if (!_enemyAnimation.TryBeginGuard()) return false;
@@ -534,6 +567,14 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             default:
                 return false;
         }
+    }
+
+    private void TryPlayAttackSound(bool hasNormalizedTime, float normalizedTime)
+    {
+        if (!_enemyAnimation || !_enemyAnimation.TryConsumeAttackSound(hasNormalizedTime, normalizedTime, out SoundDefinition sound)) return;
+
+        AudioManager audioManager = AudioManager.Instance;
+        if (audioManager) audioManager.PlaySfx(sound, transform.position);
     }
 
     private void CancelPatternToFree()
@@ -587,6 +628,26 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _enemyAnimation.CompleteAttack();
         _enemyState.SetActionState(EnemyActionState.Free);
+    }
+
+    private void UpdateFootsteps(float horizontalMoveDistance)
+    {
+        bool isMoving = _enemyState && ((_enemyState.CanMove && _enemyState.BehaviorState == EnemyBehaviorState.Chasing) || _enemyState.ActionState == EnemyActionState.Circling);
+        if (!isMoving || !_footstepSound || !_enemyMove || !_enemyMove.isActiveAndEnabled || !_enemyMove.IsGrounded
+            || !_enemyAnimation || _enemyAnimation.IsHitStopped || _movementHitPauseRemaining > 0f || Time.deltaTime <= 0f || horizontalMoveDistance <= 0.001f)
+        {
+            _distanceSinceFootstep = 0f;
+            return;
+        }
+
+        float stepDistance = Mathf.Max(0.1f, _footstepDistance);
+        _distanceSinceFootstep += horizontalMoveDistance;
+        if (_distanceSinceFootstep < stepDistance) return;
+
+        // 프레임 지연이나 풀 재생 실패 이후 발소리가 한꺼번에 몰리지 않도록 한 번만 요청한다.
+        _distanceSinceFootstep %= stepDistance;
+        AudioManager audioManager = AudioManager.Instance;
+        if (audioManager) audioManager.PlaySfx(_footstepSound, transform.position);
     }
 
     private void UpdateStationary(float deltaTime)

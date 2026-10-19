@@ -7,6 +7,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 {
     private const int EquipmentSlotCount = (int)EquipmentSlot.Shoes + 1;
 
+    [Header("발소리")]
+    [SerializeField] private SoundDefinition _footstepSound;
+    [SerializeField, Min(0.1f), Tooltip("걷기 중 발소리 한 번마다 이동할 수평 거리입니다.")]
+    private float _walkFootstepDistance = 1.8f;
+    [SerializeField, Min(0.1f), Tooltip("달리기 중 발소리 한 번마다 이동할 수평 거리입니다.")]
+    private float _sprintFootstepDistance = 2.5f;
+
     private PlayerControl _playerControl;
     private PlayerState _playerState;
     private PlayerStat _playerStat;
@@ -36,6 +43,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     // 효과 실행 상태는 일반 C# 실행기가 소유하고 컴포넌트 접근은 이 Manager가 중개한다.
     private PlayerItemEffects _itemEffects;
     private bool _hasStarted;
+    private float _distanceSinceFootstep;
 
     private bool IsHitStopped => _playerAnimation && _playerAnimation.IsHitStopped;
     private bool IsInPoiseReaction => _playerState && (_playerState.ActionState == PlayerActionState.Stunned
@@ -157,6 +165,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         _itemEffects?.Clear();
         _hasPendingGuardChange = false;
+        _distanceSinceFootstep = 0f;
         _interactionCandidates.Clear();
         SetInteractionTarget(null);
 
@@ -313,6 +322,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         if (damageInfo.Damage <= 0f && damageInfo.PoiseDamage <= 0f) return;
 
         damageInfo.ApplyHitStop(this);
+        // 일반 명중이 확정된 위치에서 재생하며, 치명타 이후의 비활성화나 위치 변경보다 먼저 요청한다.
+        if (damageInfo.HitSound)
+        {
+            AudioManager audioManager = AudioManager.Instance;
+            if (audioManager) audioManager.PlaySfx(damageInfo.HitSound, transform.position);
+        }
 
         // 강인도를 먼저 처리하여 치명타에서도 해당 공격의 감소량을 반영한다.
         _playerStat.TakePoiseDamage(damageInfo.PoiseDamage);
@@ -522,13 +537,18 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
             _attackHitbox.EndAttack();
         }
 
-        if (!_playerControl || !_playerState || !_playerMove || !_playerCamera) return;
+        if (!_playerControl || !_playerState || !_playerMove || !_playerCamera)
+        {
+            _distanceSinceFootstep = 0f;
+            return;
+        }
 
         _playerCamera.SetLookInput(_playerControl.LookInput, _playerControl.IsLookInputDelta);
 
         // Look 입력은 계속 전달하고 사망 후 캐릭터 행동 갱신만 차단한다.
         if (_playerState.ActionState == PlayerActionState.Dead)
         {
+            _distanceSinceFootstep = 0f;
             _playerCamera.ClearLockOnTarget();
             return;
         }
@@ -545,11 +565,16 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         }
 
         // 카메라 입력 전달은 유지하고 캐릭터 동작만 정지한다.
-        if (IsHitStopped) return;
+        if (IsHitStopped)
+        {
+            _distanceSinceFootstep = 0f;
+            return;
+        }
 
         // 피격 반응을 먼저 처리하여 기존 이동·공격·가드 갱신을 막는다.
         if (IsInPoiseReaction)
         {
+            _distanceSinceFootstep = 0f;
             UpdatePoiseReaction(Time.deltaTime);
             return;
         }
@@ -563,6 +588,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
         UpdateLocomotionState();
 
+        // 이번 프레임의 일반 이동 거리만 전달하여 행동 종료 시 이전 이동 거리를 사용하지 않는다.
+        float footstepMoveDistance = 0f;
         if (_playerState.ActionState == PlayerActionState.Dodging)
         {
             if (_playerMove.UpdateDodge(Time.deltaTime))
@@ -583,15 +610,20 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         {
             // 달리기는 락온 상태에서도 카메라 기준 자유 이동을 사용한다.
             _playerMove.MoveSprint(_playerControl.MoveInput, _playerCamera.YawRotation, Time.deltaTime);
+            footstepMoveDistance = _playerMove.HorizontalMoveDistance;
         }
         else if (_playerState.CanMove && lockOnTarget)
         {
             _playerMove.MoveLockedOn(_playerControl.MoveInput, lockOnTarget.AimPosition, Time.deltaTime);
+            footstepMoveDistance = _playerMove.HorizontalMoveDistance;
         }
         else if (_playerState.CanMove)
         {
             _playerMove.Move(_playerControl.MoveInput, _playerCamera.YawRotation, Time.deltaTime);
+            footstepMoveDistance = _playerMove.HorizontalMoveDistance;
         }
+
+        UpdateFootsteps(footstepMoveDistance);
 
         if (_playerAnimation)
         {
@@ -1066,6 +1098,15 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         }
 
         _playerAnimation.PlayAttack(attackDefinition);
+        TryPlayAttackSound(false, 0f);
+    }
+
+    private void TryPlayAttackSound(bool hasNormalizedTime, float normalizedTime)
+    {
+        if (!_playerAnimation || !_playerAnimation.TryConsumeAttackSound(hasNormalizedTime, normalizedTime, out SoundDefinition sound)) return;
+
+        AudioManager audioManager = AudioManager.Instance;
+        if (audioManager) audioManager.PlaySfx(sound, transform.position);
     }
 
     private void HandleGuardChanged(bool isGuarding)
@@ -1110,6 +1151,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private void UpdateAttack()
     {
         bool hasNormalizedTime = _playerAnimation.TryGetAttackNormalizedTime(out float normalizedTime);
+        // 콤보 전환이나 공격 종료가 요청을 초기화하기 전에 이번 공격의 재생 시점을 확인한다.
+        TryPlayAttackSound(hasNormalizedTime, normalizedTime);
 
         if (hasNormalizedTime && _playerAttack.TryGetAttackMoveDisplacement(normalizedTime, out Vector2 localDisplacement))
         {
@@ -1158,6 +1201,28 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         if (!_playerAnimation.IsGuardFinished()) return;
 
         _playerState.SetActionState(PlayerActionState.Free);
+    }
+
+    private void UpdateFootsteps(float horizontalMoveDistance)
+    {
+        // 정지, 벽에 막힌 미세 이동, 공중 및 일반 이동 이외의 행동은 보폭 누적도 초기화한다.
+        if (!_footstepSound || !_isGameplayInputEnabled || !_playerMove.isActiveAndEnabled || !_playerMove.IsGrounded
+            || !_playerState.CanMove || _playerState.LocomotionState == PlayerLocomotionState.Idle
+            || Time.deltaTime <= 0f || horizontalMoveDistance <= 0.001f)
+        {
+            _distanceSinceFootstep = 0f;
+            return;
+        }
+
+        float stepDistance = _playerState.LocomotionState == PlayerLocomotionState.Sprinting ? _sprintFootstepDistance : _walkFootstepDistance;
+        stepDistance = Mathf.Max(0.1f, stepDistance);
+        _distanceSinceFootstep += horizontalMoveDistance;
+        if (_distanceSinceFootstep < stepDistance) return;
+
+        // 프레임 지연으로 여러 보폭이 쌓여도 한 프레임에 한 번만 요청하고 재생 실패를 나중에 몰아서 재시도하지 않는다.
+        _distanceSinceFootstep %= stepDistance;
+        AudioManager audioManager = AudioManager.Instance;
+        if (audioManager) audioManager.PlaySfx(_footstepSound, transform.position);
     }
 
     private void UpdateLocomotionState()

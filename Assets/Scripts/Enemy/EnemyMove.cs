@@ -32,6 +32,8 @@ public sealed class EnemyMove : MonoBehaviour
     private bool _isCirclePath;
 
     public float MoveAmount { get; private set; }
+    public bool IsGrounded => _characterController && _characterController.isGrounded;
+    public float HorizontalMoveDistance { get; private set; }
 
     private void Awake()
     {
@@ -44,6 +46,7 @@ public sealed class EnemyMove : MonoBehaviour
         // 이전 위치에서 누적된 낙하 속도를 제거한다.
         _verticalVelocity = 0f;
         MoveAmount = 0f;
+        HorizontalMoveDistance = 0f;
         SetNavigationRoom(null);
     }
 
@@ -63,6 +66,7 @@ public sealed class EnemyMove : MonoBehaviour
 
     public void MoveTowards(Vector3 targetPosition, float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         if (deltaTime <= 0f) return;
 
         Vector3 moveDirection = targetPosition - transform.position;
@@ -89,6 +93,7 @@ public sealed class EnemyMove : MonoBehaviour
 
     public void MoveAttack(Vector2 localDisplacement, float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         ClearNavigationPath();
         Vector3 displacement = transform.right * localDisplacement.x + transform.forward * localDisplacement.y;
         ApplyGravity(deltaTime);
@@ -99,6 +104,7 @@ public sealed class EnemyMove : MonoBehaviour
 
     public void MovePoiseReaction(Vector3 worldDisplacement, float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         if (deltaTime <= 0f) return;
 
         ClearNavigationPath();
@@ -114,15 +120,16 @@ public sealed class EnemyMove : MonoBehaviour
 
     public void MoveStationary(float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         ClearNavigationPath();
         ApplyGravity(deltaTime);
         _characterController.Move(Vector3.up * (_verticalVelocity * deltaTime));
         MoveAmount = 0f;
     }
 
-    public Vector2 MoveCircleTarget(Vector3 targetPosition, float speed, float desiredDistance, float distanceTolerance,
-        float directionSign, float deltaTime)
+    public Vector2 MoveCircleTarget(Vector3 targetPosition, float speed, float desiredDistance, float distanceTolerance, float directionSign, float deltaTime)
     {
+        HorizontalMoveDistance = 0f;
         if (deltaTime <= 0f) return Vector2.zero;
 
         Vector3 toTarget = targetPosition - transform.position;
@@ -179,8 +186,11 @@ public sealed class EnemyMove : MonoBehaviour
         _characterController.Move(displacement);
 
         // 충돌로 막힌 경우를 포함한 실제 이동량을 애니메이션과 막힘 판정에 전달한다.
-        Vector3 actualVelocity = (transform.position - previousPosition) / deltaTime;
-        actualVelocity.y = 0f;
+        Vector3 horizontalDisplacement = transform.position - previousPosition;
+        horizontalDisplacement.y = 0f;
+        // 발소리는 수직 낙하와 입력 속도를 제외한 실제 수평 이동 거리만 사용한다.
+        HorizontalMoveDistance = horizontalDisplacement.magnitude;
+        Vector3 actualVelocity = horizontalDisplacement / deltaTime;
         Vector3 localVelocity = transform.InverseTransformDirection(actualVelocity);
         float referenceSpeed = Mathf.Max(0.01f, _moveSpeed);
         Vector2 localMovement = new Vector2(localVelocity.x, localVelocity.z) / referenceSpeed;

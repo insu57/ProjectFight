@@ -31,6 +31,13 @@ public class AttackDefinition : ScriptableObject
     [field: SerializeField, Range(0f, 1f)] public float HitStartNormalizedTime { get; private set; } = 0.2f;
     [field: SerializeField, Range(0f, 1f)] public float HitEndNormalizedTime { get; private set; } = 0.4f;
 
+    [field: Header("공격 SFX")]
+    [field: SerializeField] public SoundDefinition AttackSound { get; private set; }
+    [field: SerializeField, Range(0f, 1f), Tooltip("공격음 재생 시점입니다. 0은 공격 시작 직후이며, 나머지는 공격 애니메이션 진행도를 사용합니다.")]
+    public float AttackSoundNormalizedTime { get; private set; }
+    [field: SerializeField, Tooltip("유효한 일반 명중 시 피격자 위치에서 재생합니다. 가드에는 재생하지 않습니다.")]
+    public SoundDefinition HitSound { get; private set; }
+
     public int AnimationStateHash { get; private set; }
 
     private void OnEnable()
@@ -43,6 +50,7 @@ public class AttackDefinition : ScriptableObject
         AnimationSpeed = Mathf.Max(0.01f, AnimationSpeed);
         BaseEnergyRecoveryOnHit = float.IsNaN(BaseEnergyRecoveryOnHit) || float.IsInfinity(BaseEnergyRecoveryOnHit)
             ? 0f : Mathf.Max(0f, BaseEnergyRecoveryOnHit);
+        AttackSoundNormalizedTime = float.IsNaN(AttackSoundNormalizedTime) || float.IsInfinity(AttackSoundNormalizedTime) ? 0f : Mathf.Clamp01(AttackSoundNormalizedTime);
 
         // 입력 허용 시작, 연계 실행, 입력 허용 종료 순서가 뒤집히지 않도록 보정한다.
         ComboInputStartNormalizedTime = Mathf.Clamp01(ComboInputStartNormalizedTime);

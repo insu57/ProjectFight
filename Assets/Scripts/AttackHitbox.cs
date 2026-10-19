@@ -37,6 +37,7 @@ public sealed class AttackHitbox : MonoBehaviour
     private float _poiseDamage;
     private float _guardPoiseDamage;
     private float _energyRecoveryOnHit;
+    private SoundDefinition _hitSound;
 
     private void Awake()
     {
@@ -74,12 +75,10 @@ public sealed class AttackHitbox : MonoBehaviour
     public void BeginAttack(AttackDefinition attackDefinition, float attackPower = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f)
     {
         // 적 등 기존 호출은 추가 피해만 전달하므로 배율 1로 기존 동작을 유지한다.
-        BeginAttack(attackDefinition, new AttackDamageModifier(Mathf.Max(0f, attackPower), 1f),
-            new AttackDamageModifier(Mathf.Max(0f, poiseDamage), 1f), new AttackDamageModifier(Mathf.Max(0f, guardPoiseDamage), 1f));
+        BeginAttack(attackDefinition, new AttackDamageModifier(Mathf.Max(0f, attackPower), 1f), new AttackDamageModifier(Mathf.Max(0f, poiseDamage), 1f), new AttackDamageModifier(Mathf.Max(0f, guardPoiseDamage), 1f));
     }
 
-    public void BeginAttack(AttackDefinition attackDefinition, AttackDamageModifier attackPower,
-        AttackDamageModifier poiseDamage, AttackDamageModifier guardPoiseDamage, float energyRecoveryOnHit = 0f)
+    public void BeginAttack(AttackDefinition attackDefinition, AttackDamageModifier attackPower, AttackDamageModifier poiseDamage, AttackDamageModifier guardPoiseDamage, float energyRecoveryOnHit = 0f)
     {
         // 콤보 전환 시 이전 공격의 박스를 먼저 끈다.
         EndAttack();
@@ -94,6 +93,8 @@ public sealed class AttackHitbox : MonoBehaviour
         _guardPoiseDamage = guardPoiseDamage.ApplyTo(attackDefinition.BaseGuardPoiseDamage);
         // PlayerManager에서 확정한 회복량을 복사해 공격 도중 장비나 스탯이 변해도 유지한다.
         _energyRecoveryOnHit = Mathf.Max(0f, energyRecoveryOnHit);
+        // 공격 도중 공유 정의가 바뀌어도 이번 공격이 선택한 타격음을 유지한다.
+        _hitSound = attackDefinition.HitSound;
         _hitbox.size = attackDefinition.HitboxSize;
         _hitbox.center = attackDefinition.HitboxOffset;
     }
@@ -124,6 +125,7 @@ public sealed class AttackHitbox : MonoBehaviour
         _poiseDamage = 0f;
         _guardPoiseDamage = 0f;
         _energyRecoveryOnHit = 0f;
+        _hitSound = null;
         _hitOwnerIds.Clear();
 
         if (_hitbox)
@@ -146,8 +148,7 @@ public sealed class AttackHitbox : MonoBehaviour
 
         if (!_hitOwnerIds.Add(ownerId)) return;
 
-        DamageInfo damageInfo = new DamageInfo(_owner, _damage, _currentAttack.HitStopDuration,
-            _poiseDamage, _guardPoiseDamage, _energyRecoveryOnHit);
+        DamageInfo damageInfo = new DamageInfo(_owner, _damage, _currentAttack.HitStopDuration, _poiseDamage, _guardPoiseDamage, _energyRecoveryOnHit, _hitSound);
         hurtbox.ReceiveDamage(damageInfo);
     }
 }

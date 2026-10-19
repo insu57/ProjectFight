@@ -96,7 +96,8 @@ public sealed class AudioManager : Singleton<AudioManager>
 
     public bool PlayBgm(AudioClip clip, bool loop = true, float volume = 1f)
     {
-        if (Instance != this || !isActiveAndEnabled || !_bgmSource || !clip || clip.loadState == AudioDataLoadState.Failed || !IsFinite(volume)) return false;
+        if (Instance != this || !isActiveAndEnabled || !_bgmSource || !clip
+            || clip.loadState == AudioDataLoadState.Failed || !IsFinite(volume)) return false;
 
         _bgmSource.Stop();
         _bgmSource.clip = clip;

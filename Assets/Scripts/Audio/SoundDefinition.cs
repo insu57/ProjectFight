@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "SoundDefinition", menuName = "Audio/Sound Definition")]
+[CreateAssetMenu(fileName = "SoundDefinition", menuName = "Scriptable Objects/Sound Definition")]
 public sealed class SoundDefinition : ScriptableObject
 {
     [SerializeField, Tooltip("같은 소리의 변형 클립입니다. 재생할 때 유효한 클립 중 하나를 균등 선택합니다.")]
