@@ -29,7 +29,9 @@ public enum ItemStatType
     EnergyRecoveryOnHit = 18,
     // 가드와 일반 피격의 회복량은 별도 스탯으로 관리하여 각각 보정한다.
     EnergyRecoveryOnGuard = 19,
-    EnergyRecoveryOnDamageTaken = 20
+    EnergyRecoveryOnDamageTaken = 20,
+    // 공격별 AnimationSpeed에 곱하며 기본값 1에서 아이템의 고정·비율 보정을 합산한다.
+    AttackSpeedMultiplier = 21
 }
 
 public enum StatModifierOperation

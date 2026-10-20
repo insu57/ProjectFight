@@ -25,18 +25,12 @@ MonoBehaviour:
   - _stat: 3
     _operation: 0
     _value: 50
+  - _stat: 21
+    _operation: 1
+    _value: 1
   _useEffectData: []
   _acquireEffectData: []
-  _passiveEffectData:
-  - rid: 3955778266336329728
+  _passiveEffectData: []
   references:
     version: 2
-    RefIds:
-    - rid: 3955778266336329728
-      type: {class: ConditionalStatEffectData, ns: , asm: Assembly-CSharp}
-      data:
-        _conditions:
-        - _type: 0
-          _comparison: 0
-          _threshold: 0
-        _statModifiers: []
+    RefIds: []

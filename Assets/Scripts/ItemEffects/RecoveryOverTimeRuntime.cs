@@ -23,6 +23,19 @@ public sealed class RecoveryOverTimeRuntime
 
     public bool HasEffects => _effects.Count > 0;
 
+    public void AppendActiveEffects(List<ActiveItemEffectSnapshot> results)
+    {
+        // HUD가 보유한 목록에 값 형식으로 추가하여 조회할 때마다 배열을 만들지 않는다.
+        for (int i = 0; i < _effects.Count; i++)
+        {
+            ActiveRecovery active = _effects[i];
+            double remainingTime = active.EndTime - _elapsedTime;
+            if (!active.Item || remainingTime <= TimeTolerance) continue;
+
+            results.Add(new ActiveItemEffectSnapshot(active.Item, active.Target, (float)remainingTime));
+        }
+    }
+
     public static bool CanStart(RecoveryOverTimeEffectData effect)
     {
         if (effect == null || !IsFinitePositive(effect.Duration) || !IsFinitePositive(effect.Interval)

@@ -3,12 +3,13 @@ using System.Collections.Generic;
 // 공유 아이템 데이터와 분리하여 플레이어마다 적용 당시의 보정과 만료 시점을 보관한다.
 public sealed class TimedStatModifierRuntime
 {
-    private const int ItemStatCount = (int)ItemStatType.EnergyRecoveryOnDamageTaken + 1;
+    private const int ItemStatCount = (int)ItemStatType.AttackSpeedMultiplier + 1;
     private const double TimeTolerance = 0.000001;
 
     private struct ActiveModifier
     {
         public ItemDefinition Item;
+        public long ApplicationId;
         public ItemEffectStackingPolicy StackingPolicy;
         public StatModifier Modifier;
         public double EndTime;
@@ -17,9 +18,32 @@ public sealed class TimedStatModifierRuntime
     private readonly List<ActiveModifier> _activeModifiers = new(4);
     private readonly List<StatModifier> _statModifiers = new(4);
     private double _elapsedTime;
+    private long _nextApplicationId;
 
     public bool HasEffects => _activeModifiers.Count > 0;
     public IReadOnlyList<StatModifier> StatModifiers => _statModifiers;
+
+    public void AppendActiveEffects(List<ActiveItemEffectSnapshot> results)
+    {
+        for (int i = 0; i < _activeModifiers.Count; i++)
+        {
+            ActiveModifier active = _activeModifiers[i];
+            double remainingTime = active.EndTime - _elapsedTime;
+            if (!active.Item || remainingTime <= TimeTolerance) continue;
+
+            // 한 번 적용된 같은 스탯의 FlatAdd/PercentAdd는 묶고, 개별 중첩은 별도 슬롯으로 남긴다.
+            bool isAlreadyIncluded = false;
+            for (int j = 0; j < i; j++)
+            {
+                ActiveModifier previous = _activeModifiers[j];
+                if (previous.ApplicationId != active.ApplicationId || previous.Modifier.Stat != active.Modifier.Stat) continue;
+                isAlreadyIncluded = true;
+                break;
+            }
+
+            if (!isAlreadyIncluded) results.Add(new ActiveItemEffectSnapshot(active.Item, active.Modifier.Stat, (float)remainingTime));
+        }
+    }
 
     public static bool CanStart(TimedStatModifierEffectData effect)
     {
@@ -55,13 +79,14 @@ public sealed class TimedStatModifierRuntime
             }
         }
 
+        long applicationId = _nextApplicationId++;
         for (int i = 0; i < modifiers.Count; i++)
         {
             StatModifier modifier = modifiers[i];
             if (!IsApplicableModifier(modifier)) continue;
 
             // 기존 묶음을 먼저 제거해 같은 스탯의 FlatAdd·PercentAdd가 새 묶음 안에서 서로 덮어쓰지 않게 한다.
-            _activeModifiers.Add(new ActiveModifier { Item = item, StackingPolicy = effect.StackingPolicy,
+            _activeModifiers.Add(new ActiveModifier { Item = item, ApplicationId = applicationId, StackingPolicy = effect.StackingPolicy,
                 Modifier = modifier, EndTime = _elapsedTime + effect.Duration });
             _statModifiers.Add(modifier);
         }

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SoundDefinition
   _clips:
   - {fileID: 8300000, guid: 0bc66974c41ff8c4fa15f46d21ad3548, type: 3}
-  _volume: 1
+  _volume: 0.6
   _minPitch: 0.95
   _maxPitch: 1.05
   _minDistance: 1

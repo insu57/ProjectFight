@@ -290,6 +290,7 @@ public static class ItemDisplayUtility
             ItemStatType.GuardBreakMoveDistance => "가드 브레이크 밀림 거리",
             ItemStatType.MaxDodgeCount => "최대 회피 횟수",
             ItemStatType.MoveSpeedMultiplier => "이동 속도 배율",
+            ItemStatType.AttackSpeedMultiplier => "공격 속도 배율",
             ItemStatType.PoiseDamage => "강인도 피해",
             ItemStatType.GuardPoiseDamage => "가드 강인도 피해",
             ItemStatType.EnergyRecoveryOnHit => "타격 시 에너지 회복",

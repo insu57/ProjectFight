@@ -39,6 +39,7 @@ internal struct PlayerStatSnapshotData
     public int Money;
     public int MaxDodgeCount;
     public float MoveSpeedMultiplier;
+    public float AttackSpeedMultiplier;
 }
 
 public readonly struct PlayerStatSnapshot
@@ -80,6 +81,7 @@ public readonly struct PlayerStatSnapshot
     public int Money => _data.Money;
     public int MaxDodgeCount => _data.MaxDodgeCount;
     public float MoveSpeedMultiplier => _data.MoveSpeedMultiplier;
+    public float AttackSpeedMultiplier => _data.AttackSpeedMultiplier;
 
     public float CalculateEnergyRecoveryOnHit(float attackBaseRecovery)
     {
@@ -94,6 +96,7 @@ public readonly struct PlayerStatSnapshot
         data.GuardBreakMoveDistance = Mathf.Max(0f, data.GuardBreakMoveDistance);
         data.MaxDodgeCount = Mathf.Max(1, data.MaxDodgeCount);
         data.MoveSpeedMultiplier = Mathf.Max(0f, data.MoveSpeedMultiplier);
+        data.AttackSpeedMultiplier = Mathf.Max(0.01f, data.AttackSpeedMultiplier);
         _data = data;
     }
 }
@@ -222,7 +225,8 @@ public class PlayerStat : MonoBehaviour
             GuardBreakMoveDistance = GetFinalStat(ItemStatType.GuardBreakMoveDistance),
             Money = _money,
             MaxDodgeCount = GetFinalMaxDodgeCount(),
-            MoveSpeedMultiplier = GetFinalStat(ItemStatType.MoveSpeedMultiplier)
+            MoveSpeedMultiplier = GetFinalStat(ItemStatType.MoveSpeedMultiplier),
+            AttackSpeedMultiplier = GetFinalStat(ItemStatType.AttackSpeedMultiplier)
         };
 
         return new PlayerStatSnapshot(data);
@@ -433,6 +437,7 @@ public class PlayerStat : MonoBehaviour
             ItemStatType.GuardBreakMoveDistance => _guardBreakMoveDistance,
             ItemStatType.MaxDodgeCount => _baseMaxDodgeCount,
             ItemStatType.MoveSpeedMultiplier => 1f,
+            ItemStatType.AttackSpeedMultiplier => 1f,
             ItemStatType.PoiseDamage => _basePoiseDamage,
             ItemStatType.GuardPoiseDamage => _baseGuardPoiseDamage,
             ItemStatType.EnergyRecoveryOnHit => _baseEnergyRecoveryOnHit,
@@ -489,7 +494,13 @@ public class PlayerStat : MonoBehaviour
     private bool SetFinalStat(ItemStatType stat, float baseValue)
     {
         GetStatCalculation(stat, baseValue, out float valueBeforeMultiplier, out float multiplier);
-        float minimumValue = stat == ItemStatType.MaxHealth || stat == ItemStatType.MaxDodgeCount ? 1f : 0f;
+        // 공격 속도가 0 이하가 되어 공격 애니메이션이 멈추거나 역재생되지 않도록 한다.
+        float minimumValue = stat switch
+        {
+            ItemStatType.MaxHealth or ItemStatType.MaxDodgeCount => 1f,
+            ItemStatType.AttackSpeedMultiplier => 0.01f,
+            _ => 0f
+        };
         float finalValue = Mathf.Max(minimumValue, valueBeforeMultiplier * multiplier);
         // 회피 횟수는 계산을 모두 마친 뒤 소수점을 내리며 최소 1회를 유지한다.
         if (stat == ItemStatType.MaxDodgeCount) finalValue = Mathf.Floor(finalValue);

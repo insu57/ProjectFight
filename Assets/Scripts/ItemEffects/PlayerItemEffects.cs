@@ -32,6 +32,14 @@ public sealed class PlayerItemEffects
         _host = host ?? throw new ArgumentNullException(nameof(host));
     }
 
+    public void AppendActiveEffects(List<ActiveItemEffectSnapshot> results)
+    {
+        // 조회는 시간을 진행시키지 않으며, 사망·비활성화 중에는 남아 있는 상태도 표시하지 않는다.
+        if (!_host.CanRunItemEffects) return;
+        _recoveryOverTime.AppendActiveEffects(results);
+        _timedStatModifiers.AppendActiveEffects(results);
+    }
+
     public bool CanApplyAny(IReadOnlyList<ItemEffectData> effects)
     {
         for (int i = 0; i < effects.Count; i++)

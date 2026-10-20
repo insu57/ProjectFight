@@ -65,6 +65,15 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     public PlayerStatSnapshot CurrentPlayerStats => _playerStat ? _playerStat.CurrentStats : default;
     public string CurrentInteractionText { get; private set; } = string.Empty;
 
+    public void GetActiveItemEffects(List<ActiveItemEffectSnapshot> results)
+    {
+        if (results == null) throw new ArgumentNullException(nameof(results));
+
+        // 표시 목록은 호출자가 재사용하고, UI의 실행기 직접 참조는 Manager가 대신 중개한다.
+        results.Clear();
+        _itemEffects?.AppendActiveEffects(results);
+    }
+
     private void Awake()
     {
         _itemEffects = new PlayerItemEffects(this);
@@ -1085,19 +1094,20 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void BeginAttackPresentation(AttackDefinition attackDefinition)
     {
-        // 공격 설정을 판정 컴포넌트에 전달한 뒤 애니메이션을 시작한다.
+        // 각 공격·콤보 단계 시작 시 같은 스냅샷으로 피해와 재생 배율을 확정한다.
+        PlayerStatSnapshot stats = _playerStat ? _playerStat.CurrentStats : default;
         if (_attackHitbox)
         {
-            // 콤보의 각 공격 시작 시 배율 적용 전 수치와 배율을 한 스냅샷에서 전달한다.
             if (_playerStat)
             {
-                PlayerStatSnapshot stats = _playerStat.CurrentStats;
-                _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier, stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
+                _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier,
+                    stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
             }
             else _attackHitbox.BeginAttack(attackDefinition);
         }
 
-        _playerAnimation.PlayAttack(attackDefinition);
+        // AnimationSpeed와의 곱셈은 공통 애니메이션에서 처리하며, 공격 중 스탯 변경은 다음 공격부터 반영한다.
+        _playerAnimation.PlayAttack(attackDefinition, _playerStat ? stats.AttackSpeedMultiplier : 1f);
         TryPlayAttackSound(false, 0f);
     }
 
