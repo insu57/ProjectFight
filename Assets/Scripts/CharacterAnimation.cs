@@ -15,6 +15,7 @@ public abstract class CharacterAnimation : MonoBehaviour
     private int _locomotionStateHash;
     private bool _isAttackRequested;
     private bool _hasEnteredAttackState;
+    private float _currentAttackExitTransitionDuration = -1f;
     private SoundDefinition _pendingAttackSound;
     private float _attackSoundNormalizedTime;
     private double _hitStopEndTime;
@@ -132,10 +133,14 @@ public abstract class CharacterAnimation : MonoBehaviour
 
         // 공격 상태 전용 배속을 사용해 히트스탑의 Animator.speed 정지/복원과 분리한다.
         float attackSpeed = attackDefinition.AnimationSpeed * attackSpeedMultiplier;
+        // 연계 블렌딩은 진입할 공격의 설정을 사용하고, 미지정이면 기존 진입 시간을 유지한다.
+        float transitionDuration = _isAttackRequested && attackDefinition.ComboTransitionDuration >= 0f
+            ? attackDefinition.ComboTransitionDuration : attackDefinition.TransitionDuration;
         CharacterAnimator.SetFloat(_attackSpeedHash, attackSpeed);
-        CharacterAnimator.CrossFadeInFixedTime(attackDefinition.AnimationStateHash, attackDefinition.TransitionDuration, 0);
+        CharacterAnimator.CrossFadeInFixedTime(attackDefinition.AnimationStateHash, transitionDuration, 0);
         _isAttackRequested = true;
         _hasEnteredAttackState = false;
+        _currentAttackExitTransitionDuration = attackDefinition.ExitTransitionDuration;
         _pendingAttackSound = attackDefinition.AttackSound;
         _attackSoundNormalizedTime = attackDefinition.AttackSoundNormalizedTime;
         return true;
@@ -237,7 +242,9 @@ public abstract class CharacterAnimation : MonoBehaviour
         // 비활성화 중에는 애니메이션 전환을 요청하지 않는다.
         if (CharacterAnimator && CharacterAnimator.isActiveAndEnabled)
         {
-            CharacterAnimator.CrossFadeInFixedTime(_locomotionStateHash, _attackExitTransitionDuration, 0);
+            // 공격별 복귀 시간이 없거나 경직 복귀처럼 공격 문맥이 없으면 공통 설정을 사용한다.
+            float transitionDuration = _currentAttackExitTransitionDuration >= 0f ? _currentAttackExitTransitionDuration : _attackExitTransitionDuration;
+            CharacterAnimator.CrossFadeInFixedTime(_locomotionStateHash, transitionDuration, 0);
         }
 
         // 활성 여부와 관계없이 공격 실행 상태는 초기화한다.
@@ -248,6 +255,7 @@ public abstract class CharacterAnimation : MonoBehaviour
     {
         _isAttackRequested = false;
         _hasEnteredAttackState = false;
+        _currentAttackExitTransitionDuration = -1f;
         _pendingAttackSound = null;
         _attackSoundNormalizedTime = 0f;
 

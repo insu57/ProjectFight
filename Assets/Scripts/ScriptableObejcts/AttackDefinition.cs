@@ -16,7 +16,12 @@ public class AttackDefinition : ScriptableObject
     [field: SerializeField, Min(0f)] public float BaseEnergyRecoveryOnHit { get; private set; }
     // 타격 성공 시 공격자와 피격자에게 동일하게 적용할 정지 시간이다.
     [field: SerializeField, Min(0f)] public float HitStopDuration { get; private set; }
-    [field: SerializeField, Min(0f)] public float TransitionDuration { get; private set; } = 0.1f;
+    [field: SerializeField, Min(0f), Tooltip("대기·이동 상태에서 이 공격으로 진입하는 블렌딩 시간(초)입니다.")]
+    public float TransitionDuration { get; private set; } = 0.1f;
+    [field: SerializeField, Min(-1f), Tooltip("다른 공격에서 이 공격으로 연계하는 블렌딩 시간(초)입니다. -1이면 Transition Duration을 사용하며, 0이면 즉시 전환합니다.")]
+    public float ComboTransitionDuration { get; private set; } = -1f;
+    [field: SerializeField, Min(-1f), Tooltip("이 공격이 끝나 이동·대기로 복귀하는 블렌딩 시간(초)입니다. -1이면 CharacterAnimation의 Attack Exit Transition Duration을 사용하며, 0이면 즉시 전환합니다.")]
+    public float ExitTransitionDuration { get; private set; } = -1f;
     [field: SerializeField, Range(0f, 1f)] public float ComboInputStartNormalizedTime { get; private set; } = 0.2f;
     [field: SerializeField, Range(0f, 1f)] public float ComboTransitionNormalizedTime { get; private set; } = 0.55f;
     [field: SerializeField, Range(0f, 1f)] public float ComboInputEndNormalizedTime { get; private set; } = 0.8f;
@@ -48,6 +53,9 @@ public class AttackDefinition : ScriptableObject
     private void OnValidate()
     {
         AnimationSpeed = Mathf.Max(0.01f, AnimationSpeed);
+        // 음수와 유효하지 않은 값은 기존 블렌딩 설정을 사용하는 미지정 상태로 통일한다.
+        ComboTransitionDuration = ComboTransitionDuration >= 0f && !float.IsInfinity(ComboTransitionDuration) ? ComboTransitionDuration : -1f;
+        ExitTransitionDuration = ExitTransitionDuration >= 0f && !float.IsInfinity(ExitTransitionDuration) ? ExitTransitionDuration : -1f;
         BaseEnergyRecoveryOnHit = float.IsNaN(BaseEnergyRecoveryOnHit) || float.IsInfinity(BaseEnergyRecoveryOnHit)
             ? 0f : Mathf.Max(0f, BaseEnergyRecoveryOnHit);
         AttackSoundNormalizedTime = float.IsNaN(AttackSoundNormalizedTime) || float.IsInfinity(AttackSoundNormalizedTime) ? 0f : Mathf.Clamp01(AttackSoundNormalizedTime);

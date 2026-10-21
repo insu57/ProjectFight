@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
-public sealed class ActiveEffectSlotView : MonoBehaviour
+public sealed class ActiveEffectSlotView : PoolableObject
 {
     [SerializeField] private Image _icon;
     [SerializeField] private TMP_Text _remainingTimeText;
@@ -17,6 +17,17 @@ public sealed class ActiveEffectSlotView : MonoBehaviour
         // 전투 HUD가 마우스 입력을 가로채지 않도록 표시 요소의 Raycast를 끈다.
         if (_icon) _icon.raycastTarget = false;
         if (_remainingTimeText) _remainingTimeText.raycastTarget = false;
+    }
+
+    protected override void OnPoolSpawned()
+    {
+        ResetDisplay();
+    }
+
+    protected override void OnPoolDespawned()
+    {
+        // 다른 HUD에 재대여되어도 이전 효과의 아이콘과 잔여시간을 남기지 않는다.
+        ResetDisplay();
     }
 
     public void Refresh(Sprite icon, float remainingTime)
@@ -53,13 +64,19 @@ public sealed class ActiveEffectSlotView : MonoBehaviour
 
     public void Hide()
     {
-        // 한 번 숨긴 슬롯은 다음 사용 전까지 UI나 레이아웃을 다시 갱신하지 않는다.
         if (gameObject.activeSelf) gameObject.SetActive(false);
+        ResetDisplay();
+    }
+
+    private void ResetDisplay()
+    {
         _displayedSeconds = -1;
-        if (_icon && _icon.sprite)
+        if (_icon)
         {
             _icon.sprite = null;
             _icon.enabled = false;
         }
+
+        if (_remainingTimeText) _remainingTimeText.SetText(string.Empty);
     }
 }

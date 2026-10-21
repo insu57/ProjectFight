@@ -1,20 +1,9 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
 public sealed class ActiveEffectHUD : MonoBehaviour
 {
-    [Serializable]
-    private struct StatIconBinding
-    {
-        [SerializeField] private ItemStatType _stat;
-        [SerializeField] private Sprite _icon;
-
-        public ItemStatType Stat => _stat;
-        public Sprite Icon => _icon;
-    }
-
     private PlayerManager _playerManager;
 
     [Header("슬롯 생성 및 재사용")]
@@ -23,14 +12,9 @@ public sealed class ActiveEffectHUD : MonoBehaviour
     private ActiveEffectSlotView _slotPrefab;
     [SerializeField, Min(0)] private int _prewarmSlotCount = 8;
 
-    [Header("지속 회복 아이콘")]
-    [SerializeField] private Sprite _healthRecoveryIcon;
-    [SerializeField] private Sprite _energyRecoveryIcon;
-
-    [Header("스탯별 강화 아이콘")]
-    [SerializeField] private StatIconBinding[] _statIcons = Array.Empty<StatIconBinding>();
-    [SerializeField, Tooltip("효과 아이콘과 원본 아이템 아이콘이 없을 때 사용할 아이콘입니다.")]
-    private Sprite _fallbackIcon;
+    [Header("지속효과 아이콘")]
+    [SerializeField, Tooltip("효과 종류와 스탯별 아이콘을 등록한 공유 에셋을 지정합니다.")]
+    private ActiveEffectIconDefinition _iconDefinition;
 
     private readonly List<ActiveItemEffectSnapshot> _activeEffects = new(8);
     private readonly List<ActiveEffectSlotView> _slots = new(8);
@@ -44,12 +28,21 @@ public sealed class ActiveEffectHUD : MonoBehaviour
         }
 
         _playerManager = FindFirstObjectByType<PlayerManager>();
-
-        EnsureSlotCount(Mathf.Max(0, _prewarmSlotCount));
     }
 
-    private void OnEnable()
+    private void Start()
     {
+        if (!_slotRoot || !_slotPrefab) return;
+
+        // 모든 Awake가 끝난 뒤 준비해 PoolingManager의 초기화 순서에 의존하지 않는다.
+        PoolingManager poolingManager = PoolingManager.Instance;
+        if (!poolingManager || !poolingManager.isActiveAndEnabled)
+        {
+            Debug.LogWarning("활성 PoolingManager가 없어 지속효과 슬롯을 준비할 수 없습니다.", this);
+            return;
+        }
+
+        poolingManager.Prewarm(_slotPrefab, Mathf.Max(0, _prewarmSlotCount));
         Refresh();
     }
 
@@ -62,7 +55,7 @@ public sealed class ActiveEffectHUD : MonoBehaviour
     private void OnDisable()
     {
         _activeEffects.Clear();
-        HideSlotsFrom(0);
+        ReleaseSlotsFrom(0);
     }
 
     private void Refresh()
@@ -71,55 +64,46 @@ public sealed class ActiveEffectHUD : MonoBehaviour
         if (_playerManager) _playerManager.GetActiveItemEffects(_activeEffects);
         if (!_slotRoot || !_slotPrefab) return;
 
+        ReleaseSlotsFrom(_activeEffects.Count);
         EnsureSlotCount(_activeEffects.Count);
-        for (int i = 0; i < _activeEffects.Count; i++)
+        for (int i = 0; i < _slots.Count; i++)
         {
             ActiveItemEffectSnapshot effect = _activeEffects[i];
             _slots[i].Refresh(GetIcon(effect), effect.RemainingTime);
         }
-
-        HideSlotsFrom(_activeEffects.Count);
     }
 
     private void EnsureSlotCount(int count)
     {
-        // 준비한 수를 초과할 때만 생성하고, 만료된 슬롯은 파괴하지 않고 다음 효과에 재사용한다.
+        if (_slots.Count >= count) return;
+
+        PoolingManager poolingManager = PoolingManager.Instance;
+        if (!poolingManager || !poolingManager.isActiveAndEnabled) return;
+
+        // 표시 중인 슬롯만 보관하며 효과 수가 늘었을 때 부족한 수만 대여한다.
         while (_slots.Count < count)
         {
-            ActiveEffectSlotView slot = Instantiate(_slotPrefab, _slotRoot, false);
-            slot.Hide();
+            ActiveEffectSlotView slot = poolingManager.Spawn(_slotPrefab, _slotRoot);
+            if (!slot) break;
             _slots.Add(slot);
         }
     }
 
-    private void HideSlotsFrom(int startIndex)
+    private void ReleaseSlotsFrom(int startIndex)
     {
-        for (int i = startIndex; i < _slots.Count; i++)
+        // 뒤에서 반환해 남아 있는 슬롯의 순서를 유지하고 목록 이동 비용을 피한다.
+        for (int i = _slots.Count - 1; i >= startIndex; i--)
         {
-            if (_slots[i]) _slots[i].Hide();
+            ActiveEffectSlotView slot = _slots[i];
+            _slots.RemoveAt(i);
+            if (slot && !slot.ReturnToPool()) slot.Hide();
         }
     }
 
     private Sprite GetIcon(ActiveItemEffectSnapshot effect)
     {
-        Sprite icon = null;
-        if (effect.Kind == ActiveItemEffectKind.RecoveryOverTime)
-        {
-            icon = effect.RecoveryTarget == ItemRecoveryTarget.Health ? _healthRecoveryIcon : _energyRecoveryIcon;
-        }
-        else
-        {
-            for (int i = 0; i < (_statIcons?.Length ?? 0); i++)
-            {
-                StatIconBinding binding = _statIcons[i];
-                if (binding.Stat != effect.Stat || !binding.Icon) continue;
-                icon = binding.Icon;
-                break;
-            }
-        }
-
-        // 아직 전용 아이콘이 없는 효과도 원본 아이템 아이콘으로 표시한다.
-        if (!icon && effect.SourceItem) icon = effect.SourceItem.ItemIcon;
-        return icon ? icon : _fallbackIcon;
+        if (_iconDefinition) return _iconDefinition.GetIcon(effect);
+        // 공유 설정이 누락되어도 원본 아이템 아이콘으로 효과를 표시한다.
+        return effect.SourceItem ? effect.SourceItem.ItemIcon : null;
     }
 }

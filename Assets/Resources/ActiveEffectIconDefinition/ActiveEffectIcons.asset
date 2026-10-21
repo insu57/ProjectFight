@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4407efb91194e848ce352714da412ca, type: 3}
+  m_Name: ActiveEffectIcons
+  m_EditorClassIdentifier: Assembly-CSharp::ActiveEffectIconDefinition
+  _healthRecoveryIcon: {fileID: 21300000, guid: 43bd624137183194a8320fe947aa9c53, type: 3}
+  _energyRecoveryIcon: {fileID: 21300000, guid: b2093d44fdfcf5a48b7e27923d36256e, type: 3}
+  _statIcons:
+  - _stat: 0
+    _icon: {fileID: 21300000, guid: 0720aec980e1e464fad9ac5724575886, type: 3}
+  - _stat: 1
+    _icon: {fileID: 21300000, guid: e670a62d7d9fb394a9918f04804e30b4, type: 3}
+  - _stat: 2
+    _icon: {fileID: 21300000, guid: 84b5ccaf41b506d44ab2b17bf0f839ff, type: 3}
+  - _stat: 3
+    _icon: {fileID: 21300000, guid: b2093d44fdfcf5a48b7e27923d36256e, type: 3}
+  - _stat: 4
+    _icon: {fileID: 21300000, guid: a7059c93b236e6044be6ecce319d073a, type: 3}
+  - _stat: 8
+    _icon: {fileID: 21300000, guid: e4252fd445463404da5af1cd4b3fa1ab, type: 3}
+  - _stat: 15
+    _icon: {fileID: 21300000, guid: e4252fd445463404da5af1cd4b3fa1ab, type: 3}
+  _fallbackIcon: {fileID: 21300000, guid: 087e862a02ea5d843a69db2b5a25f37b, type: 3}
