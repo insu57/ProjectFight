@@ -13,6 +13,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private Transform _target;
     private AttackHitbox _attackHitbox;
     private Hurtbox _hurtbox;
+    private Collider _lethalArtTargetCollider;
     private LockOnTarget _lockOnTarget;
     private bool _lockOnEnabledBeforeDeath;
     private bool _deathPresentationStarted;
@@ -61,6 +62,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _attackHitbox = GetComponentInChildren<AttackHitbox>();
         _hurtbox = GetComponentInChildren<Hurtbox>();
+        if (_hurtbox) _hurtbox.TryGetComponent(out _lethalArtTargetCollider);
         _lockOnTarget = GetComponentInChildren<LockOnTarget>(true);
 
         if (_attackHitbox)
@@ -303,6 +305,22 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     {
         // AI 갱신이 조기 종료되어도 발소리 조건을 확인하여 정지 중에는 보폭을 누적하지 않는다.
         UpdateFootsteps(_footstepMoveDistance);
+    }
+
+    // 적 하위 컴포넌트를 외부에서 직접 조회하지 않도록 체력과 공통 거리 정보를 중개한다.
+    public bool TryGetLethalArtTargetInfo(Vector3 origin, out float health, out float maxHealth, out float distanceSquared)
+    {
+        health = 0f;
+        maxHealth = 0f;
+        distanceSquared = 0f;
+        if (!isActiveAndEnabled || !_enemyStat || _enemyStat.IsDead) return false;
+        if (!_lethalArtTargetCollider || !_lethalArtTargetCollider.enabled || !_lethalArtTargetCollider.gameObject.activeInHierarchy) return false;
+
+        health = _enemyStat.CurrentHealth;
+        maxHealth = _enemyStat.MaxHealth;
+        // 피격 콜라이더 표면을 기준으로 락온 대상과 물리 탐색 대상을 동일하게 판정한다.
+        distanceSquared = (_lethalArtTargetCollider.ClosestPoint(origin) - origin).sqrMagnitude;
+        return true;
     }
 
     public void SetTarget(Transform target)

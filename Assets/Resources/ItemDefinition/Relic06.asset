@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d218ea65a584c84adab3f4653d65972, type: 3}
   m_Name: Relic06
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  <ItemID>k__BackingField: 2006
+  <ItemID>k__BackingField: 22006
   <ItemName>k__BackingField: "\uC720\uBB3C6\uBC88"
   <ItemDescription>k__BackingField: 
   <ItemIcon>k__BackingField: {fileID: 0}

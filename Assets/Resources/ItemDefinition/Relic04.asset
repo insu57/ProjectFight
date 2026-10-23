@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d218ea65a584c84adab3f4653d65972, type: 3}
   m_Name: Relic04
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  <ItemID>k__BackingField: 2004
+  <ItemID>k__BackingField: 22004
   <ItemName>k__BackingField: "\uBAA8\uBCD1 \uC9C0\uC6D0 \uD3EC\uC2A4\uD130"
   <ItemDescription>k__BackingField: "\uBAA8\uBCD1 \uC9C0\uC6D0 \uD3EC\uC2A4\uD130.
     \uAD6D\uAC00\uAC00 \uB2F9\uC2E0\uC744 \uBD80\uB978\uB2E4."

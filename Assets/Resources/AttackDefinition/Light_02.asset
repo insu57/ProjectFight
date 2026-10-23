@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83940f8af5210a7498045a2390baef7f, type: 3}
   m_Name: Light_02
   m_EditorClassIdentifier: Assembly-CSharp::AttackDefinition
-  <AttackId>k__BackingField: 2
+  <AttackId>k__BackingField: 40102
   <AttackName>k__BackingField: Light_02
   <AnimationStateName>k__BackingField: Light_02
   <AnimationSpeed>k__BackingField: 1.4

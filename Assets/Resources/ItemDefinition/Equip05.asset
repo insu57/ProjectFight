@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d218ea65a584c84adab3f4653d65972, type: 3}
   m_Name: Equip05
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  <ItemID>k__BackingField: 1005
+  <ItemID>k__BackingField: 21005
   <ItemName>k__BackingField: "\uC544\uB2C8\uC2A4\uC758 \uBAA8\uC790"
   <ItemDescription>k__BackingField: "\uC544\uB2C8\uC2A4\uC758 \uBAA8\uC790\uC57C."
   <ItemIcon>k__BackingField: {fileID: 21300000, guid: ccaa9cbd98637cb478928f11a94947dc, type: 3}

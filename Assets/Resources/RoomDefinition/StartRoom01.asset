@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: StartRoom01
   m_EditorClassIdentifier: Assembly-CSharp::RoomDef
   <RoomPrefab>k__BackingField: {fileID: 5733638877101900956, guid: 20cb61cbc7c728040a8d9de2d2a27c4a, type: 3}
-  <StageID>k__BackingField: 1
+  <StageID>k__BackingField: 10001
   <RoomType>k__BackingField: 0
   <RoomSpacing>k__BackingField: {x: 40, y: 40}

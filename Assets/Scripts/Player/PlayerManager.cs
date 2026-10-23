@@ -6,6 +6,7 @@ using UnityEngine;
 public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver, IPlayerItemEffectHost
 {
     private const int EquipmentSlotCount = (int)EquipmentSlot.Shoes + 1;
+    private const string LethalArtResourcePath = "LethalArtDefinition";
 
     [Header("발소리")]
     [SerializeField] private SoundDefinition _footstepSound;
@@ -42,6 +43,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private readonly PoiseReactionRuntime _poiseReaction = new();
     // 효과 실행 상태는 일반 C# 실행기가 소유하고 컴포넌트 접근은 이 Manager가 중개한다.
     private PlayerItemEffects _itemEffects;
+    private LethalArtRuntime _lethalArtRuntime;
+    private int _lethalArtEnemyLayerMask;
+    // 근처 적의 중복 콜라이더와 검색 버퍼는 강공 입력 사이에도 재사용한다.
+    private Collider[] _lethalArtCandidateBuffer = new Collider[32];
+    private readonly HashSet<EnemyManager> _lethalArtCheckedEnemies = new(32);
     private bool _hasStarted;
     private float _distanceSinceFootstep;
 
@@ -77,6 +83,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private void Awake()
     {
         _itemEffects = new PlayerItemEffects(this);
+        _lethalArtRuntime = new LethalArtRuntime(Resources.LoadAll<LethalArtDefinition>(LethalArtResourcePath));
+        _lethalArtEnemyLayerMask = LayerMask.GetMask("Enemy");
         TryGetComponent(out _playerControl);
         TryGetComponent(out _playerState);
         TryGetComponent(out _playerStat);
@@ -1085,11 +1093,87 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
         if (IsHitStopped) return;
         if (!_playerState.CanUseNormalAttack) return;
+        if (inputType == AttackInputType.Heavy && TryGetAvailableLethalArt(out LethalArtDefinition lethalArt, out EnemyManager targetEnemy))
+        {
+            // 이번 단계는 강공을 대체하는 이름 출력만 수행하며 에너지와 공격 상태는 변경하지 않는다.
+            Debug.Log(string.IsNullOrEmpty(lethalArt.LethalArtName) ? lethalArt.name : lethalArt.LethalArtName, targetEnemy);
+            return;
+        }
         if (!_playerAttack.TryBeginAttack(inputType, out AttackDefinition attackDefinition)) return;
 
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _playerState.SetActionState(PlayerActionState.Attacking);
         BeginAttackPresentation(attackDefinition);
+    }
+
+    // UI에서도 로그·에너지 소모 없이 동일한 필살기와 대상을 조회할 수 있다.
+    public bool TryGetAvailableLethalArt(out LethalArtDefinition lethalArt, out EnemyManager targetEnemy)//비용은...
+    {
+        lethalArt = null;
+        targetEnemy = null;
+        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !_playerStat || !_playerState || IsHitStopped) return false;
+        if (!_playerState.CanUseNormalAttack || _lethalArtRuntime == null) return false;
+
+        PlayerStatSnapshot stats = _playerStat.CurrentStats;
+        if (!_lethalArtRuntime.TryGetSearchDistance(stats, out float searchDistance)) return false;
+
+        Vector3 origin = transform.position;
+        LockOnTarget lockOnTarget = _playerLockOn ? _playerLockOn.CurrentTarget : null;
+        EnemyManager lockedEnemy = lockOnTarget && lockOnTarget.isActiveAndEnabled ? lockOnTarget.GetComponentInParent<EnemyManager>() : null;
+        if (lockedEnemy && TrySelectLethalArtForTarget(lockedEnemy, origin, stats, out lethalArt, out _))
+        {
+            targetEnemy = lockedEnemy;
+            return true;
+        }
+
+        if (_lethalArtEnemyLayerMask == 0) return false;
+        int candidateCount = FindLethalArtCandidates(origin, searchDistance);
+        _lethalArtCheckedEnemies.Clear();
+        if (lockedEnemy) _lethalArtCheckedEnemies.Add(lockedEnemy);
+        float bestDistanceSquared = float.PositiveInfinity;
+        for (int i = 0; i < candidateCount; i++)
+        {
+            Collider candidateCollider = _lethalArtCandidateBuffer[i];
+            if (!candidateCollider) continue;
+
+            EnemyManager enemy = candidateCollider.GetComponentInParent<EnemyManager>();
+            if (!enemy || !_lethalArtCheckedEnemies.Add(enemy)) continue;
+            if (!TrySelectLethalArtForTarget(enemy, origin, stats, out LethalArtDefinition candidate, out float distanceSquared)) continue;
+            // 같은 필살기를 사용할 수 있는 대상끼리는 더 가까운 적을 선택한다.
+            if (!LethalArtRuntime.ShouldReplaceSelection(candidate, distanceSquared, lethalArt, bestDistanceSquared)) continue;
+
+            lethalArt = candidate;
+            targetEnemy = enemy;
+            bestDistanceSquared = distanceSquared;
+        }
+
+        Array.Clear(_lethalArtCandidateBuffer, 0, candidateCount);
+        _lethalArtCheckedEnemies.Clear();
+        return lethalArt;
+    }
+
+    private bool TrySelectLethalArtForTarget(EnemyManager enemy, Vector3 origin, in PlayerStatSnapshot stats,
+        out LethalArtDefinition lethalArt, out float distanceSquared)
+    {
+        lethalArt = null;
+        if (!enemy.TryGetLethalArtTargetInfo(origin, out float health, out float maxHealth, out distanceSquared)) return false;
+
+        return _lethalArtRuntime.TrySelect(stats, health, maxHealth, distanceSquared, out lethalArt);
+    }
+
+    private int FindLethalArtCandidates(Vector3 origin, float searchDistance)
+    {
+        int count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer,
+            _lethalArtEnemyLayerMask, QueryTriggerInteraction.Collide);
+        while (count == _lethalArtCandidateBuffer.Length)
+        {
+            // 밀집 상황에서도 후보를 누락하지 않으며, 확장한 버퍼는 다음 입력에서 그대로 사용한다.
+            _lethalArtCandidateBuffer = new Collider[_lethalArtCandidateBuffer.Length * 2];
+            count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer,
+                _lethalArtEnemyLayerMask, QueryTriggerInteraction.Collide);
+        }
+
+        return count;
     }
 
     private void BeginAttackPresentation(AttackDefinition attackDefinition)

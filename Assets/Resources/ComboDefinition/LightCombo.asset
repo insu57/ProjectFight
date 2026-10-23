@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 517e675514bfddb4194e25dff72a9051, type: 3}
   m_Name: LightCombo
   m_EditorClassIdentifier: Assembly-CSharp::ComboDefinitioon
-  <ComboID>k__BackingField: 1
+  <ComboID>k__BackingField: 41001
   <ComboName>k__BackingField: "\uC57D\uC57D\uC57D\uC57D"
   <ComboSteps>k__BackingField:
   - AttackDefinition: {fileID: 11400000, guid: 1b85b861fab31a24e81f85e01772e7f5, type: 2}

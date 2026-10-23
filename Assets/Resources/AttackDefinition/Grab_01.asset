@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83940f8af5210a7498045a2390baef7f, type: 3}
   m_Name: Grab_01
   m_EditorClassIdentifier: Assembly-CSharp::AttackDefinition
-  <AttackId>k__BackingField: 6
+  <AttackId>k__BackingField: 40301
   <AttackName>k__BackingField: Grab_01
   <AnimationStateName>k__BackingField: Grab_01
   <BaseDamage>k__BackingField: 0

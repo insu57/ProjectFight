@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83940f8af5210a7498045a2390baef7f, type: 3}
   m_Name: Heavy_03
   m_EditorClassIdentifier: Assembly-CSharp::AttackDefinition
-  <AttackId>k__BackingField: 8
+  <AttackId>k__BackingField: 40203
   <AttackName>k__BackingField: Heavy_03
   <AnimationStateName>k__BackingField: Heavy_03
   <AnimationSpeed>k__BackingField: 0.7

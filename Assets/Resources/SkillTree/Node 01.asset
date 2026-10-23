@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35e94cd5805b3f94b9cbf57f892a7fed, type: 3}
   m_Name: Node 01
   m_EditorClassIdentifier: Assembly-CSharp::SkillNodeDefinition
-  <NodeID>k__BackingField: 0
+  <NodeID>k__BackingField: 30001
   <NodeName>k__BackingField: Start
   <NodeIcon>k__BackingField: {fileID: 21300000, guid: 37e07b1bd28380b4f9cbfa0fc8bd564c, type: 3}
   <NodeDescription>k__BackingField: 

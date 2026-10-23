@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0105ea8a493dcb6439c628cb91c884ad, type: 3}
   m_Name: SkillTreeDefinition
   m_EditorClassIdentifier: Assembly-CSharp::SkillTreeDefinition
-  <StartNodeID>k__BackingField: 0
+  <StartNodeID>k__BackingField: 30000
   <Nodes>k__BackingField:
   - {fileID: 11400000, guid: 49d782a2df4e057488d49cd8b299c6be, type: 2}
   - {fileID: 11400000, guid: daa51305533d0ca4fb266fc445a24309, type: 2}

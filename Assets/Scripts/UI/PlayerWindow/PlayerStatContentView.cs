@@ -64,7 +64,8 @@ public sealed class PlayerStatContentView : MonoBehaviour
 
         if (_healthText)
         {
-            _healthText.SetText("{0} / {1}", stats.CurrentHealth, stats.MaxHealth);
+            // 실제 수치는 유지하고 표시할 때만 소수점 이하를 버린다.
+            _healthText.SetText("{0} / {1}", Mathf.Floor(stats.CurrentHealth), Mathf.Floor(stats.MaxHealth));
         }
 
         if (_attackPowerText)
@@ -79,7 +80,7 @@ public sealed class PlayerStatContentView : MonoBehaviour
 
         if (_energyText)
         {
-            _energyText.SetText($"{stats.CurrentEnergy:0.##} / {stats.MaxEnergy:0.##}");
+            _energyText.SetText("{0} / {1}", Mathf.Floor(stats.CurrentEnergy), Mathf.Floor(stats.MaxEnergy));
         }
         //GC할당 문제
     }

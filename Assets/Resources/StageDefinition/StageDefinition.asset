@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 62da0b18dccce1e4b9a4a034a45e38e1, type: 3}
   m_Name: StageDefinition
   m_EditorClassIdentifier: Assembly-CSharp::StageDefinition
-  <StageID>k__BackingField: 0
+  <StageID>k__BackingField: 10000
   <StartRoomDef>k__BackingField: {fileID: 11400000, guid: c960f2173f6c72b409207ac62adc9962, type: 2}
   <BossRoomDef>k__BackingField: {fileID: 11400000, guid: 380c3d3f7111f09408ebab9fa43df095, type: 2}
   <NextRoomDef>k__BackingField: {fileID: 11400000, guid: 4da45d482b9ff6142a54bad1039e600b, type: 2}

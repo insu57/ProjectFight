@@ -12,11 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83940f8af5210a7498045a2390baef7f, type: 3}
   m_Name: Light_05
   m_EditorClassIdentifier: Assembly-CSharp::AttackDefinition
-  <AttackId>k__BackingField: 9
+  <AttackId>k__BackingField: 40105
   <AttackName>k__BackingField: Light_05
   <AnimationStateName>k__BackingField: Light_05
+  <AnimationSpeed>k__BackingField: 1.2
   <BaseDamage>k__BackingField: 0
+  <BasePoiseDamage>k__BackingField: 0
+  <BaseGuardPoiseDamage>k__BackingField: 0
+  <BaseEnergyRecoveryOnHit>k__BackingField: 0
+  <HitStopDuration>k__BackingField: 0
   <TransitionDuration>k__BackingField: 0.1
+  <ComboTransitionDuration>k__BackingField: -1
+  <ExitTransitionDuration>k__BackingField: -1
   <ComboInputStartNormalizedTime>k__BackingField: 0.2
   <ComboTransitionNormalizedTime>k__BackingField: 0.55
   <ComboInputEndNormalizedTime>k__BackingField: 0.8
@@ -47,3 +54,10 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  <HitboxSize>k__BackingField: {x: 1, y: 1, z: 1}
+  <HitboxOffset>k__BackingField: {x: 0, y: 1, z: 1}
+  <HitStartNormalizedTime>k__BackingField: 0.2
+  <HitEndNormalizedTime>k__BackingField: 0.4
+  <AttackSound>k__BackingField: {fileID: 0}
+  <AttackSoundNormalizedTime>k__BackingField: 0
+  <HitSound>k__BackingField: {fileID: 0}
