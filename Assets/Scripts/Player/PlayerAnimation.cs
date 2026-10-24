@@ -56,6 +56,14 @@ public sealed class PlayerAnimation : CharacterAnimation
         TryPlayAttack(attackDefinition, attackSpeedMultiplier);
     }
 
+    public void PlayLethalArt(AttackDefinition attackDefinition, float attackSpeedMultiplier = 1f)
+    {
+        // 기존 공격의 정지·예약음을 정리하고 Locomotion을 거치지 않고 필살기를 즉시 시작한다.
+        ClearHitStop();
+        ResetAttackState();
+        TryPlayAttack(attackDefinition, attackSpeedMultiplier, 0f);
+    }
+
     public void PlayDodge(Vector2 dodgeDirection)
     {
         if (!CharacterAnimator)

@@ -15,11 +15,14 @@ public sealed class PlayerAttack : MonoBehaviour
     private ComboGraph _comboGraph;
     private ComboNode _currentNode;
     private ComboNode _queuedNode;
+    // 필살기는 콤보 노드를 만들지 않고 전달받은 공격 정의를 단발 실행한다.
+    private AttackDefinition _standaloneAttack;
     private AttackInputType _queuedInputType;
     private float _previousAttackMoveProgress;
 
     public AttackInputType CurrentAttackType { get; private set; }
     public bool IsAttacking { get; private set; }
+    public bool IsLethalArtActive => IsAttacking && _standaloneAttack;
 
     private void Awake()
     {
@@ -44,10 +47,25 @@ public sealed class PlayerAttack : MonoBehaviour
 
         _currentNode = firstNode;
         _queuedNode = null;
+        _standaloneAttack = null;
         _previousAttackMoveProgress = 0f;
         CurrentAttackType = inputType;
         IsAttacking = true;
         attackDefinition = firstNode.AttackDefinition;
+        return true;
+    }
+
+    public bool TryBeginLethalArt(AttackDefinition attackDefinition)
+    {
+        if (IsLethalArtActive || !attackDefinition) return false;
+
+        // 일반 공격은 어느 구간에서든 교체하고, 이전 콤보 예약과 이동 진행도는 이어받지 않는다.
+        _currentNode = null;
+        _queuedNode = null;
+        _standaloneAttack = attackDefinition;
+        _previousAttackMoveProgress = 0f;
+        CurrentAttackType = AttackInputType.Heavy;
+        IsAttacking = true;
         return true;
     }
 
@@ -102,12 +120,15 @@ public sealed class PlayerAttack : MonoBehaviour
     {
         localDisplacement = Vector2.zero;
 
-        if (!IsAttacking || _currentNode == null)
+        if (!IsAttacking)
         {
             return false;
         }
 
-        AttackDefinition attackDefinition = _currentNode.AttackDefinition;
+        // 단발 필살기도 일반 공격과 같은 이동 구간과 커브를 사용한다.
+        AttackDefinition attackDefinition = _currentNode != null ? _currentNode.AttackDefinition : _standaloneAttack;
+        if (!attackDefinition) return false;
+
         float moveProgress = EvaluateAttackMoveProgress(attackDefinition, normalizedTime);
         float progressDelta = moveProgress - _previousAttackMoveProgress;
 
@@ -120,6 +141,7 @@ public sealed class PlayerAttack : MonoBehaviour
     {
         _currentNode = null;
         _queuedNode = null;
+        _standaloneAttack = null;
         _previousAttackMoveProgress = 0f;
         IsAttacking = false;
     }

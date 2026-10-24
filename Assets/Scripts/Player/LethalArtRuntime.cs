@@ -34,8 +34,7 @@ public sealed class LethalArtRuntime
         return _playerCandidateCount > 0;
     }
 
-    public bool TrySelect(in PlayerStatSnapshot playerStats, float enemyHealth, float enemyMaxHealth,
-        float distanceSquared, out LethalArtDefinition selected)
+    public bool TrySelect(in PlayerStatSnapshot playerStats, float enemyHealth, float enemyMaxHealth, float distanceSquared, bool isEnemyGuarding, bool isEnemyStunned, bool isEnemyGuardBroken, out LethalArtDefinition selected)
     {
         selected = null;
         if (!IsAlive(enemyHealth, enemyMaxHealth) || !IsFinite(distanceSquared) || distanceSquared < 0f) return false;
@@ -44,11 +43,15 @@ public sealed class LethalArtRuntime
         for (int i = 0; i < _playerCandidateCount; i++)
         {
             LethalArtDefinition definition = _playerCandidates[i];
-            if (!definition) continue;
+            if (!definition || !definition.Attack) continue;
             if (distanceSquared > definition.ProximityDistance * definition.ProximityDistance) continue;
             if (!MatchesHealth(definition.EnemyHealthCondition, enemyHealth, enemyMaxHealth)) continue;
+            // 적 상태는 캐시하지 않고 조회할 때마다 검사해 가드·스턴·브레이크 전환을 즉시 반영한다.
+            if (!MatchesRequirement(definition.EnemyGuardRequirement, isEnemyGuarding)) continue;
+            if (!MatchesRequirement(definition.EnemyStunRequirement, isEnemyStunned)) continue;
+            if (!MatchesRequirement(definition.EnemyGuardBreakRequirement, isEnemyGuardBroken)) continue;
 
-            // 현재 Debug 단계는 체력·에너지·거리만 판정한다. 해금과 나머지 상태 조건은 이후 연결한다.
+            // 같은 대상의 체력·거리·상태 조건을 모두 통과한 필살기만 반환한다.
             selected = definition;
             return true;
         }
@@ -95,7 +98,8 @@ public sealed class LethalArtRuntime
 
     private static bool CanUseForPlayer(LethalArtDefinition definition, in PlayerStatSnapshot playerStats)
     {
-        if (!definition || !IsAlive(playerStats.CurrentHealth, playerStats.MaxHealth)) return false;
+        // 실행할 공격이 없는 정의는 입력과 HUD의 사용 가능 후보에서 함께 제외한다.
+        if (!definition || !definition.Attack || !IsAlive(playerStats.CurrentHealth, playerStats.MaxHealth)) return false;
         if (!IsFinite(playerStats.CurrentEnergy) || !IsFinite(definition.EnergyCost) || definition.EnergyCost < 0f) return false;
         if (playerStats.CurrentEnergy < definition.EnergyCost) return false;
         if (!IsFinite(definition.ProximityDistance) || definition.ProximityDistance < 0f) return false;
@@ -110,6 +114,17 @@ public sealed class LethalArtRuntime
         // 정규화된 비율끼리 비교하여 30/100과 0.3처럼 같은 경계값을 일관되게 판정한다.
         float ratio = health / maxHealth;
         return ratio >= condition.MinimumRatio && ratio <= condition.MaximumRatio;
+    }
+
+    private static bool MatchesRequirement(LethalArtConditionRequirement requirement, bool isActive)
+    {
+        return requirement switch
+        {
+            LethalArtConditionRequirement.Any => true,
+            LethalArtConditionRequirement.Required => isActive,
+            LethalArtConditionRequirement.Forbidden => !isActive,
+            _ => false
+        };
     }
 
     private static bool IsAlive(float health, float maxHealth)

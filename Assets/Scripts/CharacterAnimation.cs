@@ -122,7 +122,7 @@ public abstract class CharacterAnimation : MonoBehaviour
         _isDeathPlaying = false;
     }
 
-    public bool TryPlayAttack(AttackDefinition attackDefinition, float attackSpeedMultiplier = 1f)
+    public bool TryPlayAttack(AttackDefinition attackDefinition, float attackSpeedMultiplier = 1f, float transitionDurationOverride = -1f)
     {
         // 새 요청이 실패하더라도 이전 공격의 미재생 요청을 이어받지 않는다.
         _pendingAttackSound = null;
@@ -136,8 +136,16 @@ public abstract class CharacterAnimation : MonoBehaviour
         // 연계 블렌딩은 진입할 공격의 설정을 사용하고, 미지정이면 기존 진입 시간을 유지한다.
         float transitionDuration = _isAttackRequested && attackDefinition.ComboTransitionDuration >= 0f
             ? attackDefinition.ComboTransitionDuration : attackDefinition.TransitionDuration;
+        // 필살기처럼 기존 공격을 즉시 교체하는 요청만 블렌딩 시간을 덮어쓴다.
+        if (transitionDurationOverride >= 0f) transitionDuration = transitionDurationOverride;
         CharacterAnimator.SetFloat(_attackSpeedHash, attackSpeed);
-        CharacterAnimator.CrossFadeInFixedTime(attackDefinition.AnimationStateHash, transitionDuration, 0);
+        if (transitionDurationOverride == 0f)
+        {
+            // 같은 프레임의 이동·판정 갱신이 이전 공격의 진행도를 읽지 않도록 즉시 평가한다.
+            CharacterAnimator.Play(attackDefinition.AnimationStateHash, 0, 0f);
+            CharacterAnimator.Update(0f);
+        }
+        else CharacterAnimator.CrossFadeInFixedTime(attackDefinition.AnimationStateHash, transitionDuration, 0, 0f);
         _isAttackRequested = true;
         _hasEnteredAttackState = false;
         _currentAttackExitTransitionDuration = attackDefinition.ExitTransitionDuration;

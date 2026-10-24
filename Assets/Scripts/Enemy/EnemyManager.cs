@@ -13,7 +13,6 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private Transform _target;
     private AttackHitbox _attackHitbox;
     private Hurtbox _hurtbox;
-    private Collider _lethalArtTargetCollider;
     private LockOnTarget _lockOnTarget;
     private bool _lockOnEnabledBeforeDeath;
     private bool _deathPresentationStarted;
@@ -48,7 +47,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     public bool IsDead => _enemyStat && _enemyStat.IsDead;
     public event Action<EnemyManager> Died;
 
-    private bool IsInPoiseReaction => _enemyState.ActionState == EnemyActionState.Stunned || _enemyState.ActionState == EnemyActionState.GuardBroken;
+    private bool IsInPoiseReaction => _enemyState.ActionState == EnemyActionState.Stunned
+        || _enemyState.ActionState == EnemyActionState.GuardBroken;
 
     private void Awake()
     {
@@ -62,7 +62,6 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _attackHitbox = GetComponentInChildren<AttackHitbox>();
         _hurtbox = GetComponentInChildren<Hurtbox>();
-        if (_hurtbox) _hurtbox.TryGetComponent(out _lethalArtTargetCollider);
         _lockOnTarget = GetComponentInChildren<LockOnTarget>(true);
 
         if (_attackHitbox)
@@ -307,19 +306,31 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         UpdateFootsteps(_footstepMoveDistance);
     }
 
-    // 적 하위 컴포넌트를 외부에서 직접 조회하지 않도록 체력과 공통 거리 정보를 중개한다.
-    public bool TryGetLethalArtTargetInfo(Vector3 origin, out float health, out float maxHealth, out float distanceSquared)
+    // 적 하위 컴포넌트를 외부에서 직접 조회하지 않도록 체력·거리·현재 상태 정보를 함께 중개한다.
+    public bool TryGetLethalArtTargetInfo(Vector3 origin, out float health, out float maxHealth, out float distanceSquared,
+        out bool isGuarding, out bool isStunned, out bool isGuardBroken)
     {
         health = 0f;
         maxHealth = 0f;
         distanceSquared = 0f;
-        if (!isActiveAndEnabled || !_enemyStat || _enemyStat.IsDead) return false;
-        if (!_lethalArtTargetCollider || !_lethalArtTargetCollider.enabled || !_lethalArtTargetCollider.gameObject.activeInHierarchy) return false;
+        isGuarding = false;
+        isStunned = false;
+        isGuardBroken = false;
+        if (!isActiveAndEnabled || !_enemyState || !_enemyStat || _enemyStat.IsDead) return false;
+        // 콜라이더의 조회와 캐시는 Hurtbox가 소유하며 Manager는 준비된 참조만 사용한다.
+        Collider targetCollider = _hurtbox ? _hurtbox.CachedCollider : null;
+        if (!targetCollider || !targetCollider.enabled || !targetCollider.gameObject.activeInHierarchy) return false;
 
         health = _enemyStat.CurrentHealth;
         maxHealth = _enemyStat.MaxHealth;
         // 피격 콜라이더 표면을 기준으로 락온 대상과 물리 탐색 대상을 동일하게 판정한다.
-        distanceSquared = (_lethalArtTargetCollider.ClosestPoint(origin) - origin).sqrMagnitude;
+        distanceSquared = (targetCollider.ClosestPoint(origin) - origin).sqrMagnitude;
+
+        EnemyActionState actionState = _enemyState.ActionState;
+        // 가드는 실제 방어가 유지되는 구간을 사용하고 스턴과 가드 브레이크는 각각의 상태로 구분한다.
+        isGuarding = actionState == EnemyActionState.Guarding && _patternExecutor && _patternExecutor.IsGuarding;
+        isStunned = actionState == EnemyActionState.Stunned;
+        isGuardBroken = actionState == EnemyActionState.GuardBroken;
         return true;
     }
 

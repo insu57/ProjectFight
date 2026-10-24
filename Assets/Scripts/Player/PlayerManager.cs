@@ -44,6 +44,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     // 효과 실행 상태는 일반 C# 실행기가 소유하고 컴포넌트 접근은 이 Manager가 중개한다.
     private PlayerItemEffects _itemEffects;
     private LethalArtRuntime _lethalArtRuntime;
+    // 에너지 변경 알림 중 같은 입력이 재진입하여 필살기를 중복 결제하지 않게 한다.
+    private bool _isStartingLethalArt;
     private int _lethalArtEnemyLayerMask;
     // 근처 적의 중복 콜라이더와 검색 버퍼는 강공 입력 사이에도 재사용한다.
     private Collider[] _lethalArtCandidateBuffer = new Collider[32];
@@ -1082,7 +1084,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void HandleAttackPressed(AttackInputType inputType)
     {
-        if (!_playerState || !_playerAttack || !_playerAnimation) return;
+        if (!_playerState || !_playerAttack || !_playerAnimation || _isStartingLethalArt) return;
+
+        // 일반 공격의 콤보 입력 구간이나 히트스톱보다 필살기 전환을 먼저 처리한다.
+        if (inputType == AttackInputType.Heavy && TryGetAvailableLethalArt(out LethalArtDefinition lethalArt, out _))
+        {
+            TryStartLethalArt(lethalArt);
+            return;
+        }
 
         if (_playerState.ActionState == PlayerActionState.Attacking)
         {
@@ -1093,12 +1102,6 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
         if (IsHitStopped) return;
         if (!_playerState.CanUseNormalAttack) return;
-        if (inputType == AttackInputType.Heavy && TryGetAvailableLethalArt(out LethalArtDefinition lethalArt, out EnemyManager targetEnemy))
-        {
-            // 이번 단계는 강공을 대체하는 이름 출력만 수행하며 에너지와 공격 상태는 변경하지 않는다.
-            Debug.Log(string.IsNullOrEmpty(lethalArt.LethalArtName) ? lethalArt.name : lethalArt.LethalArtName, targetEnemy);
-            return;
-        }
         if (!_playerAttack.TryBeginAttack(inputType, out AttackDefinition attackDefinition)) return;
 
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
@@ -1106,13 +1109,51 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         BeginAttackPresentation(attackDefinition);
     }
 
+    private bool CanStartLethalArt()
+    {
+        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !_playerState || !_playerAttack || !_playerAnimation) return false;
+        if (_playerAttack.IsLethalArtActive) return false;
+
+        // 일반 공격 중의 히트스톱은 전환할 수 있지만 회피·가드·피격 반응 등은 기존 제한을 유지한다.
+        if (_playerState.ActionState == PlayerActionState.Attacking) return _playerAttack.IsAttacking;
+        return _playerState.CanUseNormalAttack && !IsHitStopped;
+    }
+
+    private bool TryStartLethalArt(LethalArtDefinition lethalArt)
+    {
+        if (_isStartingLethalArt || !_playerStat || !lethalArt || !lethalArt.Attack || !CanStartLethalArt()) return false;
+
+        _isStartingLethalArt = true;
+        try
+        {
+            // 결제에 실패하면 진행 중인 일반 공격·콤보 예약·히트박스는 그대로 유지한다.
+            if (!_playerStat.TryConsumeEnergy(lethalArt.EnergyCost)) return false;
+
+            // 스탯 알림에서 사망이나 비활성화가 발생한 경우에는 전환하지 않고 비용을 돌려준다.
+            if (!CanStartLethalArt() || !_playerAttack.TryBeginLethalArt(lethalArt.Attack))
+            {
+                _playerStat.RestoreEnergy(lethalArt.EnergyCost);
+                return false;
+            }
+
+            _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
+            _playerState.SetActionState(PlayerActionState.Attacking);
+            // 공통 시작 처리에서 이전 히트박스를 종료하고 필살기 판정으로 교체한다.
+            BeginAttackPresentation(lethalArt.Attack, true);
+            return true;
+        }
+        finally
+        {
+            _isStartingLethalArt = false;
+        }
+    }
+
     // UI에서도 로그·에너지 소모 없이 동일한 필살기와 대상을 조회할 수 있다.
     public bool TryGetAvailableLethalArt(out LethalArtDefinition lethalArt, out EnemyManager targetEnemy)//비용은...
     {
         lethalArt = null;
         targetEnemy = null;
-        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !_playerStat || !_playerState || IsHitStopped) return false;
-        if (!_playerState.CanUseNormalAttack || _lethalArtRuntime == null) return false;
+        if (_isStartingLethalArt || !_playerStat || _lethalArtRuntime == null || !CanStartLethalArt()) return false;
 
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
         if (!_lethalArtRuntime.TryGetSearchDistance(stats, out float searchDistance)) return false;
@@ -1156,9 +1197,11 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         out LethalArtDefinition lethalArt, out float distanceSquared)
     {
         lethalArt = null;
-        if (!enemy.TryGetLethalArtTargetInfo(origin, out float health, out float maxHealth, out distanceSquared)) return false;
+        if (!enemy.TryGetLethalArtTargetInfo(origin, out float health, out float maxHealth, out distanceSquared,
+            out bool isGuarding, out bool isStunned, out bool isGuardBroken)) return false;
 
-        return _lethalArtRuntime.TrySelect(stats, health, maxHealth, distanceSquared, out lethalArt);
+        // 입력과 HUD가 동일한 대상 적의 현재 체력·거리·상태를 기준으로 판단한다.
+        return _lethalArtRuntime.TrySelect(stats, health, maxHealth, distanceSquared, isGuarding, isStunned, isGuardBroken, out lethalArt);
     }
 
     private int FindLethalArtCandidates(Vector3 origin, float searchDistance)
@@ -1176,7 +1219,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         return count;
     }
 
-    private void BeginAttackPresentation(AttackDefinition attackDefinition)
+    private void BeginAttackPresentation(AttackDefinition attackDefinition, bool isLethalArt = false)
     {
         // 각 공격·콤보 단계 시작 시 같은 스냅샷으로 피해와 재생 배율을 확정한다.
         PlayerStatSnapshot stats = _playerStat ? _playerStat.CurrentStats : default;
@@ -1191,7 +1234,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         }
 
         // AnimationSpeed와의 곱셈은 공통 애니메이션에서 처리하며, 공격 중 스탯 변경은 다음 공격부터 반영한다.
-        _playerAnimation.PlayAttack(attackDefinition, _playerStat ? stats.AttackSpeedMultiplier : 1f);
+        if (isLethalArt) _playerAnimation.PlayLethalArt(attackDefinition, _playerStat ? stats.AttackSpeedMultiplier : 1f);
+        else _playerAnimation.PlayAttack(attackDefinition, _playerStat ? stats.AttackSpeedMultiplier : 1f);
         TryPlayAttackSound(false, 0f);
     }
 

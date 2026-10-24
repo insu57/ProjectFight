@@ -13,7 +13,8 @@ public readonly struct DamageInfo
 
     public bool HasDamage => Damage > 0f || PoiseDamage > 0f || GuardPoiseDamage > 0f;
 
-    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f, float poiseDamage = 0f, float guardPoiseDamage = 0f, float energyRecoveryOnHit = 0f, SoundDefinition hitSound = null)
+    public DamageInfo(MonoBehaviour attacker, float damage, float hitStopDuration = 0f, float poiseDamage = 0f,
+        float guardPoiseDamage = 0f, float energyRecoveryOnHit = 0f, SoundDefinition hitSound = null)
     {
         Attacker = attacker;
         Damage = Mathf.Max(0f, damage);
@@ -54,6 +55,17 @@ public sealed class Hurtbox : MonoBehaviour
 
     public MonoBehaviour Owner { get; private set; }
 
+    public CapsuleCollider CachedCollider
+    {
+        get
+        {
+            // 다른 컴포넌트의 Awake에서 먼저 접근해도 같은 참조를 준비한다.
+            CacheCollider();
+            return _collider;
+        }
+    }
+
+    private CapsuleCollider _collider;
     // 소유 Manager가 회피 등으로 피격 허용 여부를 제어한다.
     private bool _isDamageEnabled = true;
 
@@ -65,8 +77,16 @@ public sealed class Hurtbox : MonoBehaviour
 
     private void Awake()
     {
+        CacheCollider();
+    }
+
+    private void CacheCollider()
+    {
+        if (_collider) return;
+
+        _collider = GetComponent<CapsuleCollider>();
         // 이동용 Collider와 분리된 피격 전용 영역으로 사용한다.
-        GetComponent<CapsuleCollider>().isTrigger = true;
+        if (_collider) _collider.isTrigger = true;
     }
 
     public void Initialize(MonoBehaviour owner) //추후 인터페이스로?
