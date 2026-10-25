@@ -752,6 +752,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: HalfWall (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 5128104759831560045, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_SelectedEdges.Array.size
       value: 0
@@ -929,6 +933,10 @@ PrefabInstance:
       value: DoorWall (0)
       objectReference: {fileID: 0}
     - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
@@ -1002,6 +1010,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: EnterTrigger
       objectReference: {fileID: 0}
+    - target: {fileID: 7841175054846198736, guid: d1484faab9e367c4bbd6ac7947f9564b, type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1034,6 +1046,10 @@ PrefabInstance:
     - target: {fileID: 2185619297830222576, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
       propertyPath: m_Name
       value: Wall (0)
+      objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 2185619297830222576, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
       propertyPath: m_IsActive
@@ -1189,6 +1205,10 @@ PrefabInstance:
     - target: {fileID: 2185619297830222576, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
       propertyPath: m_Name
       value: Wall (3)
+      objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 6271068308731892672, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1369,6 +1389,10 @@ PrefabInstance:
     - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
       propertyPath: m_Name
       value: DoorWall (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
       propertyPath: m_IsActive
@@ -1561,6 +1585,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Wall (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 6271068308731892672, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1627,6 +1655,10 @@ PrefabInstance:
     - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_Name
       value: HalfWall
+      objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5128104759831560045, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_VersionIndex
@@ -1745,6 +1777,10 @@ PrefabInstance:
     - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
       propertyPath: m_Name
       value: DoorWall (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
       propertyPath: m_IsActive
@@ -1935,6 +1971,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: HalfWall
       objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 5128104759831560045, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_SelectedEdges.Array.size
       value: 0
@@ -2080,6 +2120,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Wall (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 6271068308731892672, guid: a8f301a77f44b2746852f8578c658dc7, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -2186,6 +2230,10 @@ PrefabInstance:
     - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
       propertyPath: m_Name
       value: DoorWall (3)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5881405918415056427, guid: aeef079972b60f043924d976683e4259, type: 3}
       propertyPath: m_IsActive
@@ -2378,6 +2426,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: HalfWall (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 5128104759831560045, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_SelectedEdges.Array.size
       value: 0
@@ -2513,6 +2565,10 @@ PrefabInstance:
     - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_Name
       value: HalfWall
+      objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5128104759831560045, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_SelectedEdges.Array.size
@@ -2938,6 +2994,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: HalfWall (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 5128104759831560045, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_SelectedEdges.Array.size
       value: 0
@@ -3012,6 +3072,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: HalfWall
       objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 5128104759831560045, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_SelectedEdges.Array.size
       value: 0
@@ -3085,6 +3149,10 @@ PrefabInstance:
     - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_Name
       value: HalfWall (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 2185619297830222576, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5128104759831560045, guid: f9a66b1a2d4644f42bb52ce1e08d5ffe, type: 3}
       propertyPath: m_VersionIndex

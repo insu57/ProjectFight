@@ -21883,18 +21883,6 @@ PrefabInstance:
       propertyPath: _progressionDefinition
       value: 
       objectReference: {fileID: 11400000, guid: 453385d85b33a0445be659984ab66820, type: 2}
-    - target: {fileID: 1052676284403406446, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
-      propertyPath: m_Height
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 1052676284403406446, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
-      propertyPath: m_Radius
-      value: 0.3
-      objectReference: {fileID: 0}
-    - target: {fileID: 1052676284403406446, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
-      propertyPath: m_Center.y
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 4129976254972732029, guid: 6fcda101cead8394f8db6a2729997939, type: 3}
       propertyPath: m_Name
       value: Player

@@ -1262,7 +1262,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         // 프레임 지연으로 여러 보폭이 쌓여도 한 프레임에 한 번만 요청하고 재생 실패를 나중에 몰아서 재시도하지 않는다.
         _distanceSinceFootstep %= stepDistance;
         AudioManager audioManager = AudioManager.Instance;
-        if (audioManager) audioManager.PlaySfx(_footstepSound, transform.position);
+        if (audioManager) audioManager.PlayFootstep(_footstepSound, transform.position, isPlayer: true);
     }
 
     private void UpdateLocomotionState()

@@ -16,6 +16,7 @@ public sealed class AudioManager : Singleton<AudioManager>
     {
         public PooledSfxSource Source;
         public uint PlaybackVersion;
+        public bool IsEnemyFootstep;
     }
 
     [Header("Mixer")]
@@ -31,6 +32,12 @@ public sealed class AudioManager : Singleton<AudioManager>
     [SerializeField, Min(0)] private int _sfxPrewarmCount = 16;
     [SerializeField, Min(1)] private int _maxConcurrentSfx = 32;
 
+    [Header("적 발소리 제한")]
+    [SerializeField, Min(0f), Tooltip("적 전체에서 발소리 요청을 허용하는 최소 간격입니다. 제한된 요청은 대기하지 않고 생략합니다.")]
+    private float _enemyFootstepMinInterval = 0.06f;
+    [SerializeField, Min(1), Tooltip("플레이어 발소리와 별도로 제한하는 적 발소리의 최대 동시 재생 수입니다.")]
+    private int _maxConcurrentEnemyFootsteps = 3;
+
     [Header("옵션 음량")]
     [SerializeField, Range(0f, 1f)] private float _masterVolume = 1f;
     [SerializeField, Range(0f, 1f)] private float _bgmVolume = 1f;
@@ -39,6 +46,8 @@ public sealed class AudioManager : Singleton<AudioManager>
     private readonly List<ActiveSfx> _activeSfx = new(32);
     private AudioSource _bgmSource;
     private int _pendingSfxSpawns;
+    private int _pendingEnemyFootstepSpawns;
+    private double _nextEnemyFootstepDspTime;
     private int _dirtyVolumeMask = AllVolumeMask;
     private bool _hasStarted;
     private bool _isStoppingSfx;
@@ -128,17 +137,26 @@ public sealed class AudioManager : Singleton<AudioManager>
         return TryPlaySfx(sound, Vector3.zero, false);
     }
 
-    private bool TryPlaySfx(SoundDefinition sound, Vector3 position, bool isSpatial)
+    public bool PlayFootstep(SoundDefinition sound, Vector3 position, bool isPlayer)
+    {
+        if (!IsFinite(position.x) || !IsFinite(position.y) || !IsFinite(position.z)) return false;
+        // 같은 SoundDefinition을 공유해도 호출 주체로 구분해 플레이어는 적 발소리 제한에서 제외한다.
+        return TryPlaySfx(sound, position, true, !isPlayer);
+    }
+
+    private bool TryPlaySfx(SoundDefinition sound, Vector3 position, bool isSpatial, bool isEnemyFootstep = false)
     {
         if (Instance != this || !isActiveAndEnabled || _isStoppingSfx || !sound || !_sfxSourcePrefab) return false;
         UpdateSfx();
         if (_activeSfx.Count + _pendingSfxSpawns >= Mathf.Max(1, _maxConcurrentSfx)) return false;
+        if (isEnemyFootstep && !CanPlayEnemyFootstep()) return false;
 
         PoolingManager pool = PoolingManager.Instance;
         if (!pool || !pool.isActiveAndEnabled) return false;
 
         // Spawn의 OnEnable에서 다른 재생 요청이 들어와도 예약 수를 포함해 상한을 지킨다.
         _pendingSfxSpawns++;
+        if (isEnemyFootstep) _pendingEnemyFootstepSpawns++;
         try
         {
             PooledSfxSource source = pool.Spawn(_sfxSourcePrefab, position, Quaternion.identity);
@@ -148,13 +166,29 @@ public sealed class AudioManager : Singleton<AudioManager>
                 source.StopAndReturn();
                 return false;
             }
-            _activeSfx.Add(new ActiveSfx { Source = source, PlaybackVersion = source.PlaybackVersion });
+            _activeSfx.Add(new ActiveSfx { Source = source, PlaybackVersion = source.PlaybackVersion, IsEnemyFootstep = isEnemyFootstep });
+            // 풀 대여나 재생이 실패한 요청은 다음 적의 발소리까지 막지 않는다.
+            if (isEnemyFootstep) _nextEnemyFootstepDspTime = AudioSettings.dspTime + _enemyFootstepMinInterval;
             return true;
         }
         finally
         {
             _pendingSfxSpawns--;
+            if (isEnemyFootstep) _pendingEnemyFootstepSpawns--;
         }
+    }
+
+    private bool CanPlayEnemyFootstep()
+    {
+        // Spawn 콜백 중 들어온 요청도 차단하며, 시간 배율과 무관한 오디오 시간으로 간격을 유지한다.
+        if (_pendingEnemyFootstepSpawns > 0 || AudioSettings.dspTime < _nextEnemyFootstepDspTime) return false;
+
+        int activeEnemyFootsteps = 0;
+        for (int i = 0; i < _activeSfx.Count; i++)
+        {
+            if (_activeSfx[i].IsEnemyFootstep) activeEnemyFootsteps++;
+        }
+        return activeEnemyFootsteps < Mathf.Max(1, _maxConcurrentEnemyFootsteps);
     }
 
     private void UpdateSfx()
@@ -190,6 +224,7 @@ public sealed class AudioManager : Singleton<AudioManager>
         }
         finally
         {
+            _nextEnemyFootstepDspTime = 0d;
             _isStoppingSfx = false;
         }
     }
@@ -246,6 +281,8 @@ public sealed class AudioManager : Singleton<AudioManager>
     {
         _maxConcurrentSfx = Mathf.Max(1, _maxConcurrentSfx);
         _sfxPrewarmCount = Mathf.Clamp(_sfxPrewarmCount, 0, _maxConcurrentSfx);
+        _enemyFootstepMinInterval = IsFinite(_enemyFootstepMinInterval) ? Mathf.Max(0f, _enemyFootstepMinInterval) : 0.06f;
+        _maxConcurrentEnemyFootsteps = Mathf.Max(1, _maxConcurrentEnemyFootsteps);
         _masterVolume = IsFinite(_masterVolume) ? Mathf.Clamp01(_masterVolume) : 1f;
         _bgmVolume = IsFinite(_bgmVolume) ? Mathf.Clamp01(_bgmVolume) : 1f;
         _sfxVolume = IsFinite(_sfxVolume) ? Mathf.Clamp01(_sfxVolume) : 1f;

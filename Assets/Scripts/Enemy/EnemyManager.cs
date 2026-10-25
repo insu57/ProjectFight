@@ -672,7 +672,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         // 프레임 지연이나 풀 재생 실패 이후 발소리가 한꺼번에 몰리지 않도록 한 번만 요청한다.
         _distanceSinceFootstep %= stepDistance;
         AudioManager audioManager = AudioManager.Instance;
-        if (audioManager) audioManager.PlaySfx(_footstepSound, transform.position);
+        if (audioManager) audioManager.PlayFootstep(_footstepSound, transform.position, isPlayer: false);
     }
 
     private void UpdateStationary(float deltaTime)

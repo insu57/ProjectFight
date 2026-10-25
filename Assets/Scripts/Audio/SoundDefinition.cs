@@ -23,7 +23,8 @@ public sealed class SoundDefinition : ScriptableObject
     public float MaxPitch => IsFinite(_maxPitch) ? Mathf.Clamp(_maxPitch, MinPitch, 3f) : MinPitch;
     public float MinDistance => IsFinite(_minDistance) ? Mathf.Max(0.01f, _minDistance) : 1f;
     public float MaxDistance => IsFinite(_maxDistance) ? Mathf.Max(MinDistance + 0.01f, _maxDistance) : Mathf.Max(MinDistance + 0.01f, 15f);
-    public AudioRolloffMode RolloffMode => _rolloffMode == AudioRolloffMode.Logarithmic || _rolloffMode == AudioRolloffMode.Custom ? _rolloffMode : AudioRolloffMode.Linear;
+    public AudioRolloffMode RolloffMode => _rolloffMode == AudioRolloffMode.Logarithmic || _rolloffMode == AudioRolloffMode.Custom
+        ? _rolloffMode : AudioRolloffMode.Linear;
     public int Priority => Mathf.Clamp(_priority, 0, 256);
 
     public bool TryGetClip(out AudioClip clip)

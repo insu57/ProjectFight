@@ -21,7 +21,7 @@ MonoBehaviour:
   <Attack>k__BackingField: {fileID: 11400000, guid: 200425bb686ec7547bd733fecb058c56, type: 2}
   <ProximityDistance>k__BackingField: 2
   _playerHealthCondition:
-    <Enabled>k__BackingField: 1
+    <Enabled>k__BackingField: 0
     <MinimumRatio>k__BackingField: 0
     <MaximumRatio>k__BackingField: 1
   _enemyHealthCondition:
@@ -32,5 +32,5 @@ MonoBehaviour:
   <EnemyStunRequirement>k__BackingField: 0
   <EnemyGuardBreakRequirement>k__BackingField: 0
   <PlayerSprintRequirement>k__BackingField: 0
-  <NearbyWallRequirement>k__BackingField: 0
+  <NearbyWallRequirement>k__BackingField: 1
   <WallProximityOrigin>k__BackingField: 0
