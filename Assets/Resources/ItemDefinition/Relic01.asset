@@ -25,9 +25,6 @@ MonoBehaviour:
   - _stat: 3
     _operation: 0
     _value: 50
-  - _stat: 21
-    _operation: 1
-    _value: 1
   _useEffectData: []
   _acquireEffectData: []
   _passiveEffectData: []

@@ -8,10 +8,11 @@ public sealed class LethalArtRuntime
     // 플레이어 조건을 통과한 후보를 같은 배열에 다시 채워 적별 조회에서 재사용한다.
     private readonly LethalArtDefinition[] _playerCandidates;
     private int _playerCandidateCount;
-    private bool _hasCachedPlayerStats;
+    private bool _hasCachedPlayerConditions;
     private float _cachedHealth;
     private float _cachedMaxHealth;
     private float _cachedEnergy;
+    private bool _cachedIsPlayerSprinting;
     private float _cachedSearchDistance;
 
     public LethalArtRuntime(LethalArtDefinition[] definitions)
@@ -25,31 +26,33 @@ public sealed class LethalArtRuntime
         Array.Sort(_definitions, ComparePriority);
     }
 
-    public bool TryGetSearchDistance(in PlayerStatSnapshot playerStats, out float searchDistance)
+    public bool TryGetSearchDistance(in LethalArtPlayerContext player, out float searchDistance)
     {
-        RefreshPlayerCandidatesIfNeeded(playerStats);
+        RefreshPlayerCandidatesIfNeeded(in player.Stats, player.IsSprinting);
         searchDistance = _cachedSearchDistance;
 
-        // 에너지나 플레이어 체력에서 전부 탈락하면 물리 탐색 자체를 생략한다.
+        // 에너지·체력·달리기 조건에서 전부 탈락하면 물리 탐색 자체를 생략한다.
         return _playerCandidateCount > 0;
     }
 
-    public bool TrySelect(in PlayerStatSnapshot playerStats, float enemyHealth, float enemyMaxHealth, float distanceSquared, bool isEnemyGuarding, bool isEnemyStunned, bool isEnemyGuardBroken, out LethalArtDefinition selected)
+    public bool TrySelect(in LethalArtPlayerContext player, in LethalArtTargetContext target, out LethalArtDefinition selected)
     {
         selected = null;
-        if (!IsAlive(enemyHealth, enemyMaxHealth) || !IsFinite(distanceSquared) || distanceSquared < 0f) return false;
+        if (!IsAlive(target.Health, target.MaxHealth) || !IsFinite(target.DistanceSquared) || target.DistanceSquared < 0f) return false;
 
-        RefreshPlayerCandidatesIfNeeded(playerStats);
+        RefreshPlayerCandidatesIfNeeded(in player.Stats, player.IsSprinting);
         for (int i = 0; i < _playerCandidateCount; i++)
         {
             LethalArtDefinition definition = _playerCandidates[i];
             if (!definition || !definition.Attack) continue;
-            if (distanceSquared > definition.ProximityDistance * definition.ProximityDistance) continue;
-            if (!MatchesHealth(definition.EnemyHealthCondition, enemyHealth, enemyMaxHealth)) continue;
+            if (target.DistanceSquared > definition.ProximityDistance * definition.ProximityDistance) continue;
+            if (!MatchesHealth(definition.EnemyHealthCondition, target.Health, target.MaxHealth)) continue;
             // 적 상태는 캐시하지 않고 조회할 때마다 검사해 가드·스턴·브레이크 전환을 즉시 반영한다.
-            if (!MatchesRequirement(definition.EnemyGuardRequirement, isEnemyGuarding)) continue;
-            if (!MatchesRequirement(definition.EnemyStunRequirement, isEnemyStunned)) continue;
-            if (!MatchesRequirement(definition.EnemyGuardBreakRequirement, isEnemyGuardBroken)) continue;
+            if (!MatchesRequirement(definition.EnemyGuardRequirement, target.IsGuarding)) continue;
+            if (!MatchesRequirement(definition.EnemyStunRequirement, target.IsStunned)) continue;
+            if (!MatchesRequirement(definition.EnemyGuardBreakRequirement, target.IsGuardBroken)) continue;
+            // 벽 조건에서 탈락해도 다음 우선순위 후보를 계속 검사한다.
+            if (!MatchesNearbyWall(definition, player.Position, target.Position)) continue;
 
             // 같은 대상의 체력·거리·상태 조건을 모두 통과한 필살기만 반환한다.
             selected = definition;
@@ -59,11 +62,12 @@ public sealed class LethalArtRuntime
         return false;
     }
 
-    private void RefreshPlayerCandidatesIfNeeded(in PlayerStatSnapshot playerStats)
+    private void RefreshPlayerCandidatesIfNeeded(in PlayerStatSnapshot playerStats, bool isPlayerSprinting)
     {
-        // 입력과 UI가 같은 수치를 조회하면 후보 필터링과 최대 범위 계산을 반복하지 않는다.
-        if (_hasCachedPlayerStats && _cachedHealth.Equals(playerStats.CurrentHealth)
-            && _cachedMaxHealth.Equals(playerStats.MaxHealth) && _cachedEnergy.Equals(playerStats.CurrentEnergy)) return;
+        // 달리기 시작·종료도 캐시에 반영하며, 같은 조건의 입력과 UI 조회는 후보를 재사용한다.
+        if (_hasCachedPlayerConditions && _cachedHealth.Equals(playerStats.CurrentHealth)
+            && _cachedMaxHealth.Equals(playerStats.MaxHealth) && _cachedEnergy.Equals(playerStats.CurrentEnergy)
+            && _cachedIsPlayerSprinting == isPlayerSprinting) return;
 
         int previousCount = _playerCandidateCount;
         _playerCandidateCount = 0;
@@ -72,7 +76,7 @@ public sealed class LethalArtRuntime
         for (int i = 0; i < _definitions.Length; i++)
         {
             LethalArtDefinition definition = _definitions[i];
-            if (!CanUseForPlayer(definition, playerStats)) continue;
+            if (!CanUseForPlayer(definition, playerStats, isPlayerSprinting)) continue;
 
             // 원래 정렬 순서를 유지하여 적별 판정에서도 우선순위가 보존된다.
             _playerCandidates[_playerCandidateCount++] = definition;
@@ -83,7 +87,8 @@ public sealed class LethalArtRuntime
         _cachedHealth = playerStats.CurrentHealth;
         _cachedMaxHealth = playerStats.MaxHealth;
         _cachedEnergy = playerStats.CurrentEnergy;
-        _hasCachedPlayerStats = true;
+        _cachedIsPlayerSprinting = isPlayerSprinting;
+        _hasCachedPlayerConditions = true;
     }
 
     public static bool ShouldReplaceSelection(LethalArtDefinition candidate, float candidateDistanceSquared,
@@ -96,15 +101,41 @@ public sealed class LethalArtRuntime
         return priorityComparison < 0 || (priorityComparison == 0 && candidateDistanceSquared < currentDistanceSquared);
     }
 
-    private static bool CanUseForPlayer(LethalArtDefinition definition, in PlayerStatSnapshot playerStats)
+    private static bool CanUseForPlayer(LethalArtDefinition definition, in PlayerStatSnapshot playerStats, bool isPlayerSprinting)
     {
         // 실행할 공격이 없는 정의는 입력과 HUD의 사용 가능 후보에서 함께 제외한다.
         if (!definition || !definition.Attack || !IsAlive(playerStats.CurrentHealth, playerStats.MaxHealth)) return false;
         if (!IsFinite(playerStats.CurrentEnergy) || !IsFinite(definition.EnergyCost) || definition.EnergyCost < 0f) return false;
         if (playerStats.CurrentEnergy < definition.EnergyCost) return false;
         if (!IsFinite(definition.ProximityDistance) || definition.ProximityDistance < 0f) return false;
+        if (!MatchesRequirement(definition.PlayerSprintRequirement, isPlayerSprinting)) return false;
 
         return MatchesHealth(definition.PlayerHealthCondition, playerStats.CurrentHealth, playerStats.MaxHealth);
+    }
+
+    private static bool MatchesNearbyWall(LethalArtDefinition definition, Vector3 playerPosition, Vector3 targetEnemyPosition)
+    {
+        if (definition.NearbyWallRequirement == LethalArtConditionRequirement.Any) return true;
+        // Wall 레이어 누락을 '벽 없음'으로 해석해 Forbidden 조건이 통과하지 않게 한다.
+        int wallLayerMask = GameLayerUtility.WallMask;
+        if (wallLayerMask == 0) return false;
+
+        Vector3 origin;
+        switch (definition.WallProximityOrigin)
+        {
+            case LethalArtProximityOrigin.Player:
+                origin = playerPosition;
+                break;
+            case LethalArtProximityOrigin.TargetEnemy:
+                origin = targetEnemyPosition;
+                break;
+            default:
+                return false;
+        }
+
+        // 이동·대상 변경을 즉시 반영하도록 체력·에너지 후보 캐시와 별개로 조회한다.
+        bool hasWall = Physics.CheckSphere(origin, definition.ProximityDistance, wallLayerMask, QueryTriggerInteraction.Ignore);
+        return MatchesRequirement(definition.NearbyWallRequirement, hasWall);
     }
 
     private static bool MatchesHealth(LethalArtHealthCondition condition, float health, float maxHealth)

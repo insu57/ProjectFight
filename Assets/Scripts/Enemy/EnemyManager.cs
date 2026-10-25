@@ -73,6 +73,11 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         {
             _hurtbox.Initialize(this);
         }
+
+        if (_lockOnTarget)
+        {
+            _lockOnTarget.Initialize(this);
+        }
     }
 
     private void OnEnable()
@@ -84,10 +89,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             _hurtbox.DamageRequested += HandleDamageRequested;
         }
 
-        if (_enemyStat)
-        {
-            _enemyStat.Died += HandleDied;
-        }
+        _enemyStat.Died += HandleDied;
     }
 
     private void Start()
@@ -169,15 +171,12 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _distanceSinceFootstep = 0f;
         _footstepMoveDistance = 0f;
 
-        if (_enemyAnimation)
-        {
-            _enemyAnimation.ClearHitStop();
-            _enemyAnimation.CancelGuard();
-            _enemyAnimation.CompleteAttack();
-        }
+        _enemyAnimation.ClearHitStop();
+        _enemyAnimation.CancelGuard();
+        _enemyAnimation.CompleteAttack();
 
         // 재활성화 시 종료된 패턴이나 기절 상태가 남지 않게 한다.
-        if (_enemyState && _enemyState.ActionState != EnemyActionState.Dead)
+        if (_enemyState.ActionState != EnemyActionState.Dead)
         {
             _enemyState.SetActionState(EnemyActionState.Free);
         }
@@ -201,9 +200,11 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private void Update()
     {
         _footstepMoveDistance = 0f;
-        if (_enemyStat && _enemyStat.IsDead && !_deathPresentationStarted) HandleDied();
+        if (_enemyStat.IsDead && !_deathPresentationStarted) HandleDied();
+
         if (!isActiveAndEnabled) return;
-        if (_enemyState && _enemyState.ActionState == EnemyActionState.Dead)
+
+        if (_enemyState.ActionState == EnemyActionState.Dead)
         {
             // 사망 중에는 AI와 쿨다운을 갱신하지 않고 연출 종료만 확인한다.
             if (!_enemyAnimation || _enemyAnimation.IsDeathFinished()) FinishDeath();
@@ -214,11 +215,6 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         if (_attackHitbox && (!_enemyState || _enemyState.ActionState != EnemyActionState.Attacking))
         {
             _attackHitbox.EndAttack();
-        }
-
-        if (!_enemyState || !_enemyBrain || !_enemyMove || !_enemyAnimation || !_patternExecutor)
-        {
-            return;
         }
 
         _enemyAnimation.UpdateHitStop();
@@ -307,30 +303,26 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     }
 
     // 적 하위 컴포넌트를 외부에서 직접 조회하지 않도록 체력·거리·현재 상태 정보를 함께 중개한다.
-    public bool TryGetLethalArtTargetInfo(Vector3 origin, out float health, out float maxHealth, out float distanceSquared,
-        out bool isGuarding, out bool isStunned, out bool isGuardBroken)
+    public bool TryGetLethalArtTargetInfo(Vector3 origin, out LethalArtTargetContext target)
     {
-        health = 0f;
-        maxHealth = 0f;
-        distanceSquared = 0f;
-        isGuarding = false;
-        isStunned = false;
-        isGuardBroken = false;
+        target = default;
         if (!isActiveAndEnabled || !_enemyState || !_enemyStat || _enemyStat.IsDead) return false;
         // 콜라이더의 조회와 캐시는 Hurtbox가 소유하며 Manager는 준비된 참조만 사용한다.
         Collider targetCollider = _hurtbox ? _hurtbox.CachedCollider : null;
         if (!targetCollider || !targetCollider.enabled || !targetCollider.gameObject.activeInHierarchy) return false;
 
-        health = _enemyStat.CurrentHealth;
-        maxHealth = _enemyStat.MaxHealth;
+        float health = _enemyStat.CurrentHealth;
+        float maxHealth = _enemyStat.MaxHealth;
         // 피격 콜라이더 표면을 기준으로 락온 대상과 물리 탐색 대상을 동일하게 판정한다.
-        distanceSquared = (targetCollider.ClosestPoint(origin) - origin).sqrMagnitude;
+        float distanceSquared = (targetCollider.ClosestPoint(origin) - origin).sqrMagnitude;
 
         EnemyActionState actionState = _enemyState.ActionState;
         // 가드는 실제 방어가 유지되는 구간을 사용하고 스턴과 가드 브레이크는 각각의 상태로 구분한다.
-        isGuarding = actionState == EnemyActionState.Guarding && _patternExecutor && _patternExecutor.IsGuarding;
-        isStunned = actionState == EnemyActionState.Stunned;
-        isGuardBroken = actionState == EnemyActionState.GuardBroken;
+        bool isGuarding = actionState == EnemyActionState.Guarding && _patternExecutor && _patternExecutor.IsGuarding;
+        bool isStunned = actionState == EnemyActionState.Stunned;
+        bool isGuardBroken = actionState == EnemyActionState.GuardBroken;
+        target = new LethalArtTargetContext(position: transform.position, health: health, maxHealth: maxHealth,
+            distanceSquared: distanceSquared, isGuarding: isGuarding, isStunned: isStunned, isGuardBroken: isGuardBroken);
         return true;
     }
 
@@ -379,7 +371,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void TakeDamage(float damage, MonoBehaviour attacker)
     {
-        if (!_enemyStat || _enemyStat.IsDead || damage <= 0f) return;
+        if (_enemyStat.IsDead || damage <= 0f) return;
 
         // 이번 체력 피해의 사망 이벤트에서만 처치자를 참조한다. 이전 타격의 보상 권한은 남기지 않는다.
         _rewardRecipient = attacker as PlayerManager;
@@ -389,14 +381,14 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     public void BeginHitStop(float duration)
     {
-        if (!isActiveAndEnabled || !_enemyAnimation) return;
+        if (!isActiveAndEnabled) return;
 
         _enemyAnimation.BeginHitStop(duration);
     }
 
     private void HandleDamageRequested(DamageInfo damageInfo)
     {
-        if (!isActiveAndEnabled || !_enemyStat || !_enemyState) return;
+        if (!isActiveAndEnabled) return;
         if (_enemyStat.IsDead || _enemyState.ActionState == EnemyActionState.Dead) return;
         if (CanBlock(damageInfo))
         {
@@ -446,7 +438,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     {
         // 연타로 정지 시간을 연장하지 않고, 공격·가드·강인도 경직은 기존 처리를 따른다.
         if (_enemyStat.IsDead || IsInPoiseReaction || _movementHitPauseRemaining > 0f) return;
-        if (!_enemyMove || !_enemyAnimation || _enemyMove.MoveAmount <= 0f) return;
+        if (_enemyMove.MoveAmount <= 0f) return;
 
         bool isChasing = _enemyState.CanMove && _enemyState.BehaviorState == EnemyBehaviorState.Chasing;
         bool isCircling = _enemyState.ActionState == EnemyActionState.Circling && _patternExecutor && _patternExecutor.IsCircling;
@@ -458,7 +450,6 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private bool CanBlock(DamageInfo damageInfo)
     {
-        if (!_enemyState || !_patternExecutor) return false;
         if (_enemyState.ActionState != EnemyActionState.Guarding) return false;
 
         // 패턴에서 가드가 실제로 유지되는 구간에만 방어한다.
@@ -492,7 +483,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         if (stepEnded)
         {
-            _attackHitbox?.EndAttack();
+            _attackHitbox.EndAttack();
+
             if (step.Type == EnemyPatternStepType.Guard)
             {
                 _enemyAnimation.EndGuard();
@@ -533,11 +525,11 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             }
 
             _enemyAnimation.SetMoveAmount(0f);
-            _attackHitbox?.UpdateHitbox(hasNormalizedTime, normalizedTime);
+            _attackHitbox.UpdateHitbox(hasNormalizedTime, normalizedTime);
             return;
         }
 
-        _attackHitbox?.EndAttack();
+        _attackHitbox.EndAttack();
         if (_patternExecutor.IsCircling)
         {
             if (isMovementHitPaused)
@@ -550,7 +542,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             }
 
             step = _patternExecutor.CurrentStep;
-            Vector2 movement = _enemyMove.MoveCircleTarget(_target.position, step.CircleSpeed, step.CircleDistance, step.CircleDistanceTolerance, _patternExecutor.CircleDirectionSign, deltaTime);
+            Vector2 movement = _enemyMove.MoveCircleTarget(_target.position, step.CircleSpeed, step.CircleDistance,
+                step.CircleDistanceTolerance, _patternExecutor.CircleDirectionSign, deltaTime);
             _footstepMoveDistance = _enemyMove.HorizontalMoveDistance;
             _enemyAnimation.SetMovement(movement, deltaTime);
 
@@ -661,9 +654,12 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void UpdateFootsteps(float horizontalMoveDistance)
     {
-        bool isMoving = _enemyState && ((_enemyState.CanMove && _enemyState.BehaviorState == EnemyBehaviorState.Chasing) || _enemyState.ActionState == EnemyActionState.Circling);
+        bool isMoving = _enemyState && ((_enemyState.CanMove && _enemyState.BehaviorState == EnemyBehaviorState.Chasing)
+            || _enemyState.ActionState == EnemyActionState.Circling);
+
         if (!isMoving || !_footstepSound || !_enemyMove || !_enemyMove.isActiveAndEnabled || !_enemyMove.IsGrounded
-            || !_enemyAnimation || _enemyAnimation.IsHitStopped || _movementHitPauseRemaining > 0f || Time.deltaTime <= 0f || horizontalMoveDistance <= 0.001f)
+            || !_enemyAnimation || _enemyAnimation.IsHitStopped || _movementHitPauseRemaining > 0f || Time.deltaTime <= 0f
+            || horizontalMoveDistance <= 0.001f)
         {
             _distanceSinceFootstep = 0f;
             return;
@@ -696,18 +692,17 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         int experienceReward = _enemyDefinition ? _enemyDefinition.ExperienceReward : 0;
         int moneyReward = rewardRecipient && _enemyDefinition ? _enemyDefinition.GetMoneyReward() : 0;
 
-        if (_enemyState != null)
-        {
-            _enemyState.SetActionState(EnemyActionState.Dead);
-        }
+        _enemyState.SetActionState(EnemyActionState.Dead);
 
-        if (_enemyState != null)
-        {
-            _enemyState.SetBehaviorState(EnemyBehaviorState.Idle);
-        }
+        _enemyState.SetBehaviorState(EnemyBehaviorState.Idle);
 
         _target = null;
-        if (_hurtbox) _hurtbox.SetDamageEnabled(false);
+
+        if (_hurtbox)
+        {
+            _hurtbox.SetDamageEnabled(false);
+        }
+
         if (_lockOnTarget)
         {
             _lockOnEnabledBeforeDeath = _lockOnTarget.enabled;
@@ -737,7 +732,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         }
         // 생존 적 수는 사망 연출과 풀 반환을 기다리지 않고 실제 사망 시점에 감소한다.
         Died?.Invoke(this);
-        if (!_enemyAnimation || !_enemyAnimation.TryPlayDeath())
+        if (!_enemyAnimation.TryPlayDeath())
         {
             Debug.LogWarning("적 Animator의 Dead 상태 또는 사망 클립이 없어 사망 연출을 종료합니다.", this);
             FinishDeath();

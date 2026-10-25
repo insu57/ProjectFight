@@ -3,6 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
+[RequireComponent(typeof(PlayerStat))]
+[RequireComponent(typeof(PlayerDodge))]
+[RequireComponent(typeof(PlayerState))]
+[RequireComponent(typeof(PlayerControl))]
+[RequireComponent(typeof(PlayerInventory))]
+[RequireComponent(typeof(PlayerMove))]
+[RequireComponent(typeof(PlayerQuickslot))]
+[RequireComponent(typeof(PlayerAnimation))]
+[RequireComponent(typeof(PlayerAttack))]
+[RequireComponent(typeof(PlayerLockOn))]
+[RequireComponent(typeof(PlayerCamera))]
+[RequireComponent(typeof(PlayerSkillTree))]
+
 public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver, IPlayerItemEffectHost
 {
     private const int EquipmentSlotCount = (int)EquipmentSlot.Shoes + 1;
@@ -46,16 +59,17 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private LethalArtRuntime _lethalArtRuntime;
     // 에너지 변경 알림 중 같은 입력이 재진입하여 필살기를 중복 결제하지 않게 한다.
     private bool _isStartingLethalArt;
-    private int _lethalArtEnemyLayerMask;
     // 근처 적의 중복 콜라이더와 검색 버퍼는 강공 입력 사이에도 재사용한다.
     private Collider[] _lethalArtCandidateBuffer = new Collider[32];
     private readonly HashSet<EnemyManager> _lethalArtCheckedEnemies = new(32);
+    // HUD의 최초 OnEnable은 Manager.Awake보다 빠를 수 있으므로 캐싱 전 조회만 구분한다.
+    private bool _hasCachedPlayerComponents;
     private bool _hasStarted;
     private float _distanceSinceFootstep;
 
-    private bool IsHitStopped => _playerAnimation && _playerAnimation.IsHitStopped;
-    private bool IsInPoiseReaction => _playerState && (_playerState.ActionState == PlayerActionState.Stunned
-        || _playerState.ActionState == PlayerActionState.GuardBroken);
+    private bool IsHitStopped => _playerAnimation.IsHitStopped;
+    private bool IsInPoiseReaction => _playerState.ActionState == PlayerActionState.Stunned
+        || _playerState.ActionState == PlayerActionState.GuardBroken;
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
@@ -69,8 +83,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     public event Action<EquipmentSlot> EquipmentChanged;
     public event Action QuickslotsChanged;
 
-    public SkillTreeRuntime SkillTreeRuntime => _playerSkillTree ? _playerSkillTree.Runtime : null;
-    public PlayerStatSnapshot CurrentPlayerStats => _playerStat ? _playerStat.CurrentStats : default;
+    public SkillTreeRuntime SkillTreeRuntime => _hasCachedPlayerComponents ? _playerSkillTree.Runtime : null;
+    public PlayerStatSnapshot CurrentPlayerStats => _hasCachedPlayerComponents ? _playerStat.CurrentStats : default;
     public string CurrentInteractionText { get; private set; } = string.Empty;
 
     public void GetActiveItemEffects(List<ActiveItemEffectSnapshot> results)
@@ -86,7 +100,6 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         _itemEffects = new PlayerItemEffects(this);
         _lethalArtRuntime = new LethalArtRuntime(Resources.LoadAll<LethalArtDefinition>(LethalArtResourcePath));
-        _lethalArtEnemyLayerMask = LayerMask.GetMask("Enemy");
         TryGetComponent(out _playerControl);
         TryGetComponent(out _playerState);
         TryGetComponent(out _playerStat);
@@ -99,73 +112,48 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         TryGetComponent(out _playerSkillTree);
         TryGetComponent(out _playerQuickslot);
         TryGetComponent(out _playerInventory);
+        // RequireComponent로 보장한 참조는 이후 존재 검사 없이 사용한다.
+        _hasCachedPlayerComponents = true;
 
-        if (_playerStat && _playerDodge)
-        {
-            // 아이템 효과를 적용하기 전에 원래 설정을 한 번만 기본 회피 횟수로 전달한다.
-            _playerStat.SetBaseMaxDodgeCount(_playerDodge.MaxDodgeCount);
-        }
+        // 아이템 효과를 적용하기 전에 원래 설정을 한 번만 기본 회피 횟수로 전달한다.
+        _playerStat.SetBaseMaxDodgeCount(_playerDodge.MaxDodgeCount);
 
-        if (_playerInventory)
-        {
-            // 결제 알림 중 Manager가 비활성화되어도 확정된 획득 알림은 전달하므로 수명 동안 구독한다.
-            _playerInventory.InventoryChanged += HandleInventoryChanged;
-            _playerInventory.ItemAcquired += HandleItemAcquired;
-            _playerInventory.EquipmentChanged += HandleEquipmentChanged;
-        }
+        // 결제 알림 중 Manager가 비활성화되어도 확정된 획득 알림은 전달하므로 수명 동안 구독한다.
+        _playerInventory.InventoryChanged += HandleInventoryChanged;
+        _playerInventory.ItemAcquired += HandleItemAcquired;
+        _playerInventory.EquipmentChanged += HandleEquipmentChanged;
 
         _attackHitbox = GetComponentInChildren<AttackHitbox>();
         _hurtbox = GetComponentInChildren<Hurtbox>();
 
-        if (_attackHitbox)
-        {
-            _attackHitbox.Initialize(this);
-        }
+        _attackHitbox.Initialize(this);
 
-        if (_hurtbox)
-        {
-            _hurtbox.Initialize(this);
-        }
+        _hurtbox.Initialize(this);
     }
 
     private void OnEnable()
     {
-        if (_hurtbox)
-        {
-            _hurtbox.DamageRequested += HandleDamageRequested;
-        }
+        _hurtbox.DamageRequested += HandleDamageRequested;
 
-        if (_playerState)
-        {
-            _playerState.ActionStateChanged += HandlePlayerActionStateChanged;
+        _playerState.ActionStateChanged += HandlePlayerActionStateChanged;
 
-            // 재활성화 시에도 현재 회피 상태에 맞춰 피격 허용 여부를 동기화한다.
-            HandlePlayerActionStateChanged(_playerState.ActionState);
-        }
+        // 재활성화 시에도 현재 회피 상태에 맞춰 피격 허용 여부를 동기화한다.
+        HandlePlayerActionStateChanged(_playerState.ActionState);
 
-        if (_playerControl)
-        {
-            _playerControl.LockOnPressed += HandleLockOnPressed;
-            _playerControl.DodgePressed += HandleDodgePressed;
-            _playerControl.AttackPressed += HandleAttackPressed;
-            _playerControl.GuardChanged += HandleGuardChanged;
-            _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
-            _playerControl.OptionWindowPressed += HandleOptionWindowPressed;
-            _playerControl.InteractPressed += HandleInteractPressed;
-            _playerControl.QuickslotPressed += HandleQuickslotPressed;
-        }
+        _playerControl.LockOnPressed += HandleLockOnPressed;
+        _playerControl.DodgePressed += HandleDodgePressed;
+        _playerControl.AttackPressed += HandleAttackPressed;
+        _playerControl.GuardChanged += HandleGuardChanged;
+        _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
+        _playerControl.OptionWindowPressed += HandleOptionWindowPressed;
+        _playerControl.InteractPressed += HandleInteractPressed;
+        _playerControl.QuickslotPressed += HandleQuickslotPressed;
 
-        if (_playerStat)
-        {
-            _playerStat.StatsChanged += HandlePlayerStatsChanged;
-            // 비활성화 중 변경된 값도 재활성화 시 실제 이동·회피 컴포넌트와 맞춘다.
-            ApplyMovementStats(_playerStat.CurrentStats);
-        }
+        _playerStat.StatsChanged += HandlePlayerStatsChanged;
+        // 비활성화 중 변경된 값도 재활성화 시 실제 이동·회피 컴포넌트와 맞춘다.
+        ApplyMovementStats(_playerStat.CurrentStats);
 
-        if (_playerQuickslot)
-        {
-            _playerQuickslot.Changed += HandleQuickslotsChanged;
-        }
+        _playerQuickslot.Changed += HandleQuickslotsChanged;
 
         SubscribeSkillTreeRuntime();
         if (_hasStarted) RefreshItemStatModifiers();
@@ -188,67 +176,43 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _interactionCandidates.Clear();
         SetInteractionTarget(null);
 
-        if (_playerAnimation)
-        {
-            _playerAnimation.ClearHitStop();
-        }
+        _playerAnimation.ClearHitStop();
 
-        if (_hurtbox)
-        {
-            _hurtbox.DamageRequested -= HandleDamageRequested;
+        _hurtbox.DamageRequested -= HandleDamageRequested;
 
-            // Manager 비활성화 동안에는 피해 수신을 차단한다.
-            _hurtbox.SetDamageEnabled(false);
-        }
+        // Manager 비활성화 동안에는 피해 수신을 차단한다.
+        _hurtbox.SetDamageEnabled(false);
 
-        if (_playerState)
-        {
-            _playerState.ActionStateChanged -= HandlePlayerActionStateChanged;
-        }
+        _playerState.ActionStateChanged -= HandlePlayerActionStateChanged;
 
-        if (_attackHitbox)
-        {
-            _attackHitbox.EndAttack();
-        }
+        _attackHitbox.EndAttack();
 
-        if (_playerControl)
-        {
-            _playerControl.LockOnPressed -= HandleLockOnPressed;
-            _playerControl.DodgePressed -= HandleDodgePressed;
-            _playerControl.AttackPressed -= HandleAttackPressed;
-            _playerControl.GuardChanged -= HandleGuardChanged;
-            _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
-            _playerControl.OptionWindowPressed -= HandleOptionWindowPressed;
-            _playerControl.InteractPressed -= HandleInteractPressed;
-            _playerControl.QuickslotPressed -= HandleQuickslotPressed;
-        }
+        _playerControl.LockOnPressed -= HandleLockOnPressed;
+        _playerControl.DodgePressed -= HandleDodgePressed;
+        _playerControl.AttackPressed -= HandleAttackPressed;
+        _playerControl.GuardChanged -= HandleGuardChanged;
+        _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
+        _playerControl.OptionWindowPressed -= HandleOptionWindowPressed;
+        _playerControl.InteractPressed -= HandleInteractPressed;
+        _playerControl.QuickslotPressed -= HandleQuickslotPressed;
 
-        if (_playerStat)
-        {
-            _playerStat.StatsChanged -= HandlePlayerStatsChanged;
-        }
+        _playerStat.StatsChanged -= HandlePlayerStatsChanged;
 
-        if (_playerQuickslot)
-        {
-            _playerQuickslot.Changed -= HandleQuickslotsChanged;
-        }
+        _playerQuickslot.Changed -= HandleQuickslotsChanged;
 
         UnsubscribeSkillTreeRuntime();
     }
 
     private void OnDestroy()
     {
-        if (_playerInventory)
-        {
-            _playerInventory.InventoryChanged -= HandleInventoryChanged;
-            _playerInventory.ItemAcquired -= HandleItemAcquired;
-            _playerInventory.EquipmentChanged -= HandleEquipmentChanged;
-        }
+        _playerInventory.InventoryChanged -= HandleInventoryChanged;
+        _playerInventory.ItemAcquired -= HandleItemAcquired;
+        _playerInventory.EquipmentChanged -= HandleEquipmentChanged;
     }
 
     public void BeginHitStop(float duration)
     {
-        if (!isActiveAndEnabled || !_playerAnimation) return;
+        if (!isActiveAndEnabled) return;
 
         // 하위 컴포넌트 호출은 PlayerManager가 중개한다.
         _playerAnimation.BeginHitStop(duration);
@@ -257,8 +221,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     public void OnAttackHit(float energyRecoveryOnHit, bool wasBlocked)
     {
-        if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f) return;
-        if (_playerState && _playerState.ActionState == PlayerActionState.Dead) return;
+        if (!isActiveAndEnabled || _playerStat.CurrentStats.CurrentHealth <= 0f) return;
+        if (_playerState.ActionState == PlayerActionState.Dead) return;
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
         if (energyRecoveryOnHit > 0f && !float.IsNaN(energyRecoveryOnHit) && !float.IsInfinity(energyRecoveryOnHit))
         {
@@ -288,7 +252,6 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
             _itemEffects?.Clear();
         }
         RefreshInteractionTarget();
-        if (!_hurtbox) return;
 
         // 사망 후에는 추가 타격과 히트스탑을 받지 않는다.
         _hurtbox.SetDamageEnabled(actionState != PlayerActionState.Dodging && actionState != PlayerActionState.Dead);
@@ -296,7 +259,6 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private bool CanBlock(DamageInfo damageInfo)
     {
-        if (!_playerState || !_playerControl) return false;
         if (_playerState.ActionState != PlayerActionState.Guarding) return false;
 
         // 가드 종료 모션 중에는 공격을 막지 않는다.
@@ -307,7 +269,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void HandleDamageRequested(DamageInfo damageInfo)
     {
-        if (!isActiveAndEnabled || !_playerStat || !_playerState) return;
+        if (!isActiveAndEnabled) return;
         if (_playerState.ActionState == PlayerActionState.Dead) return;
         // 피격 직전의 기본값·아이템 보정이 반영된 회복량을 해당 타격 전체에서 사용한다.
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
@@ -379,8 +341,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         if (recoveryAmount <= 0f || float.IsNaN(recoveryAmount) || float.IsInfinity(recoveryAmount)) return;
         // 피해·경직 알림 중 사망하거나 비활성화된 경우에도 회복을 지급하지 않는다.
-        if (!isActiveAndEnabled || !_playerStat || _playerStat.CurrentStats.CurrentHealth <= 0f) return;
-        if (_playerState && _playerState.ActionState == PlayerActionState.Dead) return;
+        if (!isActiveAndEnabled || _playerStat.CurrentStats.CurrentHealth <= 0f) return;
+        if (_playerState.ActionState == PlayerActionState.Dead) return;
 
         _playerStat.RestoreEnergy(recoveryAmount);
     }
@@ -388,33 +350,24 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private void HandleDied()
     {
         _itemEffects?.Clear();
-        if (!_playerState || _playerState.ActionState == PlayerActionState.Dead) return;
+        if (_playerState.ActionState == PlayerActionState.Dead) return;
 
         // 체력 변경 알림과 피격 경로가 겹쳐도 사망은 한 번만 처리한다.
         _playerState.SetActionState(PlayerActionState.Dead);
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _poiseReaction.Reset();
         _hasPendingGuardChange = false;
-        _playerMove?.EndDodge();
+        _playerMove.EndDodge();
 
-        if (_attackHitbox)
-        {
-            _attackHitbox.EndAttack();
-        }
+        _attackHitbox.EndAttack();
 
-        if (_playerAttack)
-        {
-            _playerAttack.EndAttack();
-        }
+        _playerAttack.EndAttack();
 
-        if (_playerLockOn)
-        {
-            _playerLockOn.ReleaseTarget();
-            NotifyLockOnTargetChanged();
-        }
+        _playerLockOn.ReleaseTarget();
+        NotifyLockOnTargetChanged();
 
-        _playerCamera?.ClearLockOnTarget();
-        if (!_playerAnimation || !_playerAnimation.TryPlayDeath())
+        _playerCamera.ClearLockOnTarget();
+        if (!_playerAnimation.TryPlayDeath())
         {
             Debug.LogWarning("플레이어 Animator의 Dead 상태 또는 사망 클립이 없습니다.", this);
         }
@@ -422,7 +375,6 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void BeginPoiseReaction(bool isGuardBreak, MonoBehaviour attacker)
     {
-        if (!_playerState || !_playerStat) return;
         if (_playerState.ActionState == PlayerActionState.Dead || IsInPoiseReaction) return;
 
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
@@ -432,21 +384,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         bool isHitFromBehind = !isGuardBreak && CombatUtility.IsAttackerBehind(transform, attacker ? attacker.transform : null);
 
         // 공격 판정과 콤보 예약을 함께 취소한다.
-        if (_attackHitbox)
-        {
-            _attackHitbox.EndAttack();
-        }
+        _attackHitbox.EndAttack();
 
-        if (_playerAttack)
-        {
-            _playerAttack.EndAttack();
-        }
+        _playerAttack.EndAttack();
 
         // 회피 이동을 중단하되 이미 소비한 회피 횟수는 반환하지 않는다.
-        if (_playerMove)
-        {
-            _playerMove.EndDodge();
-        }
+        _playerMove.EndDodge();
 
         _hasPendingGuardChange = false;
         float duration = isGuardBreak ? stats.GuardBreakDuration : stats.StaggerDuration;
@@ -457,40 +400,30 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerState.SetActionState(isGuardBreak ? PlayerActionState.GuardBroken : PlayerActionState.Stunned);
 
         // 애니메이션이 누락되어도 행동 제한과 복귀 타이머는 유지한다.
-        if (_playerAnimation && _playerAnimation.TryPlayPoiseReaction(isGuardBreak, isHitFromBehind)) return;
-
-        if (_playerAnimation)
+        if (_playerAnimation.TryPlayPoiseReaction(isGuardBreak, isHitFromBehind))
         {
-            _playerAnimation.CompletePoiseReaction();
+            Debug.LogWarning("플레이어 Animator 또는 Stagger/GuardBreak 상태가 없습니다.", this);
+            return;
         }
 
-        Debug.LogWarning("플레이어 Animator 또는 Stagger/GuardBreak 상태가 없습니다.", this);
+        _playerAnimation.CompletePoiseReaction();
     }
 
     private void UpdatePoiseReaction(float deltaTime)
     {
         Vector3 displacement = _poiseReaction.Advance(deltaTime);
 
-        if (_playerMove)
-        {
-            _playerMove.MovePoiseReaction(displacement, deltaTime);
-        }
+        _playerMove.MovePoiseReaction(displacement, deltaTime);
 
-        if (_playerAnimation)
-        {
-            _playerAnimation.SetSprinting(false);
-            _playerAnimation.SetMovement(Vector2.zero, deltaTime);
-        }
+        _playerAnimation.SetSprinting(false);
+        _playerAnimation.SetMovement(Vector2.zero, deltaTime);
 
         if (_poiseReaction.IsRunning) return;
 
         // Free로 전환하기 전에 현재 반응 종류에 맞는 강인도를 복구한다.
         _playerStat.RestorePoiseAfterReaction(_playerState.ActionState == PlayerActionState.GuardBroken);
 
-        if (_playerAnimation)
-        {
-            _playerAnimation.CompletePoiseReaction();
-        }
+        _playerAnimation.CompletePoiseReaction();
 
         _playerState.SetActionState(PlayerActionState.Free);
     }
@@ -526,40 +459,36 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private void Update()
     {
         // 직접 체력 변경이나 재활성화 시에도 사망 상태를 보장한다.
-        if (_playerStat && _playerStat.CurrentStats.CurrentHealth <= 0f) HandleDied();
-        _itemEffects?.Tick(Time.deltaTime);
-        if (_playerAnimation)
+        if (_playerStat.CurrentStats.CurrentHealth <= 0f)
         {
-            _playerAnimation.UpdateHitStop();
+            HandleDied();
         }
 
+        _itemEffects?.Tick(Time.deltaTime);
+
+        _playerAnimation.UpdateHitStop();
+
         // 히트스톱과 피격 반응 중에는 회복량과 회복 대기 시간 모두 진행하지 않는다.
-        if (_playerStat && _playerState && _playerState.ActionState != PlayerActionState.Dead && !IsHitStopped && !IsInPoiseReaction)
+        if (_playerState.ActionState != PlayerActionState.Dead && !IsHitStopped && !IsInPoiseReaction)
         {
             _playerStat.UpdatePoiseRecovery(Time.deltaTime);
         }
 
-        if (_playerDodge && !IsHitStopped)
+        if (!IsHitStopped)
         {
             _playerDodge.UpdateRecharge(Time.deltaTime);
         }
 
-        if (_playerLockOn && _playerLockOn.TryReleaseInvalidTarget())
+        if (_playerLockOn.TryReleaseInvalidTarget())
         {
             // 락온 타깃이 유효하지 않게 되면 변경 사실을 전달한다.
             NotifyLockOnTargetChanged();
         }
 
         // 공격이 취소되거나 다른 행동 상태로 바뀌면 판정을 종료한다.
-        if (_attackHitbox && (!_playerState || _playerState.ActionState != PlayerActionState.Attacking))
+        if (_playerState.ActionState != PlayerActionState.Attacking)
         {
             _attackHitbox.EndAttack();
-        }
-
-        if (!_playerControl || !_playerState || !_playerMove || !_playerCamera)
-        {
-            _distanceSinceFootstep = 0f;
-            return;
         }
 
         _playerCamera.SetLookInput(_playerControl.LookInput, _playerControl.IsLookInputDelta);
@@ -644,11 +573,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
         UpdateFootsteps(footstepMoveDistance);
 
-        if (_playerAnimation)
-        {
-            _playerAnimation.SetSprinting(_playerState.LocomotionState == PlayerLocomotionState.Sprinting);
-            _playerAnimation.SetMovement(_playerMove.LocalMoveDirection, Time.deltaTime);
-        }
+        _playerAnimation.SetSprinting(_playerState.LocomotionState == PlayerLocomotionState.Sprinting);
+        _playerAnimation.SetMovement(_playerMove.LocalMoveDirection, Time.deltaTime);
     }
 
     private void LateUpdate()
@@ -659,23 +585,17 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     public void SetMaxDodgeCount(int maxDodgeCount)
     {
-        if (_playerStat)
-        {
-            // 스킬 등의 변경은 기본값에 반영하여 기존 아이템 보정이 유지되게 한다.
-            _playerStat.SetBaseMaxDodgeCount(maxDodgeCount);
-            ApplyMovementStats(_playerStat.CurrentStats);
-        }
-        else if (_playerDodge)
-        {
-            // Stat이 없는 기존 구성에서도 회피 횟수 변경은 계속 지원한다.
-            _playerDodge.SetMaxDodgeCount(maxDodgeCount);
-        }
+        if (!_hasCachedPlayerComponents) return;
+
+        // 스킬 등의 변경은 기본값에 반영하여 기존 아이템 보정이 유지되게 한다.
+        _playerStat.SetBaseMaxDodgeCount(maxDodgeCount);
+        ApplyMovementStats(_playerStat.CurrentStats);
     }
 
     public void SetGameplayInputEnabled(bool isEnabled)
     {
         _isGameplayInputEnabled = isEnabled;
-        if (_playerControl)
+        if (_hasCachedPlayerComponents)
         {
             // UI의 입력 제한 요청을 PlayerControl로 중개한다.
             _playerControl.SetGameplayInputEnabled(isEnabled);
@@ -686,33 +606,26 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     public SkillTreeUnlockResult TryUnlockSkillTreeNode(int nodeId)
     {
-        if (!_playerSkillTree)
-        {
-            return SkillTreeUnlockResult.RuntimeNotInitialized;
-        }
+        if (!_hasCachedPlayerComponents) return SkillTreeUnlockResult.RuntimeNotInitialized;
 
         return _playerSkillTree.TryUnlockNode(nodeId);
     }
 
     public void AddExperience(int amount)
     {
-        if (!_playerStat) return;
-
         // 처치 보상과 아이템 경험치는 같은 성장 경로로 전달하고 기존 스탯 변경 알림으로 UI를 갱신한다.
         _playerStat.AddExperience(amount);
     }
 
     public void AddMoney(int amount)
     {
-        if (!_playerStat) return;
-
         // 외부 보상 요청은 Manager를 거쳐 PlayerStat의 보유 금액에 반영한다.
         _playerStat.AddMoney(amount);
     }
 
     public bool TrySpendMoney(int amount)
     {
-        if (!isActiveAndEnabled || !_playerStat) return false;
+        if (!isActiveAndEnabled || !_hasCachedPlayerComponents) return false;
 
         // 상점 등 외부 시스템은 하위 PlayerStat을 직접 참조하지 않고 Manager로 비용을 지불한다.
         return _playerStat.TrySpendMoney(amount);
@@ -721,31 +634,32 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     public IReadOnlyList<ItemDefinition> GetInventoryItems(ItemType itemType)
     {
         // 보유 데이터는 Inventory가 소유하고 외부 조회는 기존 Manager API로 중개한다.
-        return _playerInventory ? _playerInventory.GetInventoryItems(itemType) : Array.Empty<ItemDefinition>();
+        return _hasCachedPlayerComponents ? _playerInventory.GetInventoryItems(itemType) : Array.Empty<ItemDefinition>();
     }
 
     public int GetConsumableCount(ItemDefinition item)
     {
-        return _playerInventory ? _playerInventory.GetConsumableCount(item) : 0;
+        return _hasCachedPlayerComponents ? _playerInventory.GetConsumableCount(item) : 0;
     }
 
     public bool IsConsumableStackFull(ItemDefinition item)
     {
         // 상점 UI는 하위 Inventory를 직접 참조하지 않고 Manager를 통해 구매 제한을 조회한다.
-        return _playerInventory && _playerInventory.IsConsumableStackFull(item);
+        return _hasCachedPlayerComponents && _playerInventory.IsConsumableStackFull(item);
     }
 
     public bool TryUseItem(int inventoryIndex, ItemDefinition expectedItem)
     {
-        if (_isUsingItem || !isActiveAndEnabled || !_playerStat || !_playerInventory || !expectedItem
+        if (_isUsingItem || !isActiveAndEnabled || !_hasCachedPlayerComponents || !expectedItem
             || expectedItem.ItemType != ItemType.Consumable) return false;
         if (_playerStat.CurrentStats.CurrentHealth <= 0f
-            || (_playerState && _playerState.ActionState == PlayerActionState.Dead)) return false;
+            || _playerState.ActionState == PlayerActionState.Dead) return false;
 
         IReadOnlyList<ItemEffectData> effects = expectedItem.UseEffects;
         // 즉시 실행하거나 시간 효과를 시작할 수 있는 효과가 없으면 수량을 차감하지 않는다.
         PlayerInventory inventory = _playerInventory;
-        if (_itemEffects == null || !_itemEffects.CanApplyAny(effects) || !inventory.TryConsumeConsumable(inventoryIndex, expectedItem)) return false;
+        if (_itemEffects == null || !_itemEffects.CanApplyAny(effects)
+            || !inventory.TryConsumeConsumable(inventoryIndex, expectedItem)) return false;
 
         _isUsingItem = true;
         try
@@ -770,12 +684,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     public ItemDefinition GetQuickslotItem(int slotNumber)
     {
-        return _playerQuickslot ? _playerQuickslot.GetItem(slotNumber) : null;
+        return _hasCachedPlayerComponents ? _playerQuickslot.GetItem(slotNumber) : null;
     }
 
     public bool TryUseQuickslot(int slotNumber)
     {
-        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !_playerQuickslot || !_playerQuickslot.isActiveAndEnabled) return false;
+        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !_hasCachedPlayerComponents || !_playerQuickslot.isActiveAndEnabled) return false;
 
         ItemDefinition item = _playerQuickslot.GetItem(slotNumber);
         if (!item || GetConsumableCount(item) <= 0) return false;
@@ -797,13 +711,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     public int GetQuickslotNumber(ItemDefinition item)
     {
-        return _playerQuickslot ? _playerQuickslot.GetSlotNumber(item) : 0;
+        return _hasCachedPlayerComponents ? _playerQuickslot.GetSlotNumber(item) : 0;
     }
 
     public bool CanRegisterQuickslot(ItemDefinition item)
     {
         // UI가 미보유 항목이나 확인용 목록을 등록하지 못하도록 소유 여부를 Manager에서 검증한다.
-        return isActiveAndEnabled && _playerQuickslot && _playerQuickslot.isActiveAndEnabled && GetConsumableCount(item) > 0;
+        return isActiveAndEnabled && _hasCachedPlayerComponents && _playerQuickslot.isActiveAndEnabled && GetConsumableCount(item) > 0;
     }
 
     public bool TryRegisterQuickslot(int slotNumber, ItemDefinition item, bool toggleIfSame = false)
@@ -814,7 +728,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     public bool TryUnregisterQuickslot(ItemDefinition item)
     {
         // 수량이 0이 된 항목도 등록 해제는 가능하게 하며 등록 정보만 변경한다.
-        return isActiveAndEnabled && _playerQuickslot && _playerQuickslot.TryUnregister(item);
+        return isActiveAndEnabled && _hasCachedPlayerComponents && _playerQuickslot.TryUnregister(item);
     }
 
     private void HandleQuickslotsChanged()
@@ -824,32 +738,32 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     public ItemDefinition GetEquippedItem(EquipmentSlot equipmentSlot)
     {
-        return _playerInventory ? _playerInventory.GetEquippedItem(equipmentSlot) : null;
+        return _hasCachedPlayerComponents ? _playerInventory.GetEquippedItem(equipmentSlot) : null;
     }
 
     public bool CanToggleEquipment(int inventoryIndex, ItemDefinition expectedItem)
     {
-        return isActiveAndEnabled && _playerInventory && _playerInventory.CanToggleEquipment(inventoryIndex, expectedItem);
+        return isActiveAndEnabled && _hasCachedPlayerComponents && _playerInventory.CanToggleEquipment(inventoryIndex, expectedItem);
     }
 
     public bool IsEquipmentEquipped(int inventoryIndex, ItemDefinition expectedItem)
     {
-        return _playerInventory && _playerInventory.IsEquipmentEquipped(inventoryIndex, expectedItem);
+        return _hasCachedPlayerComponents && _playerInventory.IsEquipmentEquipped(inventoryIndex, expectedItem);
     }
 
     public bool TryToggleEquipment(int inventoryIndex, ItemDefinition expectedItem)
     {
-        return isActiveAndEnabled && _playerInventory && _playerInventory.TryToggleEquipment(inventoryIndex, expectedItem);
+        return isActiveAndEnabled && _hasCachedPlayerComponents && _playerInventory.TryToggleEquipment(inventoryIndex, expectedItem);
     }
 
     public bool TryAddItem(ItemDefinition item)
     {
-        return isActiveAndEnabled && _playerInventory && _playerInventory.TryAddItem(item);
+        return isActiveAndEnabled && _hasCachedPlayerComponents && _playerInventory.TryAddItem(item);
     }
 
     public bool TryPurchaseItem(ItemDefinition item)
     {
-        if (!isActiveAndEnabled || !_playerStat || !_playerInventory || !item || item.BasePrice < 0) return false;
+        if (!isActiveAndEnabled || !_hasCachedPlayerComponents || !item || item.BasePrice < 0) return false;
 
         // 최대 보유 수량을 포함해 추가 가능 여부를 먼저 확인한 뒤 결제한다. Inventory는 PlayerStat을 직접 참조하지 않는다.
         PlayerInventory inventory = _playerInventory;
@@ -865,7 +779,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         // 외부에 보유 변경을 알리기 전에 장착 장비와 유물의 최종 스탯을 먼저 반영한다.
         if (itemType == ItemType.Relic) RefreshItemStatModifiers();
 
-        if (itemType == ItemType.Consumable && _playerQuickslot)
+        if (itemType == ItemType.Consumable)
         {
             // 마지막 소모품을 사용한 경로와 관계없이 등록을 해제해 HUD와 인벤토리의 아이콘을 함께 비운다.
             for (int slotNumber = 1; slotNumber <= PlayerQuickslot.SlotCount; slotNumber++)
@@ -881,8 +795,6 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void RefreshItemStatModifiers()
     {
-        if (!_playerStat || !_playerInventory) return;
-
         // 장착·보유 데이터 조회는 Manager가 중개하고 효과의 동기화 규칙은 실행기가 관리한다.
         for (int slotIndex = (int)EquipmentSlot.Head; slotIndex < _equippedItemsForStats.Length; slotIndex++)
         {
@@ -896,8 +808,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     }
 
     // 실행기는 이 계약만 사용하며 Stat·SkillTree 등 하위 컴포넌트에는 직접 접근하지 않는다.
-    bool IPlayerItemEffectHost.CanRunItemEffects => isActiveAndEnabled && _playerStat && _playerStat.CurrentStats.CurrentHealth > 0f
-        && (!_playerState || _playerState.ActionState != PlayerActionState.Dead);
+    bool IPlayerItemEffectHost.CanRunItemEffects => isActiveAndEnabled && _hasCachedPlayerComponents
+        && _playerStat.CurrentStats.CurrentHealth > 0f && _playerState.ActionState != PlayerActionState.Dead;
 
     int IPlayerItemEffectHost.RemainingSkillPointCapacity
     {
@@ -910,28 +822,27 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     void IPlayerItemEffectHost.RestoreHealth(float amount)
     {
-        if (_playerStat) _playerStat.RestoreHealth(amount);
+        _playerStat.RestoreHealth(amount);
     }
 
     void IPlayerItemEffectHost.RestoreEnergy(float amount)
     {
-        if (_playerStat) _playerStat.RestoreEnergy(amount);
+        _playerStat.RestoreEnergy(amount);
     }
 
-    void IPlayerItemEffectHost.RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems,
-        IReadOnlyList<ItemDefinition> equippedItems, IReadOnlyList<StatModifier> passiveModifiers)
+    void IPlayerItemEffectHost.RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems, IReadOnlyList<StatModifier> passiveModifiers)
     {
-        if (_playerStat) _playerStat.RebuildItemStatModifiers(relicItems, equippedItems, passiveModifiers);
+        _playerStat.RebuildItemStatModifiers(relicItems, equippedItems, passiveModifiers);
     }
 
     void IPlayerItemEffectHost.RebuildTimedStatModifiers(IReadOnlyList<StatModifier> modifiers)
     {
-        if (_playerStat) _playerStat.RebuildTimedStatModifiers(modifiers);
+        _playerStat.RebuildTimedStatModifiers(modifiers);
     }
 
     void IPlayerItemEffectHost.RebuildPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers)
     {
-        if (_playerStat) _playerStat.RebuildPassiveStatModifiers(modifiers);
+        _playerStat.RebuildPassiveStatModifiers(modifiers);
     }
 
     private void HandleItemAcquired(ItemDefinition item)
@@ -955,17 +866,15 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     public void AddSkillPoints(int amount)
     {
-        if (_playerSkillTree)
-        {
-            // 외부 시스템의 포인트 지급 요청을 PlayerSkillTree로 중개한다.
-            _playerSkillTree.AddPoints(amount);
-        }
+        if (!_hasCachedPlayerComponents) return;
+
+        // 외부 시스템의 포인트 지급 요청을 PlayerSkillTree로 중개한다.
+        _playerSkillTree.AddPoints(amount);
     }
 
     private void HandleLockOnPressed()
     {
-        if (!_playerState || _playerState.ActionState == PlayerActionState.Dead) return;
-        if (!_playerLockOn) return;
+        if (_playerState.ActionState == PlayerActionState.Dead) return;
 
         _playerLockOn.ToggleTarget();
         NotifyLockOnTargetChanged();
@@ -1061,10 +970,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         // 히트스탑 중에는 새 회피를 시작하지 않는다.
         if (IsHitStopped) return;
 
-        if (!_playerControl || !_playerState || !_playerMove || !_playerDodge || !_playerAnimation || !_playerCamera) return;
         if (!_playerState.CanDodge || !_playerDodge.CanDodge) return;
 
-        LockOnTarget lockOnTarget = _playerLockOn ? _playerLockOn.CurrentTarget : null;
+        LockOnTarget lockOnTarget = _playerLockOn.CurrentTarget;
 
         if (lockOnTarget)
         {
@@ -1084,7 +992,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void HandleAttackPressed(AttackInputType inputType)
     {
-        if (!_playerState || !_playerAttack || !_playerAnimation || _isStartingLethalArt) return;
+        if (_isStartingLethalArt) return;
 
         // 일반 공격의 콤보 입력 구간이나 히트스톱보다 필살기 전환을 먼저 처리한다.
         if (inputType == AttackInputType.Heavy && TryGetAvailableLethalArt(out LethalArtDefinition lethalArt, out _))
@@ -1111,7 +1019,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private bool CanStartLethalArt()
     {
-        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !_playerState || !_playerAttack || !_playerAnimation) return false;
+        if (!isActiveAndEnabled || !_isGameplayInputEnabled) return false;
         if (_playerAttack.IsLethalArtActive) return false;
 
         // 일반 공격 중의 히트스톱은 전환할 수 있지만 회피·가드·피격 반응 등은 기존 제한을 유지한다.
@@ -1121,7 +1029,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private bool TryStartLethalArt(LethalArtDefinition lethalArt)
     {
-        if (_isStartingLethalArt || !_playerStat || !lethalArt || !lethalArt.Attack || !CanStartLethalArt()) return false;
+        if (_isStartingLethalArt || !lethalArt || !lethalArt.Attack || !CanStartLethalArt()) return false;
 
         _isStartingLethalArt = true;
         try
@@ -1153,22 +1061,23 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         lethalArt = null;
         targetEnemy = null;
-        if (_isStartingLethalArt || !_playerStat || _lethalArtRuntime == null || !CanStartLethalArt()) return false;
+        if (_isStartingLethalArt || _lethalArtRuntime == null || !CanStartLethalArt()) return false;
 
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
-        if (!_lethalArtRuntime.TryGetSearchDistance(stats, out float searchDistance)) return false;
+        // 탐색 범위와 모든 대상의 판정에 사용할 플레이어 정보를 조회 시작 시 한 번만 묶는다.
+        LethalArtPlayerContext player = new(in stats, transform.position, _playerState.LocomotionState == PlayerLocomotionState.Sprinting);
+        if (!_lethalArtRuntime.TryGetSearchDistance(in player, out float searchDistance)) return false;
 
-        Vector3 origin = transform.position;
-        LockOnTarget lockOnTarget = _playerLockOn ? _playerLockOn.CurrentTarget : null;
-        EnemyManager lockedEnemy = lockOnTarget && lockOnTarget.isActiveAndEnabled ? lockOnTarget.GetComponentInParent<EnemyManager>() : null;
-        if (lockedEnemy && TrySelectLethalArtForTarget(lockedEnemy, origin, stats, out lethalArt, out _))
+        LockOnTarget lockOnTarget = _playerLockOn.CurrentTarget;
+        EnemyManager lockedEnemy = lockOnTarget ? lockOnTarget.EnemyManager : null;
+        if (lockedEnemy && TrySelectLethalArtForTarget(lockedEnemy, in player, out lethalArt, out _))
         {
             targetEnemy = lockedEnemy;
             return true;
         }
 
-        if (_lethalArtEnemyLayerMask == 0) return false;
-        int candidateCount = FindLethalArtCandidates(origin, searchDistance);
+        if (GameLayerUtility.EnemyMask == 0) return false;
+        int candidateCount = FindLethalArtCandidates(player.Position, searchDistance);
         _lethalArtCheckedEnemies.Clear();
         if (lockedEnemy) _lethalArtCheckedEnemies.Add(lockedEnemy);
         float bestDistanceSquared = float.PositiveInfinity;
@@ -1179,7 +1088,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
             EnemyManager enemy = candidateCollider.GetComponentInParent<EnemyManager>();
             if (!enemy || !_lethalArtCheckedEnemies.Add(enemy)) continue;
-            if (!TrySelectLethalArtForTarget(enemy, origin, stats, out LethalArtDefinition candidate, out float distanceSquared)) continue;
+            if (!TrySelectLethalArtForTarget(enemy, in player, out LethalArtDefinition candidate, out float distanceSquared)) continue;
             // 같은 필살기를 사용할 수 있는 대상끼리는 더 가까운 적을 선택한다.
             if (!LethalArtRuntime.ShouldReplaceSelection(candidate, distanceSquared, lethalArt, bestDistanceSquared)) continue;
 
@@ -1193,27 +1102,25 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         return lethalArt;
     }
 
-    private bool TrySelectLethalArtForTarget(EnemyManager enemy, Vector3 origin, in PlayerStatSnapshot stats,
-        out LethalArtDefinition lethalArt, out float distanceSquared)
+    private bool TrySelectLethalArtForTarget(EnemyManager enemy, in LethalArtPlayerContext player, out LethalArtDefinition lethalArt, out float distanceSquared)
     {
         lethalArt = null;
-        if (!enemy.TryGetLethalArtTargetInfo(origin, out float health, out float maxHealth, out distanceSquared,
-            out bool isGuarding, out bool isStunned, out bool isGuardBroken)) return false;
+        distanceSquared = 0f;
+        if (!enemy.TryGetLethalArtTargetInfo(player.Position, out LethalArtTargetContext target)) return false;
 
         // 입력과 HUD가 동일한 대상 적의 현재 체력·거리·상태를 기준으로 판단한다.
-        return _lethalArtRuntime.TrySelect(stats, health, maxHealth, distanceSquared, isGuarding, isStunned, isGuardBroken, out lethalArt);
+        distanceSquared = target.DistanceSquared;
+        return _lethalArtRuntime.TrySelect(in player, in target, out lethalArt);
     }
 
     private int FindLethalArtCandidates(Vector3 origin, float searchDistance)
     {
-        int count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer,
-            _lethalArtEnemyLayerMask, QueryTriggerInteraction.Collide);
+        int count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer, GameLayerUtility.EnemyMask, QueryTriggerInteraction.Collide);
         while (count == _lethalArtCandidateBuffer.Length)
         {
             // 밀집 상황에서도 후보를 누락하지 않으며, 확장한 버퍼는 다음 입력에서 그대로 사용한다.
             _lethalArtCandidateBuffer = new Collider[_lethalArtCandidateBuffer.Length * 2];
-            count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer,
-                _lethalArtEnemyLayerMask, QueryTriggerInteraction.Collide);
+            count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer, GameLayerUtility.EnemyMask, QueryTriggerInteraction.Collide);
         }
 
         return count;
@@ -1222,26 +1129,22 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private void BeginAttackPresentation(AttackDefinition attackDefinition, bool isLethalArt = false)
     {
         // 각 공격·콤보 단계 시작 시 같은 스냅샷으로 피해와 재생 배율을 확정한다.
-        PlayerStatSnapshot stats = _playerStat ? _playerStat.CurrentStats : default;
+        PlayerStatSnapshot stats = _playerStat.CurrentStats;
         if (_attackHitbox)
         {
-            if (_playerStat)
-            {
-                _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier,
-                    stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
-            }
-            else _attackHitbox.BeginAttack(attackDefinition);
+            _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier,
+                stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
         }
 
         // AnimationSpeed와의 곱셈은 공통 애니메이션에서 처리하며, 공격 중 스탯 변경은 다음 공격부터 반영한다.
-        if (isLethalArt) _playerAnimation.PlayLethalArt(attackDefinition, _playerStat ? stats.AttackSpeedMultiplier : 1f);
-        else _playerAnimation.PlayAttack(attackDefinition, _playerStat ? stats.AttackSpeedMultiplier : 1f);
+        if (isLethalArt) _playerAnimation.PlayLethalArt(attackDefinition, stats.AttackSpeedMultiplier);
+        else _playerAnimation.PlayAttack(attackDefinition, stats.AttackSpeedMultiplier);
         TryPlayAttackSound(false, 0f);
     }
 
     private void TryPlayAttackSound(bool hasNormalizedTime, float normalizedTime)
     {
-        if (!_playerAnimation || !_playerAnimation.TryConsumeAttackSound(hasNormalizedTime, normalizedTime, out SoundDefinition sound)) return;
+        if (!_playerAnimation.TryConsumeAttackSound(hasNormalizedTime, normalizedTime, out SoundDefinition sound)) return;
 
         AudioManager audioManager = AudioManager.Instance;
         if (audioManager) audioManager.PlaySfx(sound, transform.position);
@@ -1249,7 +1152,6 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void HandleGuardChanged(bool isGuarding)
     {
-        if (!_playerState || !_playerAnimation) return;
         if (_playerState.ActionState == PlayerActionState.Dead) return;
 
         // 반응 중 가드 입력은 예약하지 않는다.
@@ -1413,8 +1315,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private void ApplyMovementStats(PlayerStatSnapshot stats)
     {
-        if (_playerDodge) _playerDodge.SetMaxDodgeCount(stats.MaxDodgeCount);
-        if (_playerMove) _playerMove.SetSpeedMultiplier(stats.MoveSpeedMultiplier);
+        _playerDodge.SetMaxDodgeCount(stats.MaxDodgeCount);
+        _playerMove.SetSpeedMultiplier(stats.MoveSpeedMultiplier);
     }
 
     private void HandleSkillTreeNodeUnlocked(SkillTreeNodeRuntime node)

@@ -21,26 +21,13 @@ MonoBehaviour:
   <Rarity>k__BackingField: 0
   <BasePrice>k__BackingField: 0
   _maxStackCount: 1
-  _statModifiers: []
+  _statModifiers:
+  - _stat: 1
+    _operation: 0
+    _value: 5
   _useEffectData: []
   _acquireEffectData: []
-  _passiveEffectData:
-  - rid: 3955778266336329904
+  _passiveEffectData: []
   references:
     version: 2
-    RefIds:
-    - rid: 3955778266336329904
-      type: {class: TriggeredEffectData, ns: , asm: Assembly-CSharp}
-      data:
-        _trigger: 0
-        _conditions: []
-        _chance: 1
-        _cooldown: 0
-        _effects:
-        - rid: 3955778266336329905
-    - rid: 3955778266336329905
-      type: {class: RestoreHealthEffectData, ns: , asm: Assembly-CSharp}
-      data:
-        _amount:
-          _mode: 0
-          _value: 50
+    RefIds: []
