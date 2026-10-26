@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="SkillTreeEditorWindow.uss" />
+    <ui:VisualElement class="skill-editor">
+        <ui:VisualElement name="toolbar" class="skill-toolbar" />
+        <ui:VisualElement name="previewToolbar" class="skill-toolbar" />
+        <ui:Label text="아래 연결점을 자식으로 드래그 · 빈 공간/가운데 버튼 드래그로 이동 · 휠로 확대 · F로 전체 보기" class="skill-hint" />
+        <ui:VisualElement name="message" />
+        <ui:VisualElement class="skill-body">
+            <ui:VisualElement name="canvasHost" class="skill-canvas" />
+            <ui:ScrollView name="inspector" class="skill-inspector" />
+        </ui:VisualElement>
+        <ui:Label name="validationSummary" class="skill-hint" />
+        <ui:ScrollView name="issues" class="skill-issues" />
+    </ui:VisualElement>
+</ui:UXML>

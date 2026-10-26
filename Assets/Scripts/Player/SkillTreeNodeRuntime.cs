@@ -3,9 +3,10 @@ using System.Collections.Generic;
 public sealed class SkillTreeNodeRuntime
 {
     private readonly List<SkillTreeNodeRuntime> _nextNodes = new();
+    private readonly List<SkillTreeNodeRuntime> _requiredNodes = new();
 
     public SkillNodeDefinition Definition { get; }
-    public SkillTreeNodeRuntime RequiredNode { get; private set; }
+    public IReadOnlyList<SkillTreeNodeRuntime> RequiredNodes => _requiredNodes;
     public IReadOnlyList<SkillTreeNodeRuntime> NextNodes => _nextNodes;
     public bool IsUnlocked { get; private set; }
 
@@ -24,7 +25,7 @@ public sealed class SkillTreeNodeRuntime
             return false;
         }
 
-        if (RequiredNode == null || !RequiredNode.IsUnlocked)
+        if (!HasUnlockedRequiredNode)
         {
             return false;
         }
@@ -32,9 +33,26 @@ public sealed class SkillTreeNodeRuntime
         return availablePoints >= Definition.RequiredPoints;
     }
 
-    internal void SetRequiredNode(SkillTreeNodeRuntime requiredNode)
+    // 여러 선행 경로 중 하나만 해금되어도 진입할 수 있다. 조회 중에는 할당하지 않는다.
+    public bool HasUnlockedRequiredNode
     {
-        RequiredNode = requiredNode;
+        get
+        {
+            for (int i = 0; i < _requiredNodes.Count; i++)
+            {
+                if (_requiredNodes[i].IsUnlocked)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    internal void AddRequiredNode(SkillTreeNodeRuntime requiredNode)
+    {
+        _requiredNodes.Add(requiredNode);
         requiredNode._nextNodes.Add(this);
     }
 

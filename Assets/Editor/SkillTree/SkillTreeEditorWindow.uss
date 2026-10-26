@@ -1,0 +1,26 @@
+.skill-editor { flex-grow: 1; }
+.skill-toolbar { flex-direction: row; flex-wrap: wrap; padding: 4px; }
+.skill-toolbar > Button { margin-right: 4px; }
+.skill-tree-field { flex-grow: 1; min-width: 280px; }
+.skill-body { flex-direction: row; flex-grow: 1; min-height: 180px; }
+.skill-canvas { flex-grow: 1; overflow: hidden; background-color: rgb(29, 33, 40); min-width: 200px; }
+.skill-world { position: absolute; left: 0; top: 0; }
+.skill-inspector { width: 330px; min-width: 280px; flex-shrink: 0; padding: 8px; }
+.skill-heading { -unity-font-style: bold; font-size: 14px; margin-top: 6px; margin-bottom: 8px; }
+.skill-hint { white-space: normal; padding: 5px; }
+.skill-actions { flex-direction: row; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px; }
+.skill-actions > Button { margin-right: 4px; margin-bottom: 4px; }
+.skill-issues { height: 130px; flex-shrink: 0; padding: 4px; }
+.skill-issue { -unity-text-align: middle-left; white-space: normal; }
+.skill-node { position: absolute; background-color: rgb(48, 62, 79); color: rgb(240, 244, 250); border-color: rgb(108, 141, 175); border-width: 2px; border-radius: 8px; align-items: center; padding: 5px; }
+.skill-node--start { background-color: rgb(58, 78, 57); border-color: rgb(149, 194, 119); }
+.skill-node--sub { background-color: rgb(67, 53, 82); border-color: rgb(164, 132, 190); }
+.skill-node--invalid { border-color: rgb(246, 103, 88); }
+.skill-node--selected { border-color: rgb(102, 219, 255); border-width: 3px; }
+.skill-node-id { font-size: 10px; color: rgb(206, 216, 229); }
+.skill-node-icon { width: 30px; height: 30px; flex-shrink: 0; margin-top: 3px; }
+.skill-node-title { -unity-font-style: bold; -unity-text-align: middle-center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: 100%; margin-top: 3px; }
+.skill-port { position: absolute; width: 16px; height: 16px; border-radius: 8px; background-color: rgb(155, 199, 234); border-width: 2px; border-color: rgb(28, 40, 55); left: 50%; margin-left: -8px; }
+.skill-port:hover { background-color: rgb(115, 237, 255); }
+.skill-port--input { top: -9px; }
+.skill-port--output { bottom: -9px; }

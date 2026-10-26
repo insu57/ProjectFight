@@ -11273,6 +11273,8 @@ MonoBehaviour:
   _sfxSourcePrefab: {fileID: 1824897139700724705, guid: 163b28dfdfc7bf944a18684811e6afe6, type: 3}
   _sfxPrewarmCount: 16
   _maxConcurrentSfx: 32
+  _enemyFootstepMinInterval: 0.06
+  _maxConcurrentEnemyFootsteps: 3
   _masterVolume: 1
   _bgmVolume: 1
   _sfxVolume: 1

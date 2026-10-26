@@ -126,8 +126,18 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _attackHitbox = GetComponentInChildren<AttackHitbox>();
         _hurtbox = GetComponentInChildren<Hurtbox>();
 
-        _attackHitbox.Initialize(this);
+        // 두 하위 컴포넌트는 플레이어와 수명을 공유하는 필수 참조이므로 초기화 시에만 검증한다.
+        if (!_attackHitbox)
+        {
+            throw new MissingComponentException($"{name}에 필수 {nameof(AttackHitbox)} 컴포넌트가 없습니다.");
+        }
 
+        if (!_hurtbox)
+        {
+            throw new MissingComponentException($"{name}에 필수 {nameof(Hurtbox)} 컴포넌트가 없습니다.");
+        }
+
+        _attackHitbox.Initialize(this);
         _hurtbox.Initialize(this);
     }
 
@@ -1130,11 +1140,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         // 각 공격·콤보 단계 시작 시 같은 스냅샷으로 피해와 재생 배율을 확정한다.
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
-        if (_attackHitbox)
-        {
-            _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier,
-                stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
-        }
+        _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier, stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
 
         // AnimationSpeed와의 곱셈은 공통 애니메이션에서 처리하며, 공격 중 스탯 변경은 다음 공격부터 반영한다.
         if (isLethalArt) _playerAnimation.PlayLethalArt(attackDefinition, stats.AttackSpeedMultiplier);
@@ -1214,10 +1220,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
         if (_playerAnimation.IsAttackFinished())
         {
-            if (_attackHitbox)
-            {
-                _attackHitbox.EndAttack();
-            }
+            _attackHitbox.EndAttack();
 
             _playerAttack.EndAttack();
             _playerAnimation.CompleteAttack();
@@ -1225,10 +1228,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
             return;
         }
 
-        if (_attackHitbox)
-        {
-            _attackHitbox.UpdateHitbox(hasNormalizedTime, normalizedTime);
-        }
+        _attackHitbox.UpdateHitbox(hasNormalizedTime, normalizedTime);
     }
 
     private void UpdateGuard()

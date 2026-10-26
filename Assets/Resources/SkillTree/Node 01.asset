@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Node 01
   m_EditorClassIdentifier: Assembly-CSharp::SkillNodeDefinition
   <NodeID>k__BackingField: 30001
-  <NodeName>k__BackingField: Start
+  <NodeName>k__BackingField: "\uC2DC\uC791"
   <NodeIcon>k__BackingField: {fileID: 21300000, guid: 37e07b1bd28380b4f9cbfa0fc8bd564c, type: 3}
-  <NodeDescription>k__BackingField: 
+  <NodeDescription>k__BackingField: "\uC774\uC81C \uC2DC\uC791\uC774\uC57C..."
   <NodeType>k__BackingField: 2
   <RequiredNodeId>k__BackingField: -1
   <EffectType>k__BackingField: 6

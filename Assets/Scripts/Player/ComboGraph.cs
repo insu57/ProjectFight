@@ -42,7 +42,8 @@ public sealed class ComboGraph
                 // 같은 입력 경로에는 동일한 공격 데이터가 사용되어야 한다.
                 if (nextNode.AttackDefinition != comboStep.AttackDefinition)
                 {
-                    throw new InvalidOperationException($"콤보 '{comboDefinition.ComboName}'의 {i + 1}번째 단계가 기존 콤보와 충돌합니다. 같은 입력 경로에 서로 다른 AttackDefinition이 지정되었습니다.");
+                    throw new InvalidOperationException($"콤보 '{comboDefinition.ComboName}'의 {i + 1}번째 단계가 " +
+                        $"기존 콤보와 충돌합니다. 같은 입력 경로에 서로 다른 AttackDefinition이 지정되었습니다.");
                 }
 
                 currentNode = nextNode;
@@ -56,7 +57,8 @@ public sealed class ComboGraph
 
         if (currentNode.CompletedCombo)
         {
-            throw new InvalidOperationException($"콤보 '{comboDefinition.ComboName}'과 '{currentNode.CompletedCombo.ComboName}'의 입력 순서가 같습니다.");
+            throw new InvalidOperationException($"콤보 '{comboDefinition.ComboName}'과 " +
+                $"'{currentNode.CompletedCombo.ComboName}'의 입력 순서가 같습니다.");
         }
 
         // 마지막 노드에는 해당 입력 경로로 완성되는 콤보를 기록한다.
@@ -66,15 +68,19 @@ public sealed class ComboGraph
     private static void ValidateComboDefinition(ComboDefinition comboDefinition, int definitionIndex, HashSet<int> comboIds)
     {
         if (!comboDefinition) throw new InvalidOperationException($"{definitionIndex}번째 ComboDefinition이 비어 있습니다.");
-        if (!comboIds.Add(comboDefinition.ComboID)) throw new InvalidOperationException($"중복된 ComboID가 발견되었습니다: {comboDefinition.ComboID}");
+
+        if (!comboIds.Add(comboDefinition.ComboID))
+            throw new InvalidOperationException($"중복된 ComboID가 발견되었습니다: {comboDefinition.ComboID}");
 
         ComboStep[] comboSteps = comboDefinition.ComboSteps;
 
-        if (comboSteps == null || comboSteps.Length == 0) throw new InvalidOperationException($"콤보 '{comboDefinition.ComboName}'에 단계가 없습니다.");
+        if (comboSteps == null || comboSteps.Length == 0)
+            throw new InvalidOperationException($"콤보 '{comboDefinition.ComboName}'에 단계가 없습니다.");
 
         for (int i = 0; i < comboSteps.Length; i++)
         {
-            if (!comboSteps[i].AttackDefinition) throw new InvalidOperationException($"콤보 '{comboDefinition.ComboName}'의 {i + 1}번째 AttackDefinition이 비어 있습니다.");
+            if (!comboSteps[i].AttackDefinition)
+                throw new InvalidOperationException($"콤보 '{comboDefinition.ComboName}'의 {i + 1}번째 AttackDefinition이 비어 있습니다.");
         }
     }
 }

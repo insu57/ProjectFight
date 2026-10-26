@@ -77,7 +77,8 @@ public sealed class PlayerInventory : MonoBehaviour
 
     public bool CanToggleEquipment(int inventoryIndex, ItemDefinition expectedItem)
     {
-        if (!expectedItem || expectedItem.ItemType != ItemType.Equipment || inventoryIndex < 0 || inventoryIndex >= _equipmentItems.Count || _equipmentItems[inventoryIndex] != expectedItem) return false;
+        if (!expectedItem || expectedItem.ItemType != ItemType.Equipment || inventoryIndex < 0
+            || inventoryIndex >= _equipmentItems.Count || _equipmentItems[inventoryIndex] != expectedItem) return false;
 
         // 미보유 항목, 오래된 슬롯 바인딩과 부위 미지정 장비는 장착 대상으로 사용하지 않는다.
         int slotIndex = (int)expectedItem.EquipmentSlot;
@@ -86,7 +87,8 @@ public sealed class PlayerInventory : MonoBehaviour
 
     public bool IsEquipmentEquipped(int inventoryIndex, ItemDefinition expectedItem)
     {
-        if (!expectedItem || expectedItem.ItemType != ItemType.Equipment || inventoryIndex < 0 || inventoryIndex >= _equipmentItems.Count || _equipmentItems[inventoryIndex] != expectedItem) return false;
+        if (!expectedItem || expectedItem.ItemType != ItemType.Equipment || inventoryIndex < 0
+            || inventoryIndex >= _equipmentItems.Count || _equipmentItems[inventoryIndex] != expectedItem) return false;
 
         int slotIndex = (int)expectedItem.EquipmentSlot;
         return slotIndex > 0 && slotIndex < _equippedEquipmentIndices.Length && _equippedEquipmentIndices[slotIndex] == inventoryIndex;

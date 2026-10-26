@@ -45,8 +45,6 @@ public sealed class SkillTreeView : MonoBehaviour
     private readonly List<ConnectionBinding> _connections = new();
 
     private bool _isBuilt;
-    private int _nextLeafIndex;
-    private int _maximumDepth;
 
     private void Awake()
     {
@@ -110,63 +108,27 @@ public sealed class SkillTreeView : MonoBehaviour
             return;
         }
 
-        _nextLeafIndex = 0;
-        _maximumDepth = 0;
-
-        CalculateNodePosition(runtime.StartNode, 0);
-        ResizeContainer();
-        CreateConnections(runtime.StartNode);
-        CreateNodes(runtime.StartNode);
+        SkillTreeLayoutSettings settings = new(_horizontalSpacing, _verticalSpacing, _horizontalPadding, _verticalPadding, _nodeSize);
+        Vector2 contentSize = SkillTreeLayoutUtility.Calculate(runtime.StartNode, settings, _nodePositions);
+        ResizeContainer(contentSize);
+        // 합류 노드는 한 번만 만들고, 각 부모의 연결선은 모두 만든다.
+        foreach (SkillTreeNodeRuntime node in runtime.Nodes.Values)
+        {
+            CreateNodes(node);
+            CreateConnections(node);
+        }
 
         _isBuilt = true;
     }
 
-    private float CalculateNodePosition(SkillTreeNodeRuntime node, int depth)
+    private void ResizeContainer(Vector2 contentSize)
     {
-        if (depth > _maximumDepth)
-        {
-            _maximumDepth = depth;
-        }
-
-        IReadOnlyList<SkillTreeNodeRuntime> children = node.NextNodes;
-        float xPosition;
-
-        if (children.Count == 0)
-        {
-            xPosition = _horizontalPadding + _nodeSize.x * 0.5f + _nextLeafIndex * _horizontalSpacing;
-            _nextLeafIndex++;
-        }
-        else
-        {
-            float firstChildX = CalculateNodePosition(children[0], depth + 1);
-            float lastChildX = firstChildX;
-
-            for (int i = 1; i < children.Count; i++)
-            {
-                lastChildX = CalculateNodePosition(children[i], depth + 1); //재귀적으로 계산
-            }
-
-            // 부모를 첫 번째 자식과 마지막 자식이 차지하는 영역의 중앙에 배치한다.
-            xPosition = (firstChildX + lastChildX) * 0.5f;
-        }
-
-        float yPosition = -(_verticalPadding + depth * _verticalSpacing);
-        _nodePositions.Add(node.NodeID, new Vector2(xPosition, yPosition));
-        return xPosition;
-    }
-
-    private void ResizeContainer()
-    {
-        int leafCount = Mathf.Max(1, _nextLeafIndex);
-        float width = _horizontalPadding * 2f + (leafCount - 1) * _horizontalSpacing + _nodeSize.x;
-        float height = _verticalPadding * 2f + _maximumDepth * _verticalSpacing + _nodeSize.y;
-
         // 스킬 트리 콘텐츠를 Viewport 상단 중앙에 배치한다.
         _treeContainer.anchorMin = new Vector2(0.5f, 1f);
         _treeContainer.anchorMax = new Vector2(0.5f, 1f);
         _treeContainer.pivot = new Vector2(0.5f, 1f);
         _treeContainer.anchoredPosition = Vector2.zero;
-        _treeContainer.sizeDelta = new Vector2(width, height);
+        _treeContainer.sizeDelta = contentSize;
     }
 
     private void CreateNodes(SkillTreeNodeRuntime node)
@@ -179,12 +141,6 @@ public sealed class SkillTreeView : MonoBehaviour
 
         _nodeViews.Add(node.NodeID, nodeView);
 
-        IReadOnlyList<SkillTreeNodeRuntime> children = node.NextNodes;
-
-        for (int i = 0; i < children.Count; i++)
-        {
-            CreateNodes(children[i]);
-        }
     }
 
     private void CreateConnections(SkillTreeNodeRuntime fromNode)
@@ -200,7 +156,6 @@ public sealed class SkillTreeView : MonoBehaviour
             connectionView.SetPositions(_nodePositions[fromNode.NodeID], _nodePositions[toNode.NodeID]);
 
             _connections.Add(new ConnectionBinding(connectionView, fromNode, toNode));
-            CreateConnections(toNode);
         }
     }
 

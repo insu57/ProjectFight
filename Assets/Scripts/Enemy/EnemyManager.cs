@@ -64,30 +64,32 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _hurtbox = GetComponentInChildren<Hurtbox>();
         _lockOnTarget = GetComponentInChildren<LockOnTarget>(true);
 
-        if (_attackHitbox)
+        // 세 하위 컴포넌트는 적과 수명을 공유하는 필수 참조이므로 초기화 시에만 검증한다.
+        if (!_attackHitbox)
         {
-            _attackHitbox.Initialize(this);
+            throw new MissingComponentException($"{name}에 필수 {nameof(AttackHitbox)} 컴포넌트가 없습니다.");
         }
 
-        if (_hurtbox)
+        if (!_hurtbox)
         {
-            _hurtbox.Initialize(this);
+            throw new MissingComponentException($"{name}에 필수 {nameof(Hurtbox)} 컴포넌트가 없습니다.");
         }
 
-        if (_lockOnTarget)
+        if (!_lockOnTarget)
         {
-            _lockOnTarget.Initialize(this);
+            throw new MissingComponentException($"{name}에 필수 {nameof(LockOnTarget)} 컴포넌트가 없습니다.");
         }
+
+        _attackHitbox.Initialize(this);
+        _hurtbox.Initialize(this);
+        _lockOnTarget.Initialize(this);
     }
 
     private void OnEnable()
     {
         _enemyMove?.SetNavigationRoom(_sceneNavigationRoom);
 
-        if (_hurtbox)
-        {
-            _hurtbox.DamageRequested += HandleDamageRequested;
-        }
+        _hurtbox.DamageRequested += HandleDamageRequested;
 
         _enemyStat.Died += HandleDied;
     }
@@ -101,6 +103,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _hasStarted = true;
 
+        //테스트 용(에디터)
         if (!_enemyDefinition)
         {
             return;
@@ -115,10 +118,10 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     {
         SpawnVersion++;
         // 사망 시 제외했던 피격과 락온을 이 적의 초기 설정으로 복구한다.
-        if (_deathPresentationStarted && _lockOnTarget) _lockOnTarget.enabled = _lockOnEnabledBeforeDeath;
+        if (_deathPresentationStarted) _lockOnTarget.enabled = _lockOnEnabledBeforeDeath;
         _deathPresentationStarted = false;
         _rewardRecipient = null;
-        if (_hurtbox) _hurtbox.SetDamageEnabled(true);
+        _hurtbox.SetDamageEnabled(true);
         _hasStarted = true;
         _target = null;
         _circleBlockedTime = 0f;
@@ -126,7 +129,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _distanceSinceFootstep = 0f;
         _footstepMoveDistance = 0f;
         _poiseReaction.Reset();
-        _attackHitbox?.EndAttack();
+        _attackHitbox.EndAttack();
 
         if (_enemyDefinition)
         {
@@ -162,9 +165,9 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     private void OnDisable()
     {
         // 풀 반환 후 이전 방의 참조와 경로를 사용하지 않는다.
-        _enemyMove?.SetNavigationRoom(null);
+        _enemyMove.SetNavigationRoom(null);
         _rewardRecipient = null;
-        _patternExecutor?.CancelCurrentPattern(false);
+        _patternExecutor.CancelCurrentPattern(false);
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
         _movementHitPauseRemaining = 0f;
@@ -181,20 +184,11 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             _enemyState.SetActionState(EnemyActionState.Free);
         }
 
-        if (_hurtbox)
-        {
-            _hurtbox.DamageRequested -= HandleDamageRequested;
-        }
+        _hurtbox.DamageRequested -= HandleDamageRequested;
 
-        if (_attackHitbox)
-        {
-            _attackHitbox.EndAttack();
-        }
+        _attackHitbox.EndAttack();
 
-        if (_enemyStat)
-        {
-            _enemyStat.Died -= HandleDied;
-        }
+        _enemyStat.Died -= HandleDied;
     }
 
     private void Update()
@@ -212,7 +206,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         }
 
         // 공격 상태를 벗어나면 활성 판정이 남지 않도록 정리한다.
-        if (_attackHitbox && (!_enemyState || _enemyState.ActionState != EnemyActionState.Attacking))
+        if (!_enemyState || _enemyState.ActionState != EnemyActionState.Attacking)
         {
             _attackHitbox.EndAttack();
         }
@@ -308,7 +302,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         target = default;
         if (!isActiveAndEnabled || !_enemyState || !_enemyStat || _enemyStat.IsDead) return false;
         // 콜라이더의 조회와 캐시는 Hurtbox가 소유하며 Manager는 준비된 참조만 사용한다.
-        Collider targetCollider = _hurtbox ? _hurtbox.CachedCollider : null;
+        Collider targetCollider = _hurtbox.CachedCollider;
         if (!targetCollider || !targetCollider.enabled || !targetCollider.gameObject.activeInHierarchy) return false;
 
         float health = _enemyStat.CurrentHealth;
@@ -479,6 +473,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             EnemyPatternStepType.Guard => _enemyAnimation.IsGuardFinished(),
             _ => true
         };
+
         _patternExecutor.UpdateExecution(deltaTime, animationFinished, out bool stepStarted, out bool stepEnded, out bool patternCompleted);
 
         if (stepEnded)
@@ -576,7 +571,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             case EnemyPatternStepType.Attack:
                 if (!_enemyAnimation.TryPlayAttack(step.Attack, _enemyStat.AttackSpeed)) return false;
                 _enemyState.SetActionState(EnemyActionState.Attacking);
-                _attackHitbox?.BeginAttack(step.Attack, _enemyStat.AttackPower);
+                _attackHitbox.BeginAttack(step.Attack, _enemyStat.AttackPower);
                 TryPlayAttackSound(false, 0f);
                 return true;
             case EnemyPatternStepType.Guard:
@@ -601,7 +596,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void CancelPatternToFree()
     {
-        _attackHitbox?.EndAttack();
+        _attackHitbox.EndAttack();
         _patternExecutor.CancelCurrentPattern(true);
         _enemyAnimation.CancelGuard();
         _circleBlockedTime = 0f;
@@ -620,7 +615,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         // 경직 시작 시점의 방향만 전달하며, 반응 도중에는 모션을 바꾸지 않는다.
         bool isHitFromBehind = !isGuardBreak && CombatUtility.IsAttackerBehind(transform, attacker ? attacker.transform : null);
 
-        _attackHitbox?.EndAttack();
+        _attackHitbox.EndAttack();
         _patternExecutor.CancelCurrentPattern(true);
         _enemyAnimation.CancelGuard();
         _circleBlockedTime = 0f;
@@ -698,30 +693,19 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
         _target = null;
 
-        if (_hurtbox)
-        {
-            _hurtbox.SetDamageEnabled(false);
-        }
+        _hurtbox.SetDamageEnabled(false);
 
-        if (_lockOnTarget)
-        {
-            _lockOnEnabledBeforeDeath = _lockOnTarget.enabled;
-            _lockOnTarget.enabled = false;
-        }
+        _lockOnEnabledBeforeDeath = _lockOnTarget.enabled;
+        _lockOnTarget.enabled = false;
 
-        if (_attackHitbox)
-        {
-            _attackHitbox.EndAttack();
-        }
+        _attackHitbox.EndAttack();
 
-        if (_patternExecutor)
-        {
-            _patternExecutor.CancelCurrentPattern(false);
-        }
+        _patternExecutor.CancelCurrentPattern(false);
 
         _poiseReaction.Reset();
         _circleBlockedTime = 0f;
         _movementHitPauseRemaining = 0f;
+
         // 사망 중복 방지 이후에 지급하므로 추가 피격이나 사망 알림으로 보상이 중복되지 않는다.
         if (rewardRecipient)
         {
@@ -730,6 +714,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             // 보상 유무와 관계없이 이번 사망의 실제 처치자에게 한 번만 패시브 이벤트를 전달한다.
             rewardRecipient.NotifyEnemyKilled();
         }
+
         // 생존 적 수는 사망 연출과 풀 반환을 기다리지 않고 실제 사망 시점에 감소한다.
         Died?.Invoke(this);
         if (!_enemyAnimation.TryPlayDeath())

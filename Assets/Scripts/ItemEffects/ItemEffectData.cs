@@ -104,7 +104,8 @@ public sealed class RecoveryOverTimeEffectData : ItemEffectData
     [SerializeField, Tooltip("매 회복 시점에 적용할 회복량입니다. MaxRatio는 해당 시점의 최대 체력 또는 최대 에너지 비율입니다.")]
     private ItemRecoveryAmount _amount = new(ItemRecoveryMode.Fixed, 5f);
 
-    [SerializeField, Tooltip("갱신은 같은 회복 대상(체력/에너지)의 갱신형 효과를 새 회복량·방식·간격·지속시간으로 교체합니다. 첫 회복은 새 간격 이후이며, 개별 중첩은 별도로 유지합니다.")]
+    [SerializeField, Tooltip("갱신은 같은 회복 대상(체력/에너지)의 갱신형 효과를 새 회복량·방식·간격·지속시간으로 교체합니다. " +
+        "첫 회복은 새 간격 이후이며, 개별 중첩은 별도로 유지합니다.")]
     private ItemEffectStackingPolicy _stackingPolicy = ItemEffectStackingPolicy.RefreshDuration;
 
     public ItemRecoveryTarget Target => _target;
@@ -144,7 +145,8 @@ public sealed class TimedStatModifierEffectData : ItemEffectData
     [SerializeField, Tooltip("기본 스탯과 별도로 합산할 보정입니다. FlatAdd는 고정값, PercentAdd는 비율입니다.")]
     private StatModifier[] _statModifiers = Array.Empty<StatModifier>();
 
-    [SerializeField, Tooltip("갱신은 아이템과 관계없이 같은 스탯의 갱신형 보정 묶음(FlatAdd/PercentAdd)을 새 값과 지속시간으로 교체합니다. 다른 스탯과 개별 중첩 효과는 유지합니다.")]
+    [SerializeField, Tooltip("갱신은 아이템과 관계없이 같은 스탯의 갱신형 보정 묶음(FlatAdd/PercentAdd)을 새 값과 지속시간으로 교체합니다. " +
+        "다른 스탯과 개별 중첩 효과는 유지합니다.")]
     private ItemEffectStackingPolicy _stackingPolicy = ItemEffectStackingPolicy.RefreshDuration;
 
     public float Duration => _duration;
@@ -153,7 +155,8 @@ public sealed class TimedStatModifierEffectData : ItemEffectData
 
     public TimedStatModifierEffectData() { }
 
-    public TimedStatModifierEffectData(float duration, StatModifier[] statModifiers, ItemEffectStackingPolicy stackingPolicy = ItemEffectStackingPolicy.RefreshDuration)
+    public TimedStatModifierEffectData(float duration, StatModifier[] statModifiers,
+        ItemEffectStackingPolicy stackingPolicy = ItemEffectStackingPolicy.RefreshDuration)
     {
         _duration = duration;
         _statModifiers = statModifiers ?? Array.Empty<StatModifier>();

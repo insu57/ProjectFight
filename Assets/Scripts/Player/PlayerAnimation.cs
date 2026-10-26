@@ -22,11 +22,6 @@ public sealed class PlayerAnimation : CharacterAnimation
 
     public void SetMovement(Vector2 localMoveDirection, float deltaTime)
     {
-        if (!CharacterAnimator)
-        {
-            return;
-        }
-
         float movementThresholdSqr = _movementThreshold * _movementThreshold;
         bool hasMoveDirection = localMoveDirection.sqrMagnitude > movementThresholdSqr;
 
@@ -66,11 +61,6 @@ public sealed class PlayerAnimation : CharacterAnimation
 
     public void PlayDodge(Vector2 dodgeDirection)
     {
-        if (!CharacterAnimator)
-        {
-            return;
-        }
-
         CharacterAnimator.SetFloat(_dodgeXHash, dodgeDirection.x);
         CharacterAnimator.SetFloat(_dodgeYHash, dodgeDirection.y);
         CharacterAnimator.SetTrigger(_dodgeHash);
@@ -80,15 +70,12 @@ public sealed class PlayerAnimation : CharacterAnimation
     {
         _isGuardRequested = isGuarding;
 
-        if (CharacterAnimator)
-        {
-            CharacterAnimator.SetBool(_isGuardingHash, isGuarding);
-        }
+        CharacterAnimator.SetBool(_isGuardingHash, isGuarding);
     }
 
     public bool IsGuardFinished()
     {
-        if (!CharacterAnimator || _isGuardRequested)
+        if (_isGuardRequested)
         {
             return false;
         }
@@ -114,8 +101,6 @@ public sealed class PlayerAnimation : CharacterAnimation
         SetGuarding(false);
         ResetAttackState();
 
-        if (!CharacterAnimator) return false;
-
         CharacterAnimator.ResetTrigger(_dodgeHash);
         CharacterAnimator.SetBool(_isSprintingHash, false);
         CharacterAnimator.SetFloat(_moveXHash, 0f);
@@ -138,13 +123,10 @@ public sealed class PlayerAnimation : CharacterAnimation
     public override bool TryPlayDeath()
     {
         SetGuarding(false);
-        if (CharacterAnimator)
-        {
-            CharacterAnimator.ResetTrigger(_dodgeHash);
-            CharacterAnimator.SetBool(_isSprintingHash, false);
-            CharacterAnimator.SetFloat(_moveXHash, 0f);
-            CharacterAnimator.SetFloat(_moveYHash, 0f);
-        }
+        CharacterAnimator.ResetTrigger(_dodgeHash);
+        CharacterAnimator.SetBool(_isSprintingHash, false);
+        CharacterAnimator.SetFloat(_moveXHash, 0f);
+        CharacterAnimator.SetFloat(_moveYHash, 0f);
 
         return base.TryPlayDeath();
     }
@@ -157,9 +139,6 @@ public sealed class PlayerAnimation : CharacterAnimation
 
     public void SetSprinting(bool isSprinting)
     {
-        if (CharacterAnimator)
-        {
-            CharacterAnimator.SetBool(_isSprintingHash, isSprinting);
-        }
+        CharacterAnimator.SetBool(_isSprintingHash, isSprinting);
     }
 }

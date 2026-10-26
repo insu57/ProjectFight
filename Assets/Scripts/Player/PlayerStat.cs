@@ -105,8 +105,8 @@ public readonly struct PlayerStatSnapshot
 public class PlayerStat : MonoBehaviour
 {
     // 스탯 목록은 형식 초기화 때 한 번만 준비하고 계산 시에는 배열을 순회한다.
-    private static readonly ItemStatType[] StatTypes = (ItemStatType[])Enum.GetValues(typeof(ItemStatType));
-    private static readonly int ItemStatCount = (int)StatTypes[StatTypes.Length - 1] + 1;
+    private static readonly ItemStatType[] _statTypes = (ItemStatType[])Enum.GetValues(typeof(ItemStatType));
+    private static readonly int _itemStatCount = (int)_statTypes[^1] + 1;
 
     private struct StatModifierTotals
     {
@@ -169,12 +169,12 @@ public class PlayerStat : MonoBehaviour
     private float _guardPoiseRecoveryRemaining;
 
     // 보정 합계와 최종값 배열은 한 번 생성해 재사용하고, 조회할 때는 계산된 값만 읽는다.
-    private readonly StatModifierTotals[] _relicStatModifiers = new StatModifierTotals[ItemStatCount];
-    private readonly StatModifierTotals[] _equipmentStatModifiers = new StatModifierTotals[ItemStatCount];
-    private readonly StatModifierTotals[] _timedStatModifiers = new StatModifierTotals[ItemStatCount];
-    private readonly StatModifierTotals[] _passiveStatModifiers = new StatModifierTotals[ItemStatCount];
-    private readonly StatModifierTotals[] _modifierTotalsBuffer = new StatModifierTotals[ItemStatCount];
-    [SerializeField] private float[] _finalStats = new float[ItemStatCount];
+    private readonly StatModifierTotals[] _relicStatModifiers = new StatModifierTotals[_itemStatCount];
+    private readonly StatModifierTotals[] _equipmentStatModifiers = new StatModifierTotals[_itemStatCount];
+    private readonly StatModifierTotals[] _timedStatModifiers = new StatModifierTotals[_itemStatCount];
+    private readonly StatModifierTotals[] _passiveStatModifiers = new StatModifierTotals[_itemStatCount];
+    private readonly StatModifierTotals[] _modifierTotalsBuffer = new StatModifierTotals[_itemStatCount];
+    [SerializeField] private float[] _finalStats = new float[_itemStatCount];
     private AttackDamageModifier _attackPowerModifier;
     private AttackDamageModifier _poiseDamageModifier;
     private AttackDamageModifier _guardPoiseDamageModifier;
@@ -182,7 +182,7 @@ public class PlayerStat : MonoBehaviour
     private bool _hasCalculatedStats;
 
     // 저장된 계산 배열이 이전 스탯 개수여도 최초 조회에서 다시 준비한다.
-    private bool HasCalculatedStats => _hasCalculatedStats && _finalStats != null && _finalStats.Length == ItemStatCount;
+    private bool HasCalculatedStats => _hasCalculatedStats && _finalStats != null && _finalStats.Length == _itemStatCount;
 
     public PlayerStatSnapshot CurrentStats => CreateSnapshot();
 
@@ -353,7 +353,7 @@ public class PlayerStat : MonoBehaviour
     private static void AccumulateStatModifier(StatModifier modifier, StatModifierTotals[] totals)
     {
         int statIndex = (int)modifier.Stat;
-        if (statIndex < 0 || statIndex >= ItemStatCount || float.IsNaN(modifier.Value) || float.IsInfinity(modifier.Value)) return;
+        if (statIndex < 0 || statIndex >= _itemStatCount || float.IsNaN(modifier.Value) || float.IsInfinity(modifier.Value)) return;
 
         if (modifier.Operation == StatModifierOperation.FlatAdd) totals[statIndex].FlatAdd += modifier.Value;
         else if (modifier.Operation == StatModifierOperation.PercentAdd) totals[statIndex].PercentAdd += modifier.Value;
@@ -385,12 +385,12 @@ public class PlayerStat : MonoBehaviour
     private bool RecalculateFinalStats()
     {
         // Inspector에 저장된 캐시는 파생 값이므로 스탯 종류가 늘었을 때 한 번만 재생성한다.
-        if (_finalStats == null || _finalStats.Length != ItemStatCount) _finalStats = new float[ItemStatCount];
+        if (_finalStats == null || _finalStats.Length != _itemStatCount) _finalStats = new float[_itemStatCount];
 
         bool changed = false;
-        for (int i = 0; i < StatTypes.Length; i++)
+        for (int i = 0; i < _statTypes.Length; i++)
         {
-            ItemStatType stat = StatTypes[i];
+            ItemStatType stat = _statTypes[i];
             float baseValue = GetBaseStatValue(stat);
             // 공격별 기본값에 적용할 보정은 표시 스탯이 같아도 배율 변경을 따로 감지한다.
             switch (stat)

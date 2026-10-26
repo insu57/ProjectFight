@@ -19,3 +19,27 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c85030492952b844b913e4303afdd515, type: 2}
   - {fileID: 11400000, guid: aa11ebd258e4a284e99ae2065485ea3b, type: 2}
   - {fileID: 11400000, guid: ec46b2b62e27efe4a8200b345c378b50, type: 2}
+  - {fileID: 4268018289227843981}
+--- !u!114 &4268018289227843981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35e94cd5805b3f94b9cbf57f892a7fed, type: 3}
+  m_Name: SkillNode_30002
+  m_EditorClassIdentifier: Assembly-CSharp::SkillNodeDefinition
+  <NodeID>k__BackingField: 30006
+  <NodeName>k__BackingField: "\uD544\uC0B4\uAE30 \uD574\uAE08"
+  <NodeIcon>k__BackingField: {fileID: 0}
+  <NodeDescription>k__BackingField: 
+  <NodeType>k__BackingField: 0
+  _requiredNodeIds: 3475000033750000
+  _legacyRequiredNodeId: -1
+  <EffectType>k__BackingField: 6
+  <EffectValue>k__BackingField: 0
+  <RequiredPoints>k__BackingField: 1
+  <DisplayOrder>k__BackingField: 0
