@@ -1,3 +1,4 @@
+using Unity.Cinemachine;
 using UnityEngine;
 
 public enum PlayerCameraMode
@@ -67,6 +68,12 @@ public class PlayerCamera : MonoBehaviour
     public void ClearLockOnTarget()
     {
         _cameraMode = PlayerCameraMode.Free;
+    }
+
+    public void NotifyTeleport(Vector3 positionDelta)
+    {
+        // 카메라 타깃은 플레이어의 자식이므로 순간이동량을 Cinemachine에도 전달한다.
+        CinemachineCore.OnTargetObjectWarped(_cameraTarget, positionDelta);
     }
 
     private void UpdateRotation()

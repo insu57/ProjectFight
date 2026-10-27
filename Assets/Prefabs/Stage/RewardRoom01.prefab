@@ -56,6 +56,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: RewardRoom01
       objectReference: {fileID: 0}
+    - target: {fileID: 8090054758604384875, guid: f1deab079781c274db9b321569f95c73, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1.75
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -83,15 +87,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1998064375563481243, guid: b4cd661da8109214dbe428350df1bea2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.60846007
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1998064375563481243, guid: b4cd661da8109214dbe428350df1bea2, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.00000018998082
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1998064375563481243, guid: b4cd661da8109214dbe428350df1bea2, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.16932122
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1998064375563481243, guid: b4cd661da8109214dbe428350df1bea2, type: 3}
       propertyPath: m_LocalRotation.w

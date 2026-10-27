@@ -58,6 +58,6 @@ MonoBehaviour:
   <HitboxOffset>k__BackingField: {x: 0, y: 1, z: 1}
   <HitStartNormalizedTime>k__BackingField: 0.2
   <HitEndNormalizedTime>k__BackingField: 0.4
-  <AttackSound>k__BackingField: {fileID: 0}
+  <AttackSound>k__BackingField: {fileID: 11400000, guid: d82d6cb3bb31b9d478c578e19b1651c2, type: 2}
   <AttackSoundNormalizedTime>k__BackingField: 0
-  <HitSound>k__BackingField: {fileID: 0}
+  <HitSound>k__BackingField: {fileID: 11400000, guid: 7b7272a37210d8c42b229f146788569f, type: 2}

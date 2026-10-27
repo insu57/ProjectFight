@@ -12,11 +12,12 @@ public sealed class Store : MonoBehaviour
 
     private bool _isRequestingInteraction;
     private StageManager _stageManager;
+    private bool _isInitialized;
     private bool _hasRerollSettings;
     // 상품 데이터는 UI와 분리해 보관하여 창을 다시 열어도 같은 목록을 표시한다.
     private readonly ItemDefinition[] _items = new ItemDefinition[ItemCount];
 
-    public bool CanInteract => isActiveAndEnabled && !_isRequestingInteraction;
+    public bool CanInteract => isActiveAndEnabled && _isInitialized && !_isRequestingInteraction;
     public bool HasItems
     {
         get
@@ -50,6 +51,15 @@ public sealed class Store : MonoBehaviour
 
     public void Initialize(StageManager stageManager, int baseRerollPrice, int rerollPriceIncrease, bool resetRerollPrice = false)
     {
+        if (!stageManager)
+        {
+            // 주입 실패 후에도 남아 있는 이전 스테이지 참조로 상점을 이용하지 않도록 한다.
+            _stageManager = null;
+            _isInitialized = false;
+            Debug.LogError("상점 초기화 실패: StageManager 참조가 없습니다.", this);
+            return;
+        }
+
         bool managerChanged = _stageManager != stageManager;
         _stageManager = stageManager;
         BaseRerollPrice = Mathf.Max(0, baseRerollPrice);
@@ -62,16 +72,17 @@ public sealed class Store : MonoBehaviour
         }
 
         _hasRerollSettings = true;
+        _isInitialized = true;
     }
 
     public bool TryReroll(PlayerManager player)
     {
-        return _stageManager && _stageManager.TryRerollStore(this, player);
+        return _isInitialized && _stageManager.TryRerollStore(this, player);
     }
 
     public bool TryPurchaseItem(int itemIndex, ItemDefinition expectedItem, PlayerManager player)
     {
-        return _stageManager && _stageManager.TryPurchaseStoreItem(this, itemIndex, expectedItem, player);
+        return _isInitialized && _stageManager.TryPurchaseStoreItem(this, itemIndex, expectedItem, player);
     }
 
     internal void SetItem(int itemIndex, ItemDefinition item)

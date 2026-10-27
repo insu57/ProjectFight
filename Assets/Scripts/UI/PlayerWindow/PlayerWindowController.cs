@@ -31,6 +31,20 @@ public sealed class PlayerWindowController : TabbedWindowController<PlayerTabTyp
     protected override PlayerTabType InitialTab => _initialTab;
     protected override int TabBindingCount => _tabBindings?.Length ?? 0;
 
+    public void ShowTab(PlayerTabType tabType)
+    {
+        SelectTab(tabType);
+
+        if (IsOpen)
+        {
+            // 창이 열린 상태에서 단축키로 전환하면 UI 탐색 포커스도 해당 탭에 맞춘다.
+            FocusWindow();
+            return;
+        }
+
+        OpenWindow();
+    }
+
     protected override IWindowTabBinding<PlayerTabType> GetTabBinding(int index)
     {
         return _tabBindings[index];

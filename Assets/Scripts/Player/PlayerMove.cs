@@ -48,6 +48,24 @@ public class PlayerMove : MonoBehaviour
         _moveSpeedMultiplier = Mathf.Max(0f, moveSpeedMultiplier);
     }
 
+    public void Teleport(Vector3 position)
+    {
+        // CharacterController의 충돌 보정을 잠시 멈춰 지정한 방 위치로 정확히 옮긴다.
+        bool controllerWasEnabled = _characterController.enabled;
+        if (controllerWasEnabled) _characterController.enabled = false;
+        transform.position = position;
+        if (controllerWasEnabled) _characterController.enabled = true;
+
+        _verticalVelocity = 0f;
+        _dodgeWorldDirection = Vector3.zero;
+        _dodgeElapsedTime = 0f;
+        MoveAmount = 0f;
+        LocalMoveDirection = Vector2.zero;
+        DodgeLocalDirection = Vector2.zero;
+        HorizontalMoveDistance = 0f;
+        Physics.SyncTransforms();
+    }
+
     public void Move(Vector2 moveInput, Quaternion cameraRotation, float deltaTime)
     {
         MoveInternal(moveInput, cameraRotation, FacingMode.MoveDirection, _moveSpeed * _moveSpeedMultiplier, deltaTime);

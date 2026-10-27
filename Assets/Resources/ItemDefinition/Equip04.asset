@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Equip04
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   <ItemID>k__BackingField: 21004
-  <ItemName>k__BackingField: "\uC544\uB2C8\uC2A4\uC758 \uBC14\uC9C0"
-  <ItemDescription>k__BackingField: "\uC544\uB2C8\uC2A4\uC758 \uBC18\uBC14\uC9C0\uC57C."
-  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 7e2e5604e8d6676439df175167941d93, type: 3}
+  <ItemName>k__BackingField: "\uB370\uB2D8 \uBC18\uBC14\uC9C0"
+  <ItemDescription>k__BackingField: "\uCCAD\uBC18\uBC14\uC9C0"
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: b5668763359d6564b838438f00d012bf, type: 3}
   <ItemType>k__BackingField: 0
   <EquipmentSlot>k__BackingField: 3
   <Rarity>k__BackingField: 0

@@ -709,6 +709,33 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""QuickInven"",
+                    ""type"": ""Button"",
+                    ""id"": ""9672b4b9-8509-43aa-959a-f0bdef94908b"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""QuickSkillTree"",
+                    ""type"": ""Button"",
+                    ""id"": ""b3ce8dca-2b39-44fa-b829-6005d3b4a599"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""QuickMap"",
+                    ""type"": ""Button"",
+                    ""id"": ""3c791c49-c181-40b2-a3dd-6f3c23123456"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -1182,6 +1209,39 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": "";Gamepad"",
                     ""action"": ""QuickSlot4"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""e598a63f-a58a-4ed8-82d6-fd9f67adf512"",
+                    ""path"": ""<Keyboard>/i"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""QuickInven"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""365e35f6-79d4-4888-8a9c-af4f77b6ec0a"",
+                    ""path"": ""<Keyboard>/k"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""QuickSkillTree"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""0d18729b-5c7f-4aee-86d7-73c82e7a8179"",
+                    ""path"": ""<Keyboard>/m"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""QuickMap"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1985,6 +2045,9 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         m_Player_QuickSlot2 = m_Player.FindAction("QuickSlot2", throwIfNotFound: true);
         m_Player_QuickSlot3 = m_Player.FindAction("QuickSlot3", throwIfNotFound: true);
         m_Player_QuickSlot4 = m_Player.FindAction("QuickSlot4", throwIfNotFound: true);
+        m_Player_QuickInven = m_Player.FindAction("QuickInven", throwIfNotFound: true);
+        m_Player_QuickSkillTree = m_Player.FindAction("QuickSkillTree", throwIfNotFound: true);
+        m_Player_QuickMap = m_Player.FindAction("QuickMap", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -2289,6 +2352,9 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_QuickSlot2;
     private readonly InputAction m_Player_QuickSlot3;
     private readonly InputAction m_Player_QuickSlot4;
+    private readonly InputAction m_Player_QuickInven;
+    private readonly InputAction m_Player_QuickSkillTree;
+    private readonly InputAction m_Player_QuickMap;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -2365,6 +2431,18 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @QuickSlot4 => m_Wrapper.m_Player_QuickSlot4;
         /// <summary>
+        /// Provides access to the underlying input action "Player/QuickInven".
+        /// </summary>
+        public InputAction @QuickInven => m_Wrapper.m_Player_QuickInven;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/QuickSkillTree".
+        /// </summary>
+        public InputAction @QuickSkillTree => m_Wrapper.m_Player_QuickSkillTree;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/QuickMap".
+        /// </summary>
+        public InputAction @QuickMap => m_Wrapper.m_Player_QuickMap;
+        /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
         public InputActionMap Get() { return m_Wrapper.m_Player; }
@@ -2438,6 +2516,15 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @QuickSlot4.started += instance.OnQuickSlot4;
             @QuickSlot4.performed += instance.OnQuickSlot4;
             @QuickSlot4.canceled += instance.OnQuickSlot4;
+            @QuickInven.started += instance.OnQuickInven;
+            @QuickInven.performed += instance.OnQuickInven;
+            @QuickInven.canceled += instance.OnQuickInven;
+            @QuickSkillTree.started += instance.OnQuickSkillTree;
+            @QuickSkillTree.performed += instance.OnQuickSkillTree;
+            @QuickSkillTree.canceled += instance.OnQuickSkillTree;
+            @QuickMap.started += instance.OnQuickMap;
+            @QuickMap.performed += instance.OnQuickMap;
+            @QuickMap.canceled += instance.OnQuickMap;
         }
 
         /// <summary>
@@ -2497,6 +2584,15 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @QuickSlot4.started -= instance.OnQuickSlot4;
             @QuickSlot4.performed -= instance.OnQuickSlot4;
             @QuickSlot4.canceled -= instance.OnQuickSlot4;
+            @QuickInven.started -= instance.OnQuickInven;
+            @QuickInven.performed -= instance.OnQuickInven;
+            @QuickInven.canceled -= instance.OnQuickInven;
+            @QuickSkillTree.started -= instance.OnQuickSkillTree;
+            @QuickSkillTree.performed -= instance.OnQuickSkillTree;
+            @QuickSkillTree.canceled -= instance.OnQuickSkillTree;
+            @QuickMap.started -= instance.OnQuickMap;
+            @QuickMap.performed -= instance.OnQuickMap;
+            @QuickMap.canceled -= instance.OnQuickMap;
         }
 
         /// <summary>
@@ -3090,6 +3186,27 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnQuickSlot4(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "QuickInven" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnQuickInven(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "QuickSkillTree" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnQuickSkillTree(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "QuickMap" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnQuickMap(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.

@@ -623,6 +623,33 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "QuickInven",
+                    "type": "Button",
+                    "id": "9672b4b9-8509-43aa-959a-f0bdef94908b",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "QuickSkillTree",
+                    "type": "Button",
+                    "id": "b3ce8dca-2b39-44fa-b829-6005d3b4a599",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "QuickMap",
+                    "type": "Button",
+                    "id": "3c791c49-c181-40b2-a3dd-6f3c23123456",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -1096,6 +1123,39 @@
                     "processors": "",
                     "groups": ";Gamepad",
                     "action": "QuickSlot4",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e598a63f-a58a-4ed8-82d6-fd9f67adf512",
+                    "path": "<Keyboard>/i",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "QuickInven",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "365e35f6-79d4-4888-8a9c-af4f77b6ec0a",
+                    "path": "<Keyboard>/k",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "QuickSkillTree",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0d18729b-5c7f-4aee-86d7-73c82e7a8179",
+                    "path": "<Keyboard>/m",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "QuickMap",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

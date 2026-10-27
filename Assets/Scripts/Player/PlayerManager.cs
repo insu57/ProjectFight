@@ -73,6 +73,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     public event Action<LockOnTarget> LockOnTargetChanged;
     public event Action PlayerWindowRequested;
+    public event Action<PlayerTabType> PlayerTabRequested;
     public event Action OptionWindowRequested;
     public event Action<PlayerStatSnapshot> PlayerStatsChanged;
     public event Action<int> SkillPointsChanged;
@@ -155,6 +156,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerControl.AttackPressed += HandleAttackPressed;
         _playerControl.GuardChanged += HandleGuardChanged;
         _playerControl.PlayerWindowPressed += HandlePlayerWindowPressed;
+        _playerControl.QuickPlayerTabPressed += HandleQuickPlayerTabPressed;
         _playerControl.OptionWindowPressed += HandleOptionWindowPressed;
         _playerControl.InteractPressed += HandleInteractPressed;
         _playerControl.QuickslotPressed += HandleQuickslotPressed;
@@ -202,6 +204,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerControl.AttackPressed -= HandleAttackPressed;
         _playerControl.GuardChanged -= HandleGuardChanged;
         _playerControl.PlayerWindowPressed -= HandlePlayerWindowPressed;
+        _playerControl.QuickPlayerTabPressed -= HandleQuickPlayerTabPressed;
         _playerControl.OptionWindowPressed -= HandleOptionWindowPressed;
         _playerControl.InteractPressed -= HandleInteractPressed;
         _playerControl.QuickslotPressed -= HandleQuickslotPressed;
@@ -614,6 +617,35 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         RefreshInteractionTarget();
     }
 
+    public bool TryTeleportTo(Vector3 position)
+    {
+        if (!isActiveAndEnabled || !_hasCachedPlayerComponents || _playerState.ActionState == PlayerActionState.Dead) return false;
+
+        // 지도 창에서 이동하는 동안 중단된 행동이 목적지에서 이어지지 않도록 정리한다.
+        if (IsInPoiseReaction) _playerStat.RestorePoiseAfterReaction(_playerState.ActionState == PlayerActionState.GuardBroken);
+        _poiseReaction.Reset();
+        _attackHitbox.EndAttack();
+        _playerAttack.EndAttack();
+        _playerMove.EndDodge();
+        _playerAnimation.ClearHitStop();
+        _playerAnimation.SetGuarding(false);
+        _playerAnimation.SetSprinting(false);
+        _playerAnimation.CompleteAttack();
+        _hasPendingGuardChange = false;
+        _playerState.SetActionState(PlayerActionState.Free);
+        _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
+
+        _playerLockOn.ReleaseTarget();
+        NotifyLockOnTargetChanged();
+        _playerCamera.ClearLockOnTarget();
+        Vector3 previousPosition = transform.position;
+        _playerMove.Teleport(position);
+        _playerCamera.NotifyTeleport(transform.position - previousPosition);
+        _distanceSinceFootstep = 0f;
+        RefreshInteractionTarget();
+        return true;
+    }
+
     public SkillTreeUnlockResult TryUnlockSkillTreeNode(int nodeId)
     {
         if (!_hasCachedPlayerComponents) return SkillTreeUnlockResult.RuntimeNotInitialized;
@@ -840,7 +872,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerStat.RestoreEnergy(amount);
     }
 
-    void IPlayerItemEffectHost.RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems, IReadOnlyList<StatModifier> passiveModifiers)
+    void IPlayerItemEffectHost.RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems,
+        IReadOnlyList<ItemDefinition> equippedItems, IReadOnlyList<StatModifier> passiveModifiers)
     {
         _playerStat.RebuildItemStatModifiers(relicItems, equippedItems, passiveModifiers);
     }
@@ -973,6 +1006,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         // PlayerControl의 창 열기 요청을 UI가 받을 수 있도록 중개한다.
         PlayerWindowRequested?.Invoke();
+    }
+
+    private void HandleQuickPlayerTabPressed(PlayerTabType tabType)
+    {
+        // 빠른 탭 입력도 기존 창 입력과 같은 경로로 UI에 전달한다.
+        PlayerTabRequested?.Invoke(tabType);
     }
 
     private void HandleDodgePressed()
@@ -1112,7 +1151,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         return lethalArt;
     }
 
-    private bool TrySelectLethalArtForTarget(EnemyManager enemy, in LethalArtPlayerContext player, out LethalArtDefinition lethalArt, out float distanceSquared)
+    private bool TrySelectLethalArtForTarget(EnemyManager enemy, in LethalArtPlayerContext player,
+        out LethalArtDefinition lethalArt, out float distanceSquared)
     {
         lethalArt = null;
         distanceSquared = 0f;
@@ -1125,12 +1165,14 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
 
     private int FindLethalArtCandidates(Vector3 origin, float searchDistance)
     {
-        int count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer, GameLayerUtility.EnemyMask, QueryTriggerInteraction.Collide);
+        int count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer,
+            GameLayerUtility.EnemyMask, QueryTriggerInteraction.Collide);
         while (count == _lethalArtCandidateBuffer.Length)
         {
             // 밀집 상황에서도 후보를 누락하지 않으며, 확장한 버퍼는 다음 입력에서 그대로 사용한다.
             _lethalArtCandidateBuffer = new Collider[_lethalArtCandidateBuffer.Length * 2];
-            count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer, GameLayerUtility.EnemyMask, QueryTriggerInteraction.Collide);
+            count = Physics.OverlapSphereNonAlloc(origin, searchDistance, _lethalArtCandidateBuffer,
+                GameLayerUtility.EnemyMask, QueryTriggerInteraction.Collide);
         }
 
         return count;
@@ -1140,7 +1182,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     {
         // 각 공격·콤보 단계 시작 시 같은 스냅샷으로 피해와 재생 배율을 확정한다.
         PlayerStatSnapshot stats = _playerStat.CurrentStats;
-        _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier, stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
+        _attackHitbox.BeginAttack(attackDefinition, stats.AttackPowerModifier, stats.PoiseDamageModifier,
+            stats.GuardPoiseDamageModifier, stats.CalculateEnergyRecoveryOnHit(attackDefinition.BaseEnergyRecoveryOnHit));
 
         // AnimationSpeed와의 곱셈은 공통 애니메이션에서 처리하며, 공격 중 스탯 변경은 다음 공격부터 반영한다.
         if (isLethalArt) _playerAnimation.PlayLethalArt(attackDefinition, stats.AttackSpeedMultiplier);

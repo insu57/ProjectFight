@@ -257,7 +257,7 @@ public abstract class CharacterAnimation : MonoBehaviour
     public void CompleteAttack()
     {
         // 비활성화 중에는 애니메이션 전환을 요청하지 않는다.
-        if (isActiveAndEnabled)
+        if (isActiveAndEnabled && CharacterAnimator.isActiveAndEnabled)
         {
             // 공격별 복귀 시간이 없거나 경직 복귀처럼 공격 문맥이 없으면 공통 설정을 사용한다.
             float transitionDuration = _currentAttackExitTransitionDuration >= 0f

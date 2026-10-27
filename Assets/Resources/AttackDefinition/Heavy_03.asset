@@ -19,8 +19,11 @@ MonoBehaviour:
   <BaseDamage>k__BackingField: 30
   <BasePoiseDamage>k__BackingField: 30
   <BaseGuardPoiseDamage>k__BackingField: 30
+  <BaseEnergyRecoveryOnHit>k__BackingField: 0
   <HitStopDuration>k__BackingField: 0.13
   <TransitionDuration>k__BackingField: 0.1
+  <ComboTransitionDuration>k__BackingField: -1
+  <ExitTransitionDuration>k__BackingField: -1
   <ComboInputStartNormalizedTime>k__BackingField: 0.2
   <ComboTransitionNormalizedTime>k__BackingField: 0.55
   <ComboInputEndNormalizedTime>k__BackingField: 0.8
@@ -55,3 +58,6 @@ MonoBehaviour:
   <HitboxOffset>k__BackingField: {x: 0, y: 1, z: 1}
   <HitStartNormalizedTime>k__BackingField: 0.2
   <HitEndNormalizedTime>k__BackingField: 0.4
+  <AttackSound>k__BackingField: {fileID: 11400000, guid: cbeaec02ab661b24fa75e6dfabafa25a, type: 2}
+  <AttackSoundNormalizedTime>k__BackingField: 0
+  <HitSound>k__BackingField: {fileID: 11400000, guid: 560c7cd674536344baae16f9383471e3, type: 2}

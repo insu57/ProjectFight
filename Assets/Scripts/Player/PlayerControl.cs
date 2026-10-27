@@ -29,6 +29,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
     public event Action<AttackInputType> AttackPressed;
     public event Action<bool> GuardChanged;
     public event Action PlayerWindowPressed;
+    public event Action<PlayerTabType> QuickPlayerTabPressed;
     public event Action OptionWindowPressed;
     public event Action InteractPressed;
     public event Action<int> QuickslotPressed;
@@ -255,6 +256,30 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
         if (context.performed)
         {
             PlayerWindowPressed?.Invoke();
+        }
+    }
+
+    public void OnQuickInven(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            QuickPlayerTabPressed?.Invoke(PlayerTabType.Inventory);
+        }
+    }
+
+    public void OnQuickSkillTree(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            QuickPlayerTabPressed?.Invoke(PlayerTabType.SkillTree);
+        }
+    }
+
+    public void OnQuickMap(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            QuickPlayerTabPressed?.Invoke(PlayerTabType.Map);
         }
     }
 

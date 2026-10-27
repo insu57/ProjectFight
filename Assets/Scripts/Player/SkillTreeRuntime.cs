@@ -153,7 +153,8 @@ public sealed class SkillTreeRuntime
         }
     }
 
-    private static void ConnectNodes(SkillTreeDefinition treeDefinition, SkillNodeDefinition[] definitions, Dictionary<int, SkillTreeNodeRuntime> nodes)
+    private static void ConnectNodes(SkillTreeDefinition treeDefinition, SkillNodeDefinition[] definitions,
+        Dictionary<int, SkillTreeNodeRuntime> nodes)
     {
         foreach (SkillNodeDefinition definition in definitions)
         {
@@ -166,7 +167,8 @@ public sealed class SkillTreeRuntime
             {
                 if (parentId == definition.NodeID) throw new InvalidOperationException($"노드 '{definition.NodeName}'가 자기 자신을 참조합니다.");
                 if (!parents.Add(parentId)) throw new InvalidOperationException($"노드 '{definition.NodeName}'의 선행 ID {parentId}가 중복됩니다.");
-                if (!nodes.TryGetValue(parentId, out SkillTreeNodeRuntime requiredNode)) throw new InvalidOperationException($"노드 '{definition.NodeName}'의 선행 ID {parentId}가 존재하지 않습니다.");
+                if (!nodes.TryGetValue(parentId, out SkillTreeNodeRuntime requiredNode))
+                    throw new InvalidOperationException($"노드 '{definition.NodeName}'의 선행 ID {parentId}가 존재하지 않습니다.");
                 node.AddRequiredNode(requiredNode);
             }
         }
@@ -193,12 +195,18 @@ public sealed class SkillTreeRuntime
             visited++;
             foreach (SkillTreeNodeRuntime child in node.NextNodes)
             {
-                if (--remaining[child.NodeID] == 0) pending.Enqueue(child);
+                if (--remaining[child.NodeID] == 0)
+                {
+                    pending.Enqueue(child);
+                }
             }
         }
 
-        if (visited != nodes.Count) throw new InvalidOperationException($"스킬 트리 '{treeDefinition.name}'에 " +
-            $"시작 노드에서 도달할 수 없는 노드 또는 순환 연결이 있습니다.");
+        if (visited != nodes.Count)
+        {
+            throw new InvalidOperationException($"스킬 트리 '{treeDefinition.name}'에 " +
+           $"시작 노드에서 도달할 수 없는 노드 또는 순환 연결이 있습니다.");
+        }
     }
 
     private static void SortNextNodes(Dictionary<int, SkillTreeNodeRuntime> nodes)

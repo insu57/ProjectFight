@@ -87,7 +87,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
 
     private void OnEnable()
     {
-        _enemyMove?.SetNavigationRoom(_sceneNavigationRoom);
+        _enemyMove.SetNavigationRoom(_sceneNavigationRoom);
 
         _hurtbox.DamageRequested += HandleDamageRequested;
 
@@ -118,7 +118,11 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
     {
         SpawnVersion++;
         // 사망 시 제외했던 피격과 락온을 이 적의 초기 설정으로 복구한다.
-        if (_deathPresentationStarted) _lockOnTarget.enabled = _lockOnEnabledBeforeDeath;
+        if (_deathPresentationStarted)
+        {
+            _lockOnTarget.enabled = _lockOnEnabledBeforeDeath;
+        }
+
         _deathPresentationStarted = false;
         _rewardRecipient = null;
         _hurtbox.SetDamageEnabled(true);
@@ -201,7 +205,8 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         if (_enemyState.ActionState == EnemyActionState.Dead)
         {
             // 사망 중에는 AI와 쿨다운을 갱신하지 않고 연출 종료만 확인한다.
-            if (!_enemyAnimation || _enemyAnimation.IsDeathFinished()) FinishDeath();
+            if (!_enemyAnimation || _enemyAnimation.IsDeathFinished())
+                FinishDeath();
             return;
         }
 

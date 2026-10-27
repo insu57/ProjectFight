@@ -24,6 +24,7 @@ public class StageManager : MonoBehaviour
     private MapGenerator _mapGenerator;
     private PlayerManager _playerManager;
     private SpawnManager _spawnManager;
+    private StageMapView[] _mapViews = Array.Empty<StageMapView>();
 
     // 현재 생성된 방만 등록해 이전 스테이지의 알림을 무시한다.
     private readonly Dictionary<Room, StageNode> _roomNodes = new();
@@ -58,6 +59,7 @@ public class StageManager : MonoBehaviour
 
     // 그래프 생성, 새로운 방 방문 또는 현재 방 변경 시 지도 갱신을 요청한다.
     public event Action<StageGraph> MapChanged;
+    public event Action MapTeleportCompleted;
 
     public event Action<StageNode, Door> RoomEntered;
 
@@ -84,12 +86,12 @@ public class StageManager : MonoBehaviour
         }
 
         // 닫힌 지도 탭까지 포함해 최초 초기화 시에만 찾는다.
-        StageMapView[] mapViews = FindObjectsByType<StageMapView>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        _mapViews = FindObjectsByType<StageMapView>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
         // 지도는 매니저를 통해 그래프와 방문 상태를 함께 전달받는다.
-        for (int index = 0; index < mapViews.Length; index++)
+        for (int index = 0; index < _mapViews.Length; index++)
         {
-            StageMapView view = mapViews[index];
+            StageMapView view = _mapViews[index];
 
             if (view)
             {
@@ -101,6 +103,12 @@ public class StageManager : MonoBehaviour
 
     private void OnEnable()
     {
+        // 지도 선택은 표시 여부와 관계없이 스테이지가 한 곳에서 판정한다.
+        for (int index = 0; index < _mapViews.Length; index++)
+        {
+            if (_mapViews[index]) _mapViews[index].RoomConfirmed += HandleMapRoomConfirmed;
+        }
+
         if (!_mapGenerator)
         {
             // 그래프가 없는 테스트 씬에서도 Inspector에 지정한 상자는 등록한다.
@@ -115,6 +123,11 @@ public class StageManager : MonoBehaviour
 
     private void OnDisable()
     {
+        for (int index = 0; index < _mapViews.Length; index++)
+        {
+            if (_mapViews[index]) _mapViews[index].RoomConfirmed -= HandleMapRoomConfirmed;
+        }
+
         if (_mapGenerator)
         {
             _mapGenerator.GraphChanged -= HandleGraphChanged;
@@ -676,6 +689,46 @@ public class StageManager : MonoBehaviour
     public bool IsVisited(StageNode node)
     {
         return node != null && _visitedRooms.Contains(node);
+    }
+
+    private void HandleMapRoomConfirmed(StageNode node)
+    {
+        if (!IsVisited(node))
+        {
+            Debug.Log($"지도 이동 불가: 방문하지 않은 방입니다. 방 좌표: {node?.GridPosition}", this);
+            return;
+        }
+
+        Room currentRoom = CurrentRoom?.RoomInstance;
+        if (currentRoom && _roomEncounters.TryGetValue(currentRoom, out RoomEncounterRuntime encounter) && !encounter.IsComplete)
+        {
+            Debug.Log($"지도 이동 불가: 현재 방에서 전투 중입니다. 대상 방 좌표: {node.GridPosition}", this);
+            return;
+        }
+
+        Room destination = node.RoomInstance;
+        if (!destination || !_roomNodes.TryGetValue(destination, out StageNode registeredNode) || !ReferenceEquals(registeredNode, node))
+        {
+            Debug.LogWarning($"지도 이동 불가: 현재 스테이지의 방 인스턴스를 찾을 수 없습니다. 방 좌표: {node.GridPosition}", this);
+            return;
+        }
+
+        if (!destination.TeleportPoint)
+        {
+            Debug.LogError($"지도 이동 불가: 대상 방의 순간이동 위치가 지정되지 않았습니다. 방 좌표: {node.GridPosition}", this);
+            return;
+        }
+
+        if (!_playerManager || !_playerManager.TryTeleportTo(destination.TeleportPoint.position))
+        {
+            Debug.LogWarning($"지도 이동 불가: 플레이어를 이동시킬 수 없습니다. 방 좌표: {node.GridPosition}", this);
+            return;
+        }
+
+        // 실제 배치가 끝난 뒤 현재 방과 지도 표시를 갱신하고 창 닫기를 알린다.
+        RegisterPlayerPlacement(destination, _playerManager);
+        
+        MapTeleportCompleted?.Invoke();
     }
 
     public void NotifyRoomEntered(Room room, Door entrance, PlayerManager player)

@@ -15,8 +15,15 @@ MonoBehaviour:
   <AttackId>k__BackingField: 40106
   <AttackName>k__BackingField: Light_06
   <AnimationStateName>k__BackingField: Light_06
+  <AnimationSpeed>k__BackingField: 1
   <BaseDamage>k__BackingField: 0
+  <BasePoiseDamage>k__BackingField: 0
+  <BaseGuardPoiseDamage>k__BackingField: 0
+  <BaseEnergyRecoveryOnHit>k__BackingField: 0
+  <HitStopDuration>k__BackingField: 0
   <TransitionDuration>k__BackingField: 0.1
+  <ComboTransitionDuration>k__BackingField: -1
+  <ExitTransitionDuration>k__BackingField: -1
   <ComboInputStartNormalizedTime>k__BackingField: 0.2
   <ComboTransitionNormalizedTime>k__BackingField: 0.55
   <ComboInputEndNormalizedTime>k__BackingField: 0.8
@@ -47,3 +54,10 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  <HitboxSize>k__BackingField: {x: 1, y: 1, z: 1}
+  <HitboxOffset>k__BackingField: {x: 0, y: 1, z: 1}
+  <HitStartNormalizedTime>k__BackingField: 0.2
+  <HitEndNormalizedTime>k__BackingField: 0.4
+  <AttackSound>k__BackingField: {fileID: 11400000, guid: 8f7939edd1d214d41a4f72d8dfb0750e, type: 2}
+  <AttackSoundNormalizedTime>k__BackingField: 0
+  <HitSound>k__BackingField: {fileID: 11400000, guid: 7b7272a37210d8c42b229f146788569f, type: 2}
