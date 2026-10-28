@@ -56,6 +56,19 @@ public sealed class EncounterGroup
 [CreateAssetMenu(fileName = "EncounterDefinition", menuName = "Scriptable Objects/EncounterDefinition")]
 public sealed class EncounterDefinition : ScriptableObject
 {
+    [field: Header("Start Room Distance")]
+    // 시작방에서 전투방까지 연결된 방의 최단거리로 Encounter 선택 범위를 지정한다.
+    [field: SerializeField, Min(0), Tooltip("시작방에서 전투방까지의 최소 최단거리입니다. 방 사이 연결 하나를 거리 1로 계산합니다.")]
+    public int MinStartRoomDistance { get; private set; }
+    [field: SerializeField, Min(0), Tooltip("시작방에서 전투방까지의 최대 최단거리입니다. 0이면 최대 거리 제한이 없습니다.")]
+    public int MaxStartRoomDistance { get; private set; }
+
+    public bool AllowsStartRoomDistance(int distance)
+    {
+        // 최대 거리 0은 제한 없음으로 취급해 기존 Encounter 에셋의 선택 범위를 유지한다.
+        return distance >= 0 && distance >= MinStartRoomDistance && (MaxStartRoomDistance == 0 || distance <= MaxStartRoomDistance);
+    }
+
     // 배열 순서대로 진행할 그룹의 설정만 저장하며, 시간과 생존 적 수는 방별 런타임에서 관리한다.
     [field: SerializeField, Tooltip("배열 순서대로 스폰할 그룹과 각 그룹의 시작 조건입니다.")] public EncounterGroup[] Groups { get; private set; } = Array.Empty<EncounterGroup>();
 }

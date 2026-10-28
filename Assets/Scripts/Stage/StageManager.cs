@@ -33,6 +33,9 @@ public class StageManager : MonoBehaviour
     private readonly Dictionary<Room, RoomEncounterRuntime> _roomEncounters = new();
     private readonly HashSet<Room> _clearedEncounterRooms = new();
     private readonly List<Room> _pendingRoomClearNotifications = new(4);
+    private StageNode _startRoomNode;
+    private int[] _encounterDistanceQueue = Array.Empty<int>();
+    private int[] _encounterDistances = Array.Empty<int>();
     // 런타임에 추가한 항목만 추적하여 스테이지 갱신 시 사전 지정 상자를 보존한다.
     private readonly List<RewardChest> _runtimeRewardChests = new();
     private readonly List<Store> _runtimeStores = new();
@@ -623,6 +626,7 @@ public class StageManager : MonoBehaviour
             CurrentGraph = graph;
             CurrentRoom = null;
             _visitedRooms.Clear();
+            _startRoomNode = null;
         }
 
         _roomNodes.Clear();
@@ -633,6 +637,13 @@ public class StageManager : MonoBehaviour
         {
             MapChanged?.Invoke(null);
             return;
+        }
+
+        // 전투방 진입 시 최단거리 계산에 사용할 버퍼를 그래프 크기에 맞춰 재사용한다.
+        if (_encounterDistanceQueue.Length < graph.Nodes.Count)
+        {
+            _encounterDistanceQueue = new int[graph.Nodes.Count];
+            _encounterDistances = new int[graph.Nodes.Count];
         }
 
         for (int index = 0; index < graph.Nodes.Count; index++)
@@ -658,14 +669,18 @@ public class StageManager : MonoBehaviour
             }
 
             // 새 스테이지의 시작 방은 처음부터 지도에 공개한다.
-            if (graphChanged && node.RoomData && node.RoomData.RoomType == RoomType.Start)
+            if (node.RoomData && node.RoomData.RoomType == RoomType.Start)
             {
-                _visitedRooms.Add(node);
-
-                // 현재 씬의 시작 배치에 맞춰 최초 위치를 시작 방으로 지정한다.
-                if (_playerManager && CurrentRoom == null)
+                _startRoomNode = node;
+                if (graphChanged)
                 {
-                    CurrentRoom = node;
+                    _visitedRooms.Add(node);
+
+                    // 현재 씬의 시작 배치에 맞춰 최초 위치를 시작 방으로 지정한다.
+                    if (_playerManager && CurrentRoom == null)
+                    {
+                        CurrentRoom = node;
+                    }
                 }
             }
         }
@@ -770,20 +785,35 @@ public class StageManager : MonoBehaviour
 
     private void TryStartBattleEncounter(StageNode node)
     {
-        if (!node.RoomData || node.RoomData.RoomType != RoomType.Battle || !node.RoomInstance || !_spawnManager) return;
+        if (!node.RoomData || node.RoomData.RoomType != RoomType.Battle || !node.RoomInstance) return;
+
         Room room = node.RoomInstance;
+
         if (_roomEncounters.ContainsKey(room)) return;
+
+        if (CurrentGraph == null || _startRoomNode == null)
+        {
+            Debug.LogWarning("시작방 정보를 찾을 수 없어 전투 Encounter를 선택할 수 없습니다.", room);
+            return;
+        }
+
+        int startRoomDistance = CurrentGraph.GetShortestDistance(_startRoomNode, node, _encounterDistanceQueue, _encounterDistances);
+        if (startRoomDistance < 0)
+        {
+            Debug.LogWarning("시작방에서 전투방까지의 연결 거리를 계산할 수 없습니다.", room);
+            return;
+        }
 
         EncounterDefinition[] candidates = _stageDefinition ? _stageDefinition.BattleEncounters : null;
         EncounterDefinition selected = null;
         int validCandidateCount = 0;
         if (candidates != null)
         {
-            // 후보 배열에는 순서나 가중치를 부여하지 않고 유효한 항목을 균등 무작위 선택한다.
+            // 시작방 거리 조건과 적 편성을 만족하는 후보만 균등 무작위 선택한다.
             for (int index = 0; index < candidates.Length; index++)
             {
                 EncounterDefinition candidate = candidates[index];
-                if (!HasSpawnableEnemies(candidate)) continue;
+                if (!HasSpawnableEnemies(candidate) || !candidate.AllowsStartRoomDistance(startRoomDistance)) continue;
 
                 validCandidateCount++;
                 if (UnityEngine.Random.Range(0, validCandidateCount) == 0) selected = candidate;
@@ -792,7 +822,7 @@ public class StageManager : MonoBehaviour
 
         if (!selected)
         {
-            Debug.LogWarning("전투방에 사용할 유효한 BattleEncounters 편성이 없습니다.", room);
+            Debug.LogWarning($"시작방 거리 {startRoomDistance}에 맞는 유효한 BattleEncounters 편성이 없습니다.", room);
             return;
         }
 
