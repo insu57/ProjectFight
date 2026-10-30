@@ -15,7 +15,7 @@ MonoBehaviour:
   <ItemID>k__BackingField: 21002
   <ItemName>k__BackingField: "\uD53C\uBB4D\uC740 \uAC00\uC8FD \uC7A5\uAC11"
   <ItemDescription>k__BackingField: "\uD53C\uAC00 \uBB4D\uC5C8\uB124"
-  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 0363f0bc04d9b6e4a898ab81f47285a6, type: 3}
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 21404c77b61b2454985d3441753508b4, type: 3}
   <ItemType>k__BackingField: 0
   <EquipmentSlot>k__BackingField: 4
   <Rarity>k__BackingField: 0
@@ -26,12 +26,9 @@ MonoBehaviour:
   _acquireEffectData: []
   _passiveEffectData:
   - rid: 3955778266336329857
-  - rid: 3955778266336329898
   references:
     version: 2
     RefIds:
-    - rid: -2
-      type: {class: , ns: , asm: }
     - rid: 3955778266336329857
       type: {class: ConditionalStatEffectData, ns: , asm: Assembly-CSharp}
       data:
@@ -43,12 +40,3 @@ MonoBehaviour:
         - _stat: 0
           _operation: 0
           _value: 5
-    - rid: 3955778266336329898
-      type: {class: TriggeredEffectData, ns: , asm: Assembly-CSharp}
-      data:
-        _trigger: 0
-        _conditions: []
-        _chance: 1
-        _cooldown: 0
-        _effects:
-        - rid: -2

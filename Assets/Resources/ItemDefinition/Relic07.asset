@@ -13,11 +13,34 @@ MonoBehaviour:
   m_Name: Relic07
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   <ItemID>k__BackingField: 22007
-  <ItemName>k__BackingField: "\uC720\uBB3C7\uBC88"
-  <ItemDescription>k__BackingField: 
-  <ItemIcon>k__BackingField: {fileID: 0}
+  <ItemName>k__BackingField: "\uC2A4\uD14C\uC778\uB9AC\uC2A4 \uBE68\uB300"
+  <ItemDescription>k__BackingField: "\uC8FC\uC758! \uB9E4\uC6B0 \uD2BC\uD2BC\uD568."
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 4ed825f0b60ad2a4492c01cf448e3dc4, type: 3}
   <ItemType>k__BackingField: 2
   <EquipmentSlot>k__BackingField: 0
   <Rarity>k__BackingField: 1
-  <BasePrice>k__BackingField: 0
+  <BasePrice>k__BackingField: 350
   _maxStackCount: 1
+  _statModifiers: []
+  _useEffectData: []
+  _acquireEffectData: []
+  _passiveEffectData:
+  - rid: 3955778540568313994
+  references:
+    version: 2
+    RefIds:
+    - rid: 3955778540568313994
+      type: {class: TriggeredEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _trigger: 0
+        _conditions: []
+        _chance: 1
+        _cooldown: 0
+        _effects:
+        - rid: 3955778540568313995
+    - rid: 3955778540568313995
+      type: {class: RestoreHealthEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _amount:
+          _mode: 0
+          _value: 10

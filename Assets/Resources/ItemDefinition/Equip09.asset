@@ -13,18 +13,35 @@ MonoBehaviour:
   m_Name: Equip09
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   <ItemID>k__BackingField: 21009
-  <ItemName>k__BackingField: "\uC7A5\uBE449\uBC88"
-  <ItemDescription>k__BackingField: 
-  <ItemIcon>k__BackingField: {fileID: 0}
+  <ItemName>k__BackingField: "\uC190\uBAA9 \uBC34\uB4DC"
+  <ItemDescription>k__BackingField: "\uD14C\uB2C8\uC2A4\uC758 \uC545\uB9C8\uAC00
+    \uB9CC\uB4E4\uC5C8\uB2E4"
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 037b394217eae5d4cb208ef8936cfb96, type: 3}
   <ItemType>k__BackingField: 0
   <EquipmentSlot>k__BackingField: 4
   <Rarity>k__BackingField: 2
-  <BasePrice>k__BackingField: 0
+  <BasePrice>k__BackingField: 450
   _maxStackCount: 1
   _statModifiers: []
   _useEffectData: []
   _acquireEffectData: []
-  _passiveEffectData: []
+  _passiveEffectData:
+  - rid: 3955778494507253936
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 3955778494507253936
+      type: {class: TriggeredEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _trigger: 0
+        _conditions: []
+        _chance: 1
+        _cooldown: 0
+        _effects:
+        - rid: 3955778494507253937
+    - rid: 3955778494507253937
+      type: {class: RestoreHealthEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _amount:
+          _mode: 0
+          _value: 15

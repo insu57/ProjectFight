@@ -13,18 +13,44 @@ MonoBehaviour:
   m_Name: Equip08
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   <ItemID>k__BackingField: 21008
-  <ItemName>k__BackingField: "\uC7A5\uBE448\uBC88"
-  <ItemDescription>k__BackingField: 
-  <ItemIcon>k__BackingField: {fileID: 0}
+  <ItemName>k__BackingField: "\uC0BC\uC120 \uC2AC\uB9AC\uD37C"
+  <ItemDescription>k__BackingField: "\uB204\uAD70\uAC00\uC758 \uC6D0\uD55C\uC774
+    \uB2F4\uACA8\uC788\uB2E4."
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: d8c344198dd6e2643a368ed7d9d2c0a4, type: 3}
   <ItemType>k__BackingField: 0
   <EquipmentSlot>k__BackingField: 5
   <Rarity>k__BackingField: 2
-  <BasePrice>k__BackingField: 0
+  <BasePrice>k__BackingField: 400
   _maxStackCount: 1
-  _statModifiers: []
-  _useEffectData: []
+  _statModifiers:
+  - _stat: 15
+    _operation: 0
+    _value: 0.2
+  _useEffectData:
+  - rid: -2
   _acquireEffectData: []
-  _passiveEffectData: []
+  _passiveEffectData:
+  - rid: 3955778494507253934
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 3955778494507253934
+      type: {class: TriggeredEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _trigger: 1
+        _conditions: []
+        _chance: 1
+        _cooldown: 0
+        _effects:
+        - rid: 3955778494507253935
+    - rid: 3955778494507253935
+      type: {class: TimedStatModifierEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _duration: 20
+        _statModifiers:
+        - _stat: 15
+          _operation: 0
+          _value: 0.1
+        _stackingPolicy: 0

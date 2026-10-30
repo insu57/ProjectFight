@@ -36,6 +36,8 @@ public sealed class Store : MonoBehaviour
     public int BaseRerollPrice { get; private set; }
     public int RerollPriceIncrease { get; private set; }
     public int RerollPrice { get; private set; }
+    // 사용 기록은 상점에 남겨 창 재개방이나 효과 재장착으로 무료 횟수가 복구되지 않게 한다.
+    public int UsedFreeRerollCount { get; private set; }
 
     // 상점과 이용 플레이어를 전달하여 이후 상점창이 같은 요청을 받을 수 있게 한다.
     public event Action<Store, PlayerManager> InteractionRequested;
@@ -69,6 +71,7 @@ public sealed class Store : MonoBehaviour
         if (!_hasRerollSettings || managerChanged || resetRerollPrice)
         {
             RerollPrice = BaseRerollPrice;
+            UsedFreeRerollCount = 0;
         }
 
         _hasRerollSettings = true;
@@ -92,9 +95,21 @@ public sealed class Store : MonoBehaviour
         _items[itemIndex] = item;
     }
 
-    public void SetRerolledItems(IReadOnlyList<ItemDefinition> items)
+    public int GetRemainingFreeRerolls(PlayerStatSnapshot stats)
+    {
+        return Mathf.Max(0, stats.FreeRerollCount - UsedFreeRerollCount);
+    }
+
+    public void SetRerolledItems(IReadOnlyList<ItemDefinition> items, bool isFreeReroll = false)
     {
         SetItems(items);
+        // 추첨이 성공한 무료 리롤만 소비하고 유료 리롤의 누적 가격은 유지한다.
+        if (isFreeReroll)
+        {
+            if (UsedFreeRerollCount < int.MaxValue) UsedFreeRerollCount++;
+            return;
+        }
+
         // 반복 리롤로 금액이 int 범위를 넘더라도 음수 비용이 되지 않도록 상한을 유지한다.
         RerollPrice = (int)Math.Min(int.MaxValue, (long)RerollPrice + RerollPriceIncrease);
     }

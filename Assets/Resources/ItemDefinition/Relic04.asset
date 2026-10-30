@@ -20,7 +20,7 @@ MonoBehaviour:
   <ItemType>k__BackingField: 2
   <EquipmentSlot>k__BackingField: 0
   <Rarity>k__BackingField: 0
-  <BasePrice>k__BackingField: 0
+  <BasePrice>k__BackingField: 150
   _maxStackCount: 1
   _statModifiers: []
   _useEffectData: []

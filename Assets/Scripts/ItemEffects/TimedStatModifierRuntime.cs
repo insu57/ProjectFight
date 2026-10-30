@@ -3,7 +3,7 @@ using System.Collections.Generic;
 // 공유 아이템 데이터와 분리하여 플레이어마다 적용 당시의 보정과 만료 시점을 보관한다.
 public sealed class TimedStatModifierRuntime
 {
-    private const int ItemStatCount = (int)ItemStatType.AttackSpeedMultiplier + 1;
+    private const int ItemStatCount = (int)ItemStatType.FreeRerollCount + 1;
     private const double TimeTolerance = 0.000001;
 
     private struct ActiveModifier

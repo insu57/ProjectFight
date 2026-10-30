@@ -40,6 +40,7 @@ internal struct PlayerStatSnapshotData
     public int MaxDodgeCount;
     public float MoveSpeedMultiplier;
     public float AttackSpeedMultiplier;
+    public int FreeRerollCount;
 }
 
 public readonly struct PlayerStatSnapshot
@@ -82,6 +83,7 @@ public readonly struct PlayerStatSnapshot
     public int MaxDodgeCount => _data.MaxDodgeCount;
     public float MoveSpeedMultiplier => _data.MoveSpeedMultiplier;
     public float AttackSpeedMultiplier => _data.AttackSpeedMultiplier;
+    public int FreeRerollCount => _data.FreeRerollCount;
 
     public float CalculateEnergyRecoveryOnHit(float attackBaseRecovery)
     {
@@ -92,10 +94,7 @@ public readonly struct PlayerStatSnapshot
     internal PlayerStatSnapshot(PlayerStatSnapshotData data)
     {
         // 기존 생성자의 값 제한 규칙은 복사본에 적용하여 그대로 유지한다.
-        data.StaggerMoveDistance = Mathf.Max(0f, data.StaggerMoveDistance);
-        data.GuardBreakMoveDistance = Mathf.Max(0f, data.GuardBreakMoveDistance);
         data.MaxDodgeCount = Mathf.Max(1, data.MaxDodgeCount);
-        data.MoveSpeedMultiplier = Mathf.Max(0f, data.MoveSpeedMultiplier);
         data.AttackSpeedMultiplier = Mathf.Max(0.01f, data.AttackSpeedMultiplier);
         _data = data;
     }
@@ -224,9 +223,10 @@ public class PlayerStat : MonoBehaviour
             StaggerMoveDistance = GetFinalStat(ItemStatType.StaggerMoveDistance),
             GuardBreakMoveDistance = GetFinalStat(ItemStatType.GuardBreakMoveDistance),
             Money = _money,
-            MaxDodgeCount = GetFinalMaxDodgeCount(),
+            MaxDodgeCount = GetFinalCount(ItemStatType.MaxDodgeCount),
             MoveSpeedMultiplier = GetFinalStat(ItemStatType.MoveSpeedMultiplier),
-            AttackSpeedMultiplier = GetFinalStat(ItemStatType.AttackSpeedMultiplier)
+            AttackSpeedMultiplier = GetFinalStat(ItemStatType.AttackSpeedMultiplier),
+            FreeRerollCount = GetFinalCount(ItemStatType.FreeRerollCount)
         };
 
         return new PlayerStatSnapshot(data);
@@ -366,11 +366,11 @@ public class PlayerStat : MonoBehaviour
         return _finalStats[(int)stat];
     }
 
-    private int GetFinalMaxDodgeCount()
+    private int GetFinalCount(ItemStatType stat)
     {
-        float maxDodgeCount = GetFinalStat(ItemStatType.MaxDodgeCount);
+        float count = GetFinalStat(stat);
         // float의 정수 상한 반올림이나 큰 보정이 int 변환에서 음수가 되지 않게 제한한다.
-        return maxDodgeCount >= int.MaxValue ? int.MaxValue : (int)maxDodgeCount;
+        return count >= int.MaxValue ? int.MaxValue : (int)count;
     }
 
     private bool RecalculateStats()
@@ -438,6 +438,7 @@ public class PlayerStat : MonoBehaviour
             ItemStatType.MaxDodgeCount => _baseMaxDodgeCount,
             ItemStatType.MoveSpeedMultiplier => 1f,
             ItemStatType.AttackSpeedMultiplier => 1f,
+            ItemStatType.FreeRerollCount => 0f,
             ItemStatType.PoiseDamage => _basePoiseDamage,
             ItemStatType.GuardPoiseDamage => _baseGuardPoiseDamage,
             ItemStatType.EnergyRecoveryOnHit => _baseEnergyRecoveryOnHit,
@@ -502,8 +503,8 @@ public class PlayerStat : MonoBehaviour
             _ => 0f
         };
         float finalValue = Mathf.Max(minimumValue, valueBeforeMultiplier * multiplier);
-        // 회피 횟수는 계산을 모두 마친 뒤 소수점을 내리며 최소 1회를 유지한다.
-        if (stat == ItemStatType.MaxDodgeCount) finalValue = Mathf.Floor(finalValue);
+        // 횟수는 계산을 모두 마친 뒤 소수점을 내리고, 회피는 최소 1회·무료 리롤은 최소 0회를 유지한다.
+        if (stat == ItemStatType.MaxDodgeCount || stat == ItemStatType.FreeRerollCount) finalValue = Mathf.Floor(finalValue);
         int statIndex = (int)stat;
         if (_finalStats[statIndex] == finalValue) return false;
 

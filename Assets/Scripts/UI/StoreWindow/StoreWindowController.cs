@@ -27,9 +27,10 @@ public sealed class StoreWindowController : WindowControllerBase
     private UnityAction _closeWindowHandler;
     private UnityAction _rerollHandler;
     private Action<StoreItemView> _purchaseRequestedHandler;
-    // 정수 비용의 10자리 버퍼를 재사용해 가격 갱신마다 문자열을 생성하지 않는다.
-    private readonly char[] _rerollPriceCharacters = new char[10];
+    // 최대 10자리 정수와 "무료 N회" 문구의 버퍼를 재사용해 갱신마다 문자열을 생성하지 않는다.
+    private readonly char[] _rerollPriceCharacters = new char[14];
     private int _displayedRerollPrice = -1;
+    private int _displayedFreeRerollCount = -1;
     private float _remainingPurchaseMessageTime;
 
     public Store CurrentStore { get; private set; }
@@ -174,8 +175,8 @@ public sealed class StoreWindowController : WindowControllerBase
     {
         if (IsOpen)
         {
-            // 다른 경로로 Money가 바뀌어도 열린 상점의 지불 가능 색상을 즉시 갱신한다.
-            RefreshRerollPrice(stats.Money);
+            // 잔액이나 아이템의 무료 횟수가 바뀌면 열린 상점의 표시도 즉시 갱신한다.
+            RefreshRerollPrice(stats);
         }
     }
 
@@ -242,34 +243,46 @@ public sealed class StoreWindowController : WindowControllerBase
 
     private void RefreshRerollPrice()
     {
-        RefreshRerollPrice(PlayerManager ? PlayerManager.CurrentPlayerStats.Money : 0);
+        RefreshRerollPrice(PlayerManager ? PlayerManager.CurrentPlayerStats : default);
     }
 
-    private void RefreshRerollPrice(int money)
+    private void RefreshRerollPrice(PlayerStatSnapshot stats)
     {
         if (!_rerollPriceTxt || !CurrentStore) return;
 
         int price = CurrentStore.RerollPrice;
-        if (_displayedRerollPrice != price)
+        int freeRerollCount = CurrentStore.GetRemainingFreeRerolls(stats);
+        if (_displayedRerollPrice != price || _displayedFreeRerollCount != freeRerollCount)
         {
-            int remaining = price;
+            int remaining = freeRerollCount > 0 ? freeRerollCount : price;
             int start = _rerollPriceCharacters.Length;
+
+            if (freeRerollCount > 0) _rerollPriceCharacters[--start] = '회';
             do
             {
                 _rerollPriceCharacters[--start] = (char)('0' + remaining % 10);
                 remaining /= 10;
             } while (remaining > 0);
 
+            if (freeRerollCount > 0)
+            {
+                _rerollPriceCharacters[--start] = ' ';
+                _rerollPriceCharacters[--start] = '료';
+                _rerollPriceCharacters[--start] = '무';
+            }
+
             _rerollPriceTxt.SetCharArray(_rerollPriceCharacters, start, _rerollPriceCharacters.Length - start);
             _displayedRerollPrice = price;
+            _displayedFreeRerollCount = freeRerollCount;
         }
 
-        _rerollPriceTxt.color = ItemDisplayUtility.GetPriceColor(money >= price);
+        _rerollPriceTxt.color = ItemDisplayUtility.GetPriceColor(freeRerollCount > 0 || stats.Money >= price);
     }
 
     private void ClearRerollPrice()
     {
         _displayedRerollPrice = -1;
+        _displayedFreeRerollCount = -1;
         if (_rerollPriceTxt)
         {
             _rerollPriceTxt.SetText(string.Empty);

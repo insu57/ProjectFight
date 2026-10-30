@@ -247,16 +247,18 @@ public class StageManager : MonoBehaviour
     {
         if (!CanUseStore(store, player)) return false;
 
-        int price = store.RerollPrice;
-        if (player.CurrentPlayerStats.Money < price) return false;
+        PlayerStatSnapshot stats = player.CurrentPlayerStats;
+        bool isFreeReroll = store.GetRemainingFreeRerolls(stats) > 0;
+        int price = isFreeReroll ? 0 : store.RerollPrice;
+        if (stats.Money < price) return false;
 
         _isUpdatingStore = true;
         try
         {
-            // 추첨을 먼저 완료해 후보가 없는 경우 기존 상품과 잔액, 누적 비용을 모두 보존한다.
-            if (!TryFillStoreItemSelection() || !player.TrySpendMoney(price)) return false;
+            // 추첨 실패 시 상품·잔액·무료 사용 기록을 유지하며, 무료 리롤은 결제 경로를 거치지 않는다.
+            if (!TryFillStoreItemSelection() || (!isFreeReroll && !player.TrySpendMoney(price))) return false;
 
-            store.SetRerolledItems(_storeItemSelection);
+            store.SetRerolledItems(_storeItemSelection, isFreeReroll);
             return true;
         }
         finally

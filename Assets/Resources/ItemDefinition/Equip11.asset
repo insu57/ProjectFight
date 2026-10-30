@@ -13,18 +13,50 @@ MonoBehaviour:
   m_Name: Equip11
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   <ItemID>k__BackingField: 21011
-  <ItemName>k__BackingField: "\uC7A5\uBE4411\uBC88"
-  <ItemDescription>k__BackingField: 
-  <ItemIcon>k__BackingField: {fileID: 0}
+  <ItemName>k__BackingField: "ROKA \uD2F0\uC154\uCE20"
+  <ItemDescription>k__BackingField: "\uB204\uAD70\uAC00\uC758 \uBD84\uB178\uAC00
+    \uB290\uAEF4\uC9C4\uB2E4."
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 13f68a1302e4aa64ab1cf73ad15ce3ed, type: 3}
   <ItemType>k__BackingField: 0
   <EquipmentSlot>k__BackingField: 2
   <Rarity>k__BackingField: 4
-  <BasePrice>k__BackingField: 0
+  <BasePrice>k__BackingField: 600
   _maxStackCount: 1
-  _statModifiers: []
+  _statModifiers:
+  - _stat: 0
+    _operation: 0
+    _value: 15
   _useEffectData: []
   _acquireEffectData: []
-  _passiveEffectData: []
+  _passiveEffectData:
+  - rid: 3955778540568313856
+  - rid: 3955778540568313858
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 3955778540568313856
+      type: {class: TriggeredEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _trigger: 1
+        _conditions: []
+        _chance: 1
+        _cooldown: 0
+        _effects:
+        - rid: 3955778540568313857
+    - rid: 3955778540568313857
+      type: {class: RestoreEnergyEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _amount:
+          _mode: 0
+          _value: 15
+    - rid: 3955778540568313858
+      type: {class: ConditionalStatEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _conditions:
+        - _type: 0
+          _comparison: 0
+          _threshold: 1
+        _statModifiers:
+        - _stat: 0
+          _operation: 1
+          _value: 25

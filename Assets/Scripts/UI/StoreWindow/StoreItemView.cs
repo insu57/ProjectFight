@@ -86,9 +86,11 @@ public sealed class StoreItemView : MonoBehaviour
             _icon.enabled = _icon.sprite;
         }
 
+        // 테두리에는 기존 희귀도 색상을 유지하며 상품이 없으면 흰색으로 초기화한다.
+        Color rarityColor = item ? ItemDisplayUtility.GetRarityColor(item.Rarity) : Color.white;
         if (_rarityOutline)
         {
-            _rarityOutline.color = item ? ItemDisplayUtility.GetRarityColor(item.Rarity) : Color.white;
+            _rarityOutline.color = rarityColor;
         }
 
         if (_nameText)
@@ -103,6 +105,7 @@ public sealed class StoreItemView : MonoBehaviour
 
         if (_rarityText)
         {
+            _rarityText.color = item ? ItemDisplayUtility.GetRarityTextColor(item.Rarity) : Color.white;
             _rarityText.SetText(item ? ItemDisplayUtility.GetRarityText(item.Rarity) : string.Empty);
         }
 

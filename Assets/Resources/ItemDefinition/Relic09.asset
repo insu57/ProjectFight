@@ -13,11 +13,37 @@ MonoBehaviour:
   m_Name: Relic09
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   <ItemID>k__BackingField: 22009
-  <ItemName>k__BackingField: "\uC720\uBB3C9\uBC88"
-  <ItemDescription>k__BackingField: 
-  <ItemIcon>k__BackingField: {fileID: 0}
+  <ItemName>k__BackingField: "\uB179\uC0C9 \uAD11\uC11D"
+  <ItemDescription>k__BackingField: "\uC740\uC740\uD55C \uBB34\uC5B8\uAC00\uC758
+    \uD798\uC774 \uB290\uAEF4\uC9C4\uB2E4..."
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: 4679d096b42a0fd4f8cbf33a09dbea2d, type: 3}
   <ItemType>k__BackingField: 2
   <EquipmentSlot>k__BackingField: 0
   <Rarity>k__BackingField: 2
-  <BasePrice>k__BackingField: 0
+  <BasePrice>k__BackingField: 500
   _maxStackCount: 1
+  _statModifiers: []
+  _useEffectData: []
+  _acquireEffectData: []
+  _passiveEffectData:
+  - rid: 3955778540568313997
+  references:
+    version: 2
+    RefIds:
+    - rid: 3955778540568313997
+      type: {class: ConditionalStatEffectData, ns: , asm: Assembly-CSharp}
+      data:
+        _conditions:
+        - _type: 1
+          _comparison: 0
+          _threshold: 0.35
+        _statModifiers:
+        - _stat: 18
+          _operation: 0
+          _value: 20
+        - _stat: 19
+          _operation: 0
+          _value: 20
+        - _stat: 20
+          _operation: 0
+          _value: 20

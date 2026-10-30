@@ -39,8 +39,8 @@ MonoBehaviour:
   <StoreEpicWeight>k__BackingField: 5
   <StoreLegendaryWeight>k__BackingField: 1
   <StoreEquipmentWeight>k__BackingField: 3
-  <StoreConsumableWeight>k__BackingField: 5
-  <StoreRelicWeight>k__BackingField: 1
+  <StoreConsumableWeight>k__BackingField: 4
+  <StoreRelicWeight>k__BackingField: 2
   <BaseRerollPrice>k__BackingField: 100
   <RerollPriceIncrease>k__BackingField: 50
   <RoomDistance>k__BackingField: 0

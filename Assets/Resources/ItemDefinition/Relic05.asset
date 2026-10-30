@@ -13,11 +13,24 @@ MonoBehaviour:
   m_Name: Relic05
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   <ItemID>k__BackingField: 22005
-  <ItemName>k__BackingField: "\uC720\uBB3C5\uBC88"
-  <ItemDescription>k__BackingField: 
-  <ItemIcon>k__BackingField: {fileID: 0}
+  <ItemName>k__BackingField: "\uC544\uB2C8\uC2A4 \uCE94\uBC43\uC9C0"
+  <ItemDescription>k__BackingField: "\uC544\uB2C8\uC2A4 T.T. Star \uCE94\uBC43\uC9C0"
+  <ItemIcon>k__BackingField: {fileID: 21300000, guid: e0ef462bb316fdf44bebb4726b37ffd3, type: 3}
   <ItemType>k__BackingField: 2
   <EquipmentSlot>k__BackingField: 0
   <Rarity>k__BackingField: 1
-  <BasePrice>k__BackingField: 0
+  <BasePrice>k__BackingField: 250
   _maxStackCount: 1
+  _statModifiers:
+  - _stat: 0
+    _operation: 0
+    _value: 5
+  - _stat: 1
+    _operation: 0
+    _value: 5
+  _useEffectData: []
+  _acquireEffectData: []
+  _passiveEffectData: []
+  references:
+    version: 2
+    RefIds: []

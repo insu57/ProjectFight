@@ -14,11 +14,15 @@ public static class ItemDisplayUtility
         if (!item) return;
 
         AppendStatModifiersDescription(builder, item.StatModifiers, numberBuffer);
+
         if (item.ItemType == ItemType.Consumable) AppendItemEffectsDescription(builder, item.UseEffects, numberBuffer);
+
         // 유물 획득 효과는 보유 스탯과 함께 표시하되, 일회성 발동 시점을 각 줄에 명시한다.
         else if (item.ItemType == ItemType.Relic) AppendItemEffectsDescription(builder, item.AcquireEffects, numberBuffer, "획득 시 ");
+
         // 패시브는 장비 착용·유물 보유 효과의 설명만 읽으며 실제 발동 상태는 변경하지 않는다.
-        if (item.ItemType == ItemType.Equipment || item.ItemType == ItemType.Relic) AppendPassiveEffectsDescription(builder, item.PassiveEffects, numberBuffer);
+        if (item.ItemType == ItemType.Equipment || item.ItemType == ItemType.Relic)
+            AppendPassiveEffectsDescription(builder, item.PassiveEffects, numberBuffer);
         if (builder.Length > 0)
         {
             // 효과에만 밝은 노란색을 적용하고 닫는 태그 뒤에는 TMP의 기본 글자색을 사용한다.
@@ -34,12 +38,14 @@ public static class ItemDisplayUtility
         }
     }
 
-    public static void AppendStatModifiersDescription(StringBuilder builder, IReadOnlyList<StatModifier> modifiers, char[] numberBuffer, float duration = 0f, string prefix = null)
+    public static void AppendStatModifiersDescription(StringBuilder builder, IReadOnlyList<StatModifier> modifiers,
+        char[] numberBuffer, float duration = 0f, string prefix = null)
     {
         AppendStatModifiersDescription(builder, modifiers, numberBuffer, duration, prefix, null);
     }
 
-    private static void AppendStatModifiersDescription(StringBuilder builder, IReadOnlyList<StatModifier> modifiers, char[] numberBuffer, float duration, string prefix, PassiveItemEffectData passiveEffect)
+    private static void AppendStatModifiersDescription(StringBuilder builder, IReadOnlyList<StatModifier> modifiers,
+        char[] numberBuffer, float duration, string prefix, PassiveItemEffectData passiveEffect)
     {
         if (modifiers == null) return;
 
@@ -68,7 +74,8 @@ public static class ItemDisplayUtility
         }
     }
 
-    private static void AppendItemEffectsDescription(StringBuilder builder, IReadOnlyList<ItemEffectData> effects, char[] numberBuffer, string prefix = null, PassiveItemEffectData passiveEffect = null)
+    private static void AppendItemEffectsDescription(StringBuilder builder, IReadOnlyList<ItemEffectData> effects,
+        char[] numberBuffer, string prefix = null, PassiveItemEffectData passiveEffect = null)
     {
         if (effects == null) return;
 
@@ -94,7 +101,8 @@ public static class ItemDisplayUtility
                     break;
                 // 시간 효과는 실제 시작 가능 판정과 맞춰 잘못된 시간·간격·대상의 설명을 건너뛴다.
                 case RecoveryOverTimeEffectData recovery when RecoveryOverTimeRuntime.CanStart(recovery):
-                    AppendRecoveryDescription(builder, recovery.Target == ItemRecoveryTarget.Health ? "체력" : "에너지", recovery.Amount, numberBuffer, recovery.Duration, recovery.Interval, prefix, passiveEffect);
+                    AppendRecoveryDescription(builder, recovery.Target == ItemRecoveryTarget.Health ?
+                        "체력" : "에너지", recovery.Amount, numberBuffer, recovery.Duration, recovery.Interval, prefix, passiveEffect);
                     break;
                 case TimedStatModifierEffectData timed when TimedStatModifierRuntime.CanStart(timed):
                     AppendStatModifiersDescription(builder, timed.StatModifiers, numberBuffer, timed.Duration, prefix, passiveEffect);
@@ -130,14 +138,17 @@ public static class ItemDisplayUtility
         for (int i = 0; i < conditions.Count; i++)
         {
             ItemEffectCondition condition = conditions[i];
-            if (string.IsNullOrEmpty(GetConditionTargetText(condition.Type)) || string.IsNullOrEmpty(GetConditionComparisonText(condition.Comparison))) return false;
+            if (string.IsNullOrEmpty(GetConditionTargetText(condition.Type))
+                || string.IsNullOrEmpty(GetConditionComparisonText(condition.Comparison))) return false;
+
             if (float.IsNaN(condition.Threshold) || float.IsInfinity(condition.Threshold)) return false;
         }
 
         return true;
     }
 
-    private static void AppendEffectDescriptionPrefix(StringBuilder builder, char[] numberBuffer, string prefix, PassiveItemEffectData passiveEffect)
+    private static void AppendEffectDescriptionPrefix(StringBuilder builder,
+        char[] numberBuffer, string prefix, PassiveItemEffectData passiveEffect)
     {
         if (builder.Length > 0) builder.Append('\n');
         builder.Append(prefix);
@@ -225,7 +236,8 @@ public static class ItemDisplayUtility
         };
     }
 
-    private static void AppendRecoveryDescription(StringBuilder builder, string targetName, ItemRecoveryAmount amount, char[] numberBuffer, float duration = 0f, float interval = 0f, string prefix = null, PassiveItemEffectData passiveEffect = null)
+    private static void AppendRecoveryDescription(StringBuilder builder, string targetName, ItemRecoveryAmount amount,
+        char[] numberBuffer, float duration = 0f, float interval = 0f, string prefix = null, PassiveItemEffectData passiveEffect = null)
     {
         if (amount.Value <= 0f || float.IsNaN(amount.Value) || float.IsInfinity(amount.Value)) return;
         if (amount.Mode != ItemRecoveryMode.Fixed && amount.Mode != ItemRecoveryMode.MaxRatio) return;
@@ -247,7 +259,8 @@ public static class ItemDisplayUtility
         builder.Append(isPercent ? "% 회복" : " 회복");
     }
 
-    private static void AppendGrantedAmountDescription(StringBuilder builder, string amountName, int amount, char[] numberBuffer, string prefix = null, PassiveItemEffectData passiveEffect = null)
+    private static void AppendGrantedAmountDescription(StringBuilder builder, string amountName, int amount,
+        char[] numberBuffer, string prefix = null, PassiveItemEffectData passiveEffect = null)
     {
         if (amount <= 0) return;
 
@@ -289,6 +302,7 @@ public static class ItemDisplayUtility
             ItemStatType.StaggerMoveDistance => "경직 밀림 거리",
             ItemStatType.GuardBreakMoveDistance => "가드 브레이크 밀림 거리",
             ItemStatType.MaxDodgeCount => "최대 회피 횟수",
+            ItemStatType.FreeRerollCount => "상점별 무료 리롤 횟수",
             ItemStatType.MoveSpeedMultiplier => "이동 속도 배율",
             ItemStatType.AttackSpeedMultiplier => "공격 속도 배율",
             ItemStatType.PoiseDamage => "강인도 피해",
@@ -308,7 +322,7 @@ public static class ItemDisplayUtility
             or ItemStatType.StaggerDuration or ItemStatType.GuardBreakDuration => "초",
             ItemStatType.PoiseRecoveryRate or ItemStatType.GuardPoiseRecoveryRate => "/초",
             ItemStatType.StaggerMoveDistance or ItemStatType.GuardBreakMoveDistance => "m",
-            ItemStatType.MaxDodgeCount => "회",
+            ItemStatType.MaxDodgeCount or ItemStatType.FreeRerollCount => "회",
             _ => string.Empty
         };
     }
@@ -357,6 +371,20 @@ public static class ItemDisplayUtility
     {
         // 지불 가능한 가격과 금액이 부족한 가격의 표시 색상을 공통으로 관리한다.
         return canAfford ? Color.black : Color.red;
+    }
+
+    public static Color GetRarityTextColor(ItemRarity rarity)
+    {
+        // 짙은 패널에서도 글자를 읽기 쉽도록 텍스트에는 밝은 희귀도 색상을 사용한다.
+        return rarity switch
+        {
+            ItemRarity.Common => Color.white,
+            ItemRarity.Uncommon => new Color32(165, 214, 167, 255),
+            ItemRarity.Rare => new Color32(144, 202, 249, 255),
+            ItemRarity.Epic => new Color32(206, 147, 216, 255),
+            ItemRarity.Legendary => new Color32(255, 204, 128, 255),
+            _ => Color.white
+        };
     }
 
     public static Color GetRarityColor(ItemRarity rarity)
