@@ -171,7 +171,8 @@ public class PlayerStat : MonoBehaviour
     private readonly StatModifierTotals[] _relicStatModifiers = new StatModifierTotals[_itemStatCount];
     private readonly StatModifierTotals[] _equipmentStatModifiers = new StatModifierTotals[_itemStatCount];
     private readonly StatModifierTotals[] _timedStatModifiers = new StatModifierTotals[_itemStatCount];
-    private readonly StatModifierTotals[] _passiveStatModifiers = new StatModifierTotals[_itemStatCount];
+    private readonly StatModifierTotals[] _itemPassiveStatModifiers = new StatModifierTotals[_itemStatCount];
+    private readonly StatModifierTotals[] _skillTreeStatModifiers = new StatModifierTotals[_itemStatCount];
     private readonly StatModifierTotals[] _modifierTotalsBuffer = new StatModifierTotals[_itemStatCount];
     [SerializeField] private float[] _finalStats = new float[_itemStatCount];
     private AttackDamageModifier _attackPowerModifier;
@@ -266,13 +267,13 @@ public class PlayerStat : MonoBehaviour
     }
 
     public void RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems,
-        IReadOnlyList<StatModifier> passiveModifiers = null)
+        IReadOnlyList<StatModifier> itemPassiveModifiers = null)
     {
         // 두 출처의 합계를 모두 준비한 뒤 한 번 계산하여 중간 최대치로 현재량이 제한되지 않게 한다.
         bool modifiersChanged = RebuildStatModifierTotals(relicItems, ItemType.Relic, _relicStatModifiers);
         modifiersChanged |= RebuildStatModifierTotals(equippedItems, ItemType.Equipment, _equipmentStatModifiers);
         // 장비 교체 시 이전 조건부 보정도 함께 교체해 중간 최대치로 현재량이 잘리지 않게 한다.
-        if (passiveModifiers != null) modifiersChanged |= RebuildModifierTotals(passiveModifiers, _passiveStatModifiers);
+        if (itemPassiveModifiers != null) modifiersChanged |= RebuildModifierTotals(itemPassiveModifiers, _itemPassiveStatModifiers);
         if (modifiersChanged && RecalculateStats())
         {
             NotifyStatsChanged();
@@ -284,10 +285,16 @@ public class PlayerStat : MonoBehaviour
         if (RebuildModifierTotals(modifiers, _timedStatModifiers) && RecalculateStats()) NotifyStatsChanged();
     }
 
-    public void RebuildPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers)
+    public void RebuildItemPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers)
     {
-        // 패시브 보정은 시간제 버프와 별도 합계로 유지하여 서로 해제하지 않는다.
-        if (RebuildModifierTotals(modifiers, _passiveStatModifiers) && RecalculateStats()) NotifyStatsChanged();
+        // 아이템 패시브 보정은 시간제 버프와 별도 합계로 유지하여 서로 해제하지 않는다.
+        if (RebuildModifierTotals(modifiers, _itemPassiveStatModifiers) && RecalculateStats()) NotifyStatsChanged();
+    }
+
+    public void RebuildSkillTreeStatModifiers(IReadOnlyList<StatModifier> modifiers)
+    {
+        // 스킬 트리는 아이템·시간제·패시브와 별도 합계로 교체하여 다른 출처의 갱신에도 유지한다.
+        if (RebuildModifierTotals(modifiers, _skillTreeStatModifiers) && RecalculateStats()) NotifyStatsChanged();
     }
 
     private bool RebuildModifierTotals(IReadOnlyList<StatModifier> modifiers, StatModifierTotals[] totals)
@@ -451,7 +458,7 @@ public class PlayerStat : MonoBehaviour
 
     private bool ClampCurrentResources()
     {
-        // 보유·장착·시간제 효과는 현재량을 회복시키지 않는다. 최대치가 줄어든 경우에만 범위 안으로 제한한다.
+        // 보정 출처와 관계없이 현재량을 회복시키지 않고 최대치가 줄어든 경우에만 범위 안으로 제한한다.
         float nextHealth = Mathf.Clamp(_currentHealth, 0f, _finalStats[(int)ItemStatType.MaxHealth]);
         float nextEnergy = Mathf.Clamp(_currentEnergy, 0f, _finalStats[(int)ItemStatType.MaxEnergy]);
         float nextPoise = Mathf.Clamp(CurrentPoise, 0f, _finalStats[(int)ItemStatType.MaxPoise]);
@@ -471,9 +478,12 @@ public class PlayerStat : MonoBehaviour
         StatModifierTotals relicModifiers = _relicStatModifiers[statIndex];
         StatModifierTotals equipmentModifiers = _equipmentStatModifiers[statIndex];
         StatModifierTotals timedModifiers = _timedStatModifiers[statIndex];
-        StatModifierTotals passiveModifiers = _passiveStatModifiers[statIndex];
-        float flatAdd = relicModifiers.FlatAdd + equipmentModifiers.FlatAdd + timedModifiers.FlatAdd + passiveModifiers.FlatAdd;
-        float percentAdd = relicModifiers.PercentAdd + equipmentModifiers.PercentAdd + timedModifiers.PercentAdd + passiveModifiers.PercentAdd;
+        StatModifierTotals itemPassiveModifiers = _itemPassiveStatModifiers[statIndex];
+        StatModifierTotals skillTreeModifiers = _skillTreeStatModifiers[statIndex];
+        float flatAdd = relicModifiers.FlatAdd + equipmentModifiers.FlatAdd + timedModifiers.FlatAdd + itemPassiveModifiers.FlatAdd +
+            skillTreeModifiers.FlatAdd;
+        float percentAdd = relicModifiers.PercentAdd + equipmentModifiers.PercentAdd + timedModifiers.PercentAdd +
+            itemPassiveModifiers.PercentAdd + skillTreeModifiers.PercentAdd;
         // 비율은 0.2를 20%로 더하며, -100% 아래에서도 배율이 음수로 뒤집히지 않게 한다.
         multiplier = Mathf.Max(0f, 1f + percentAdd);
         valueBeforeMultiplier = baseValue + flatAdd;

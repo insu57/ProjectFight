@@ -214,11 +214,24 @@ public sealed class SkillTreeEditorWindow : EditorWindow
         AddProperty(properties, nameof(node.NodeType), "노드 종류");
         AddProperty(properties, nameof(node.RequiredPoints), "필요 포인트");
         AddProperty(properties, nameof(node.EffectType), "효과 종류");
-        AddProperty(properties, nameof(node.EffectValue), "효과 값");
+        SkillTreeEffectType displayedEffectType = node.EffectType;
+        if (displayedEffectType == SkillTreeEffectType.StatModify)
+        {
+            properties.Add(new PropertyField(_selectedObject.FindProperty("_statModifiers"), "스탯 보정"));
+        }
+        else if (displayedEffectType == SkillTreeEffectType.LethalArtUnlock)
+        {
+            AddProperty(properties, nameof(node.EffectValue), "필살기 ID");
+        }
+        else if (displayedEffectType == SkillTreeEffectType.PassiveUnlock)
+        {
+            AddProperty(properties, nameof(node.EffectValue), "효과 값");
+        }
         AddProperty(properties, nameof(node.DisplayOrder), "형제 표시 순서");
         properties.Bind(_selectedObject);
         // 초기 바인딩 알림으로 그래프를 재생성하면 진행 중인 연결 드래그가 끊긴다.
-        properties.RegisterCallback<SerializedPropertyChangeEvent>(_ => { if (GetDataHash() != _lastHash) QueueRefresh(false); });
+        // 효과 종류가 바뀔 때만 입력 영역을 다시 구성하여 스탯 값 편집 중에는 바인딩을 유지한다.
+        properties.RegisterCallback<SerializedPropertyChangeEvent>(_ => { if (GetDataHash() != _lastHash) QueueRefresh(node.EffectType != displayedEffectType); });
 
         VisualElement actions = new();
         actions.AddToClassList("skill-actions");

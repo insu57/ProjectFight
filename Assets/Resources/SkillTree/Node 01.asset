@@ -17,7 +17,7 @@ MonoBehaviour:
   <NodeIcon>k__BackingField: {fileID: 21300000, guid: 37e07b1bd28380b4f9cbfa0fc8bd564c, type: 3}
   <NodeDescription>k__BackingField: "\uC774\uC81C \uC2DC\uC791\uC774\uC57C..."
   <NodeType>k__BackingField: 2
-  <RequiredNodeId>k__BackingField: -1
+  _requiredNodeIds: []
   <EffectType>k__BackingField: 6
   <EffectValue>k__BackingField: 0
   <RequiredPoints>k__BackingField: 0

@@ -207,7 +207,7 @@ public sealed class PlayerItemEffects
         {
             // 변경 시점의 스냅샷으로 한 번 판정해 최대치 보정이 자기 조건을 재귀 호출하지 않게 한다.
             _passiveEffects.RebuildConditionalStatModifiers(_host.CanRunItemEffects ? stats : default);
-            _host.RebuildPassiveStatModifiers(_passiveEffects.StatModifiers);
+            _host.RebuildItemPassiveStatModifiers(_passiveEffects.StatModifiers);
         }
         finally
         {
@@ -223,7 +223,7 @@ public sealed class PlayerItemEffects
         IsRefreshingStats = true;
         try
         {
-            _host.RebuildPassiveStatModifiers(_passiveEffects.StatModifiers);
+            _host.RebuildItemPassiveStatModifiers(_passiveEffects.StatModifiers);
         }
         finally
         {

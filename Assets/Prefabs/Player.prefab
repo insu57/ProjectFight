@@ -58,6 +58,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5b90e838ea1d2a4ba19dcca0d56427f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerManager
+  _defaultUnlockedLethalArts: []
   _footstepSound: {fileID: 11400000, guid: b7f952f3b0cc1e74fad5a40e517524d3, type: 2}
   _walkFootstepDistance: 1.8
   _sprintFootstepDistance: 2.5
@@ -223,7 +224,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerSkillTree
   _definition: {fileID: 11400000, guid: 325ab2c4fbf86bf47bab43cff99c1cc0, type: 2}
-  _initialPoints: 10
+  _initialPoints: 0
 --- !u!114 &112678730961460787
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -435,7 +436,7 @@ Transform:
   m_GameObject: {fileID: 6316011570218284610}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.25, z: 0}
+  m_LocalPosition: {x: 0, y: 1.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

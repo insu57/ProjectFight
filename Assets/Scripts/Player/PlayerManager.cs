@@ -21,6 +21,10 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private const int EquipmentSlotCount = (int)EquipmentSlot.Shoes + 1;
     private const string LethalArtResourcePath = "LethalArtDefinition";
 
+    [Header("필살기 해금")]
+    [SerializeField, Tooltip("처음부터 사용할 수 있는 필살기 SO입니다. Resources/LethalArtDefinition에서 로드한 정의의 ID와 연결하며, 비어 있으면 스킬 트리로 해금하기 전까지 사용할 수 없습니다.")]
+    private LethalArtDefinition[] _defaultUnlockedLethalArts = Array.Empty<LethalArtDefinition>();
+
     [Header("발소리")]
     [SerializeField] private SoundDefinition _footstepSound;
     [SerializeField, Min(0.1f), Tooltip("걷기 중 발소리 한 번마다 이동할 수평 거리입니다.")]
@@ -44,6 +48,10 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     private PlayerInventory _playerInventory;
     // None은 비워 두고 실제 부위별 장착 장비를 같은 배열에 갱신하여 전달한다.
     private readonly ItemDefinition[] _equippedItemsForStats = new ItemDefinition[EquipmentSlotCount];
+    // 스킬 트리 보정 수집 버퍼는 해금과 재활성화 사이에도 재사용한다.
+    private readonly List<StatModifier> _skillTreeStatModifiers = new(16);
+    // 기본 목록과 스킬 트리의 해금 ID를 합치는 버퍼도 동기화 사이에 재사용한다.
+    private readonly List<int> _unlockedLethalArtIds = new(8);
     private SkillTreeRuntime _subscribedSkillTreeRuntime;
     private bool _hasPendingGuardChange;
     // 능력치와 인벤토리 알림에서 같은 사용 요청이 재진입하지 않도록 한다.
@@ -88,6 +96,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     public PlayerStatSnapshot CurrentPlayerStats => _hasCachedPlayerComponents ? _playerStat.CurrentStats : default;
     public string CurrentInteractionText { get; private set; } = string.Empty;
 
+    public bool TryGetLethalArtDefinition(int lethalArtId, out LethalArtDefinition definition)
+    {
+        // UI는 Resources를 다시 읽거나 실행기를 직접 참조하지 않고 Manager를 통해 정의만 받는다.
+        definition = null;
+        return _lethalArtRuntime != null && _lethalArtRuntime.TryGetDefinition(lethalArtId, out definition);
+    }
+
     public void GetActiveItemEffects(List<ActiveItemEffectSnapshot> results)
     {
         if (results == null) throw new ArgumentNullException(nameof(results));
@@ -115,6 +130,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         TryGetComponent(out _playerInventory);
         // RequireComponent로 보장한 참조는 이후 존재 검사 없이 사용한다.
         _hasCachedPlayerComponents = true;
+        RefreshLethalArtUnlocks();
 
         // 아이템 효과를 적용하기 전에 원래 설정을 한 번만 기본 회피 횟수로 전달한다.
         _playerStat.SetBaseMaxDodgeCount(_playerDodge.MaxDodgeCount);
@@ -455,6 +471,10 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         skillTreeRuntime.AvailablePointsChanged += HandleSkillPointsChanged;
         skillTreeRuntime.NodeUnlocked += HandleSkillTreeNodeUnlocked;
         _subscribedSkillTreeRuntime = skillTreeRuntime;
+        // 기본 해금과 비활성화 중 해금된 필살기도 외부 스탯 알림 전에 먼저 동기화한다.
+        RefreshLethalArtUnlocks();
+        // 최초 구독과 재활성화 시 이미 해금된 노드도 현재 스탯에 반영한다.
+        RefreshSkillTreeStatModifiers();
     }
 
     private void UnsubscribeSkillTreeRuntime()
@@ -872,10 +892,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerStat.RestoreEnergy(amount);
     }
 
-    void IPlayerItemEffectHost.RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems,
-        IReadOnlyList<ItemDefinition> equippedItems, IReadOnlyList<StatModifier> passiveModifiers)
+    void IPlayerItemEffectHost.RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems, IReadOnlyList<StatModifier> itemPassiveModifiers)
     {
-        _playerStat.RebuildItemStatModifiers(relicItems, equippedItems, passiveModifiers);
+        _playerStat.RebuildItemStatModifiers(relicItems, equippedItems, itemPassiveModifiers);
     }
 
     void IPlayerItemEffectHost.RebuildTimedStatModifiers(IReadOnlyList<StatModifier> modifiers)
@@ -883,9 +902,9 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerStat.RebuildTimedStatModifiers(modifiers);
     }
 
-    void IPlayerItemEffectHost.RebuildPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers)
+    void IPlayerItemEffectHost.RebuildItemPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers)
     {
-        _playerStat.RebuildPassiveStatModifiers(modifiers);
+        _playerStat.RebuildItemPassiveStatModifiers(modifiers);
     }
 
     private void HandleItemAcquired(ItemDefinition item)
@@ -1297,7 +1316,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
             return;
         }
 
-        float stepDistance = _playerState.LocomotionState == PlayerLocomotionState.Sprinting ? _sprintFootstepDistance : _walkFootstepDistance;
+        float stepDistance = _playerState.LocomotionState == PlayerLocomotionState.Sprinting
+            ? _sprintFootstepDistance : _walkFootstepDistance;
         stepDistance = Mathf.Max(0.1f, stepDistance);
         _distanceSinceFootstep += horizontalMoveDistance;
         if (_distanceSinceFootstep < stepDistance) return;
@@ -1362,8 +1382,40 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerMove.SetSpeedMultiplier(stats.MoveSpeedMultiplier);
     }
 
+    private void RefreshSkillTreeStatModifiers()
+    {
+        SkillTreeRuntime runtime = SkillTreeRuntime;
+        if (runtime != null) runtime.GetUnlockedStatModifiers(_skillTreeStatModifiers);
+        else _skillTreeStatModifiers.Clear();
+
+        // SkillTree와 Stat은 서로 참조하지 않고 Manager가 데이터를 전달한다.
+        _playerStat.RebuildSkillTreeStatModifiers(_skillTreeStatModifiers);
+        if (!isActiveAndEnabled) ApplyMovementStats(_playerStat.CurrentStats);
+    }
+
+    private void RefreshLethalArtUnlocks()
+    {
+        SkillTreeRuntime runtime = SkillTreeRuntime;
+        if (runtime != null) runtime.GetUnlockedLethalArtIds(_unlockedLethalArtIds);
+        else _unlockedLethalArtIds.Clear();
+
+        if (_defaultUnlockedLethalArts != null)
+        {
+            for (int i = 0; i < _defaultUnlockedLethalArts.Length; i++)
+            {
+                LethalArtDefinition definition = _defaultUnlockedLethalArts[i];
+                if (definition) _unlockedLethalArtIds.Add(definition.LethalArtId);
+            }
+        }
+
+        _lethalArtRuntime.SetUnlockedLethalArtIds(_unlockedLethalArtIds);
+    }
+
     private void HandleSkillTreeNodeUnlocked(SkillTreeNodeRuntime node)
     {
+        // UI 등 외부 구독자가 해금 알림을 받을 때는 최종 스탯이 이미 갱신되어 있어야 한다.
+        if (node.Definition.EffectType == SkillTreeEffectType.StatModify) RefreshSkillTreeStatModifiers();
+        else if (node.Definition.EffectType == SkillTreeEffectType.LethalArtUnlock) RefreshLethalArtUnlocks();
         SkillTreeNodeUnlocked?.Invoke(node);
     }
 }

@@ -223,8 +223,10 @@ public sealed class SkillTreeView : MonoBehaviour
 
         if (runtime.TryGetNode(nodeId, out SkillTreeNodeRuntime node))
         {
-            // 현재 선택된 노드의 정의 정보를 설명 영역에 표시한다.
-            _skillDescriptionView.Show(node, runtime.AvailablePoints);
+            // 잠긴 필살기 노드도 Manager가 로드한 공유 정의로 발동 조건을 미리 보여 준다.
+            LethalArtDefinition lethalArtDefinition = null;
+            if (node.Definition.EffectType == SkillTreeEffectType.LethalArtUnlock) _playerManager.TryGetLethalArtDefinition(node.Definition.EffectValue, out lethalArtDefinition);
+            _skillDescriptionView.Show(node, runtime.AvailablePoints, lethalArtDefinition);
         }
     }
 

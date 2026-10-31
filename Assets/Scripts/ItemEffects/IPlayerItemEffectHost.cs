@@ -12,8 +12,8 @@ public interface IPlayerItemEffectHost
     public void AddSkillPoints(int amount);
     public void AddMoney(int amount);
     public void AddExperience(int amount);
-    public void RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems,
-        IReadOnlyList<ItemDefinition> equippedItems, IReadOnlyList<StatModifier> passiveModifiers);
+    public void RebuildItemStatModifiers(IReadOnlyList<ItemDefinition> relicItems, IReadOnlyList<ItemDefinition> equippedItems,
+        IReadOnlyList<StatModifier> itemPassiveModifiers);
     public void RebuildTimedStatModifiers(IReadOnlyList<StatModifier> modifiers);
-    public void RebuildPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers);
+    public void RebuildItemPassiveStatModifiers(IReadOnlyList<StatModifier> modifiers);
 }

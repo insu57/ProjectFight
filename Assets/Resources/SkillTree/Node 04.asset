@@ -14,11 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillNodeDefinition
   <NodeID>k__BackingField: 30004
   <NodeName>k__BackingField: Depth 01-3
-  <NodeIcon>k__BackingField: {fileID: 21300000, guid: 37e07b1bd28380b4f9cbfa0fc8bd564c, type: 3}
+  <NodeIcon>k__BackingField: {fileID: 21300000, guid: b7b8c0c00d526c14fbb73e78f28cd9c7, type: 3}
   <NodeDescription>k__BackingField: 
   <NodeType>k__BackingField: 1
-  <RequiredNodeId>k__BackingField: 30001
-  <EffectType>k__BackingField: 3
+  _requiredNodeIds: 31750000
+  <EffectType>k__BackingField: 7
   <EffectValue>k__BackingField: 0
+  _statModifiers:
+  - _stat: 3
+    _operation: 0
+    _value: 20
   <RequiredPoints>k__BackingField: 5
   <DisplayOrder>k__BackingField: 3

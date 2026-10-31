@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 // 입력·로그·에너지 소모 없이 선택 결과만 반환하여 이후 HUD에서도 같은 판정을 사용한다.
 public sealed class LethalArtRuntime
 {
     private readonly LethalArtDefinition[] _definitions;
+    // 정렬된 정의와 같은 인덱스에 플레이어별 해금 상태를 보관하고 공유 SO는 변경하지 않는다.
+    private readonly bool[] _unlockedDefinitions;
     // 플레이어 조건을 통과한 후보를 같은 배열에 다시 채워 적별 조회에서 재사용한다.
     private readonly LethalArtDefinition[] _playerCandidates;
     private int _playerCandidateCount;
@@ -20,10 +23,53 @@ public sealed class LethalArtRuntime
         if (definitions == null) throw new ArgumentNullException(nameof(definitions));
 
         _definitions = new LethalArtDefinition[definitions.Length];
+        _unlockedDefinitions = new bool[definitions.Length];
         _playerCandidates = new LethalArtDefinition[definitions.Length];
         Array.Copy(definitions, _definitions, definitions.Length);
         // 입력마다 정렬하거나 후보 목록을 새로 만들지 않는다.
         Array.Sort(_definitions, ComparePriority);
+    }
+
+    public bool TryGetDefinition(int lethalArtId, out LethalArtDefinition definition)
+    {
+        // 스킬 설명은 해금·에너지·발동 조건과 무관하게 이미 로드한 전체 정의를 조회한다.
+        for (int i = 0; i < _definitions.Length; i++)
+        {
+            LethalArtDefinition candidate = _definitions[i];
+            if (!candidate || candidate.LethalArtId != lethalArtId) continue;
+            definition = candidate;
+            return true;
+        }
+
+        definition = null;
+        return false;
+    }
+
+    public void SetUnlockedLethalArtIds(IReadOnlyList<int> unlockedIds)
+    {
+        bool changed = false;
+        for (int i = 0; i < _definitions.Length; i++)
+        {
+            LethalArtDefinition definition = _definitions[i];
+            bool isUnlocked = false;
+            if (definition && unlockedIds != null)
+            {
+                for (int j = 0; j < unlockedIds.Count; j++)
+                {
+                    if (unlockedIds[j] != definition.LethalArtId) continue;
+                    isUnlocked = true;
+                    break;
+                }
+            }
+
+            // 같은 ID의 기본 해금·스킬 해금이 겹쳐도 정의 하나의 상태로만 반영한다.
+            if (_unlockedDefinitions[i] == isUnlocked) continue;
+            _unlockedDefinitions[i] = isUnlocked;
+            changed = true;
+        }
+
+        // 체력·에너지 등이 그대로여도 새 해금과 해제는 다음 입력·HUD 조회에 즉시 반영한다.
+        if (changed) _hasCachedPlayerConditions = false;
     }
 
     public bool TryGetSearchDistance(in LethalArtPlayerContext player, out float searchDistance)
@@ -31,7 +77,7 @@ public sealed class LethalArtRuntime
         RefreshPlayerCandidatesIfNeeded(in player.Stats, player.IsSprinting);
         searchDistance = _cachedSearchDistance;
 
-        // 에너지·체력·달리기 조건에서 전부 탈락하면 물리 탐색 자체를 생략한다.
+        // 해금·에너지·체력·달리기 조건에서 전부 탈락하면 물리 탐색 자체를 생략한다.
         return _playerCandidateCount > 0;
     }
 
@@ -76,7 +122,7 @@ public sealed class LethalArtRuntime
         for (int i = 0; i < _definitions.Length; i++)
         {
             LethalArtDefinition definition = _definitions[i];
-            if (!CanUseForPlayer(definition, playerStats, isPlayerSprinting)) continue;
+            if (!_unlockedDefinitions[i] || !CanUseForPlayer(definition, playerStats, isPlayerSprinting)) continue;
 
             // 원래 정렬 순서를 유지하여 적별 판정에서도 우선순위가 보존된다.
             _playerCandidates[_playerCandidateCount++] = definition;

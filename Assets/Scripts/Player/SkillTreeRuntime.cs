@@ -65,6 +65,39 @@ public sealed class SkillTreeRuntime
         return _nodes.TryGetValue(nodeId, out node);
     }
 
+    public void GetUnlockedStatModifiers(List<StatModifier> results)
+    {
+        if (results == null) throw new ArgumentNullException(nameof(results));
+
+        // 해금 상태에서 다시 집계하여 재동기화 시 중복 누적을 막고 호출자의 버퍼를 재사용한다.
+        results.Clear();
+        foreach (KeyValuePair<int, SkillTreeNodeRuntime> entry in _nodes)
+        {
+            SkillTreeNodeRuntime node = entry.Value;
+            if (!node.IsUnlocked || node.IsStartNode || node.Definition.EffectType != SkillTreeEffectType.StatModify) continue;
+
+            IReadOnlyList<StatModifier> modifiers = node.Definition.StatModifiers;
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                results.Add(modifiers[i]);
+            }
+        }
+    }
+
+    public void GetUnlockedLethalArtIds(List<int> results)
+    {
+        if (results == null) throw new ArgumentNullException(nameof(results));
+
+        // 시작 노드는 효과 없이 해금되며, 실제 해금한 필살기 노드의 ID만 재사용 버퍼에 모은다.
+        results.Clear();
+        foreach (KeyValuePair<int, SkillTreeNodeRuntime> entry in _nodes)
+        {
+            SkillTreeNodeRuntime node = entry.Value;
+            if (!node.IsUnlocked || node.IsStartNode || node.Definition.EffectType != SkillTreeEffectType.LethalArtUnlock) continue;
+            results.Add(node.Definition.EffectValue);
+        }
+    }
+
     public SkillTreeUnlockResult TryUnlockNode(int nodeId)
     {
         if (!_nodes.TryGetValue(nodeId, out SkillTreeNodeRuntime node))

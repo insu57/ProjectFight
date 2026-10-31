@@ -1,4 +1,4 @@
-using System;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +13,9 @@ public sealed class SkillDescriptionView : MonoBehaviour
     [SerializeField] private Color _enoughPointsColor = Color.green;
     [SerializeField] private Color _notEnoughPointsColor = Color.red;
 
+    // 노드 선택이 바뀔 때 설명과 숫자 버퍼를 재사용하여 결합 문자열 할당을 피한다.
+    private readonly StringBuilder _descriptionBuilder = new(256);
+    private readonly char[] _descriptionNumberBuffer = new char[64];
     private SkillTreeNodeRuntime _node;
 
     private void Awake()
@@ -20,7 +23,7 @@ public sealed class SkillDescriptionView : MonoBehaviour
         Clear();
     }
 
-    public void Show(SkillTreeNodeRuntime node, int availablePoints)
+    public void Show(SkillTreeNodeRuntime node, int availablePoints, LethalArtDefinition lethalArtDefinition = null)
     {
         if (node == null)
         {
@@ -44,7 +47,32 @@ public sealed class SkillDescriptionView : MonoBehaviour
 
         if (_descriptionTxt)
         {
-            _descriptionTxt.SetText(definition.NodeDescription);
+            _descriptionBuilder.Clear();
+            if (definition.EffectType == SkillTreeEffectType.StatModify)
+            {
+                // 스탯 이름·부호·비율·단위는 아이템 설명과 같은 포매터를 사용한다.
+                ItemDisplayUtility.AppendStatModifiersDescription(_descriptionBuilder, definition.StatModifiers, _descriptionNumberBuffer);
+            }
+            else if (definition.EffectType == SkillTreeEffectType.LethalArtUnlock)
+            {
+                LethalArtDisplayUtility.AppendUnlockDescription(_descriptionBuilder, lethalArtDefinition, _descriptionNumberBuffer);
+            }
+
+            if (_descriptionBuilder.Length > 0)
+            {
+                _descriptionBuilder.Insert(0, "<color=#FFE082>");
+                _descriptionBuilder.Append("</color>");
+            }
+
+            if (!string.IsNullOrWhiteSpace(definition.NodeDescription))
+            {
+                // 효과 뒤에 빈 줄을 두고 SO의 일반 설명은 기존 아이템과 같은 기호로 구분한다.
+                if (_descriptionBuilder.Length > 0) _descriptionBuilder.Append("\n\n");
+                _descriptionBuilder.Append("• ").Append(definition.NodeDescription);
+            }
+
+            if (!_descriptionTxt.richText) _descriptionTxt.richText = true;
+            _descriptionTxt.SetText(_descriptionBuilder);
         }
 
         RefreshUnlockCost(availablePoints);
@@ -82,6 +110,7 @@ public sealed class SkillDescriptionView : MonoBehaviour
     private void Clear()
     {
         _node = null;
+        _descriptionBuilder.Clear();
 
         if (_icon)
         {

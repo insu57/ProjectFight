@@ -5,7 +5,9 @@ using UnityEngine.Serialization;
 
 public class StageManager : MonoBehaviour
 {
-    private const string ItemDefinitionResourcePath = "ItemDefinition";
+    private const string EquipmentItemResourcePath = "ItemDefinition/Equipment";
+    private const string ConsumableItemResourcePath = "ItemDefinition/Consumable";
+    private const string RelicItemResourcePath = "ItemDefinition/Relic";
     private const int ItemTypeCount = (int)ItemType.Relic + 1;
     private const int ItemRarityCount = (int)ItemRarity.Legendary + 1;
 
@@ -186,14 +188,36 @@ public class StageManager : MonoBehaviour
 
     private void LoadItems()
     {
-        ItemDefinition[] definitions = Resources.LoadAll<ItemDefinition>(ItemDefinitionResourcePath);
+        // 타입별 폴더만 읽고 전체 후보 수만큼 미리 확보하여 등록 중 재할당을 피한다.
+        ItemDefinition[] equipmentDefinitions = Resources.LoadAll<ItemDefinition>(EquipmentItemResourcePath);
+        ItemDefinition[] consumableDefinitions = Resources.LoadAll<ItemDefinition>(ConsumableItemResourcePath);
+        ItemDefinition[] relicDefinitions = Resources.LoadAll<ItemDefinition>(RelicItemResourcePath);
+        int definitionCount = equipmentDefinitions.Length + consumableDefinitions.Length + relicDefinitions.Length;
         _rewardItemCandidates.Clear();
-        _rewardItemCandidates.Capacity = definitions.Length;
+        _rewardItemCandidates.Capacity = definitionCount;
         Array.Clear(_rewardItemCountsByRarity, 0, _rewardItemCountsByRarity.Length);
         _storeItemCandidates.Clear();
-        _storeItemCandidates.Capacity = definitions.Length;
+        _storeItemCandidates.Capacity = definitionCount;
         Array.Clear(_storeItemCountsByTypeAndRarity, 0, _storeItemCountsByTypeAndRarity.Length);
 
+        RegisterItemCandidates(equipmentDefinitions);
+        RegisterItemCandidates(consumableDefinitions);
+        RegisterItemCandidates(relicDefinitions);
+
+        if (_rewardItemCandidates.Count == 0)
+        {
+            Debug.LogWarning("Resources/ItemDefinition의 Equipment 또는 Relic 폴더에 보상 상자용 장비 또는 유물 아이템이 없습니다.", this);
+        }
+
+        if (_storeItemCandidates.Count == 0)
+        {
+            Debug.LogWarning("Resources/ItemDefinition의 Equipment, Consumable, Relic 폴더에 상점용 아이템이 없습니다.", this);
+        }
+    }
+
+    private void RegisterItemCandidates(ItemDefinition[] definitions)
+    {
+        // 각 폴더의 배열을 합치지 않고 기존 보상·상점 후보 목록에 바로 등록한다.
         for (int index = 0; index < definitions.Length; index++)
         {
             ItemDefinition definition = definitions[index];
@@ -217,16 +241,6 @@ public class StageManager : MonoBehaviour
             {
                 _rewardItemCountsByRarity[rarityIndex]++;
             }
-        }
-
-        if (_rewardItemCandidates.Count == 0)
-        {
-            Debug.LogWarning("Resources/ItemDefinition에 보상 상자용 장비 또는 유물 아이템이 없습니다.", this);
-        }
-
-        if (_storeItemCandidates.Count == 0)
-        {
-            Debug.LogWarning("Resources/ItemDefinition에 상점용 아이템이 없습니다.", this);
         }
     }
 
