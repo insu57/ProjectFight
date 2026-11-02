@@ -223,6 +223,10 @@ public sealed class SkillTreeEditorWindow : EditorWindow
         {
             AddProperty(properties, nameof(node.EffectValue), "필살기 ID");
         }
+        else if (displayedEffectType == SkillTreeEffectType.ComboUnlock)
+        {
+            AddProperty(properties, nameof(node.EffectValue), "콤보 ID");
+        }
         else if (displayedEffectType == SkillTreeEffectType.PassiveUnlock)
         {
             AddProperty(properties, nameof(node.EffectValue), "효과 값");

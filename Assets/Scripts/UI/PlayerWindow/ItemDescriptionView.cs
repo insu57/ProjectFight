@@ -12,10 +12,12 @@ public sealed class ItemDescriptionView : MonoBehaviour
     [SerializeField] private TMP_Text _nameText;
     [SerializeField] private TMP_Text _rarityText;
     [SerializeField] private TMP_Text _descriptionText;
+    [SerializeField, Tooltip("아이콘과 이름은 고정하고 설명 텍스트만 움직이는 세로 스크롤입니다.")] private ScrollRect _descriptionScrollRect;
 
     // 선택 변경과 수량 갱신 시 버퍼를 재사용해 효과·설명 결합 문자열을 별도로 만들지 않는다.
     private readonly StringBuilder _descriptionBuilder = new(256);
     private readonly char[] _descriptionNumberBuffer = new char[64];
+    private ItemDefinition _shownItem;
 
     [Header("타입 라벨")]
     [SerializeField, Tooltip("아이템 타입 라벨의 배경과 텍스트를 포함하는 루트입니다.")]
@@ -57,6 +59,10 @@ public sealed class ItemDescriptionView : MonoBehaviour
             Hide();
             return;
         }
+
+        // 같은 아이템의 수량 갱신은 읽던 위치를 유지하고, 선택이 바뀔 때만 초기화한다.
+        bool itemChanged = _shownItem != item;
+        _shownItem = item;
 
         if (_icon)
         {
@@ -136,14 +142,29 @@ public sealed class ItemDescriptionView : MonoBehaviour
         {
             _contentRoot.SetActive(true);
         }
+
+        if (itemChanged) ResetDescriptionScroll();
     }
 
     public void Hide()
     {
+        _shownItem = null;
+        if (_descriptionScrollRect) _descriptionScrollRect.StopMovement();
+
         // 선택 아이템의 내용만 숨기고 타입별 정보 패널은 현재 탭에 맞춰 유지한다.
         if (_contentRoot && _contentRoot.activeSelf)
         {
             _contentRoot.SetActive(false);
         }
+    }
+
+    private void ResetDescriptionScroll()
+    {
+        if (!_descriptionScrollRect) return;
+
+        _descriptionScrollRect.StopMovement();
+        // 새 설명의 높이를 먼저 반영해야 긴 설명에서 짧은 설명으로 바뀌어도 상단이 맞는다.
+        if (_descriptionScrollRect.content) LayoutRebuilder.ForceRebuildLayoutImmediate(_descriptionScrollRect.content);
+        _descriptionScrollRect.verticalNormalizedPosition = 1f;
     }
 }

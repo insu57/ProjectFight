@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum AttackInputType
@@ -26,6 +27,29 @@ public sealed class PlayerAttack : MonoBehaviour
 
     private void Awake()
     {
+        InitializeComboGraph();
+    }
+
+    public void SetUnlockedComboIds(IReadOnlyList<int> unlockedIds)
+    {
+        InitializeComboGraph();
+        _comboGraph.SetUnlockedComboIds(unlockedIds);
+
+        // 재동기화로 예약한 경로가 닫혀도 현재 재생 중인 공격은 유지한다.
+        if (_queuedNode != null && !_queuedNode.IsAvailable) _queuedNode = null;
+    }
+
+    public bool TryGetComboDefinition(int comboId, out ComboDefinition definition)
+    {
+        InitializeComboGraph();
+        return _comboGraph.TryGetDefinition(comboId, out definition);
+    }
+
+    private void InitializeComboGraph()
+    {
+        // Manager.Awake에서 먼저 호출해도 이 컴포넌트의 Awake가 그래프를 다시 만들지 않는다.
+        if (_comboGraph != null) return;
+
         // Resources/ComboDefinition 및 하위 폴더의 콤보 데이터를 모두 불러온다.
         ComboDefinition[] comboDefinitions = Resources.LoadAll<ComboDefinition>(ComboDefinitionResourcePath);
         _comboGraph = ComboGraph.Create(comboDefinitions);

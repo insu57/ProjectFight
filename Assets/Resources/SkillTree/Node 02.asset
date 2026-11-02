@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Node 02
   m_EditorClassIdentifier: Assembly-CSharp::SkillNodeDefinition
   <NodeID>k__BackingField: 30002
-  <NodeName>k__BackingField: Depth 01-1
+  <NodeName>k__BackingField: "\uC0DD\uBA85\uB825 \uAC15\uD654 1"
   <NodeIcon>k__BackingField: {fileID: 21300000, guid: 84b5ccaf41b506d44ab2b17bf0f839ff, type: 3}
   <NodeDescription>k__BackingField: 
   <NodeType>k__BackingField: 1

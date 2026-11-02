@@ -15,7 +15,8 @@ public enum SkillTreeEffectType
     StatModify = 7,
     PassiveUnlock = 4,
     LethalArtUnlock = 5,
-    None = 6
+    None = 6,
+    ComboUnlock = 8
 }
 
 [CreateAssetMenu(fileName = "SkillNodeDefinition", menuName = "Scriptable Objects/SkillNodeDefinition")]
@@ -33,7 +34,9 @@ public sealed class SkillNodeDefinition : ScriptableObject
     public IReadOnlyList<int> RequiredNodeIds => _requiredNodeIds != null ? _requiredNodeIds : Array.Empty<int>();
     [field: SerializeField] public SkillTreeEffectType EffectType { get; private set; } = SkillTreeEffectType.None;
 
-    [field: SerializeField, Tooltip("LethalArtUnlock은 해금할 LethalArtDefinition의 LethalArtId를 사용합니다. PassiveUnlock은 패시브 해금용 정수 값이며, 스탯 변경은 별도의 스탯 보정 목록에서 설정합니다.")]
+    [field: SerializeField, Tooltip("ComboUnlock은 해금할 ComboDefinition의 ComboID를, " +
+        "LethalArtUnlock은 LethalArtDefinition의 LethalArtId를 사용합니다. " +
+        "PassiveUnlock은 패시브 해금용 정수 값이며, 스탯 변경은 별도의 스탯 보정 목록에서 설정합니다.")]
     public int EffectValue { get; private set; }
     // 한 노드에서 여러 스탯의 고정값·비율 보정을 설정하며 공유 데이터를 복사하지 않고 조회한다.
     [SerializeField] private StatModifier[] _statModifiers = Array.Empty<StatModifier>();

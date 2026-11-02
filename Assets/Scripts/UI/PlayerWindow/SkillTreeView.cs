@@ -29,7 +29,7 @@ public sealed class SkillTreeView : MonoBehaviour
     [SerializeField] private RectTransform _nodeLayer;
     [SerializeField] private SkillTreeNodeView _nodePrefab;
     [SerializeField] private SkillTreeConnectionView _connectionPrefab;
-    [SerializeField] private SkillDescriptionView _skillDescriptionView;
+    [SerializeField] private SkillTreeDescriptionView _skillDescriptionView;
     [SerializeField] private SkillUnlockConfirmationView _unlockConfirmationView;
     [SerializeField] private TMP_Text _availablePointsText;
 
@@ -223,10 +223,16 @@ public sealed class SkillTreeView : MonoBehaviour
 
         if (runtime.TryGetNode(nodeId, out SkillTreeNodeRuntime node))
         {
-            // 잠긴 필살기 노드도 Manager가 로드한 공유 정의로 발동 조건을 미리 보여 준다.
+            // 잠긴 콤보·필살기 노드도 Manager가 로드한 공유 정의로 입력과 발동 조건을 미리 보여 준다.
             LethalArtDefinition lethalArtDefinition = null;
-            if (node.Definition.EffectType == SkillTreeEffectType.LethalArtUnlock) _playerManager.TryGetLethalArtDefinition(node.Definition.EffectValue, out lethalArtDefinition);
-            _skillDescriptionView.Show(node, runtime.AvailablePoints, lethalArtDefinition);
+            ComboDefinition comboDefinition = null;
+
+            if (node.Definition.EffectType == SkillTreeEffectType.LethalArtUnlock)
+                _playerManager.TryGetLethalArtDefinition(node.Definition.EffectValue, out lethalArtDefinition);
+            else if (node.Definition.EffectType == SkillTreeEffectType.ComboUnlock)
+                _playerManager.TryGetComboDefinition(node.Definition.EffectValue, out comboDefinition);
+
+            _skillDescriptionView.Show(node, runtime.AvailablePoints, lethalArtDefinition, comboDefinition);
         }
     }
 

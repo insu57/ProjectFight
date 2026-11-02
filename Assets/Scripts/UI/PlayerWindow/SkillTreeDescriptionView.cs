@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
-public sealed class SkillDescriptionView : MonoBehaviour
+public sealed class SkillTreeDescriptionView : MonoBehaviour
 {
     [SerializeField] private Image _icon;
     [SerializeField] private TMP_Text _nameText;
@@ -23,7 +23,8 @@ public sealed class SkillDescriptionView : MonoBehaviour
         Clear();
     }
 
-    public void Show(SkillTreeNodeRuntime node, int availablePoints, LethalArtDefinition lethalArtDefinition = null)
+    public void Show(SkillTreeNodeRuntime node, int availablePoints, LethalArtDefinition lethalArtDefinition = null,
+        ComboDefinition comboDefinition = null)
     {
         if (node == null)
         {
@@ -57,6 +58,10 @@ public sealed class SkillDescriptionView : MonoBehaviour
             {
                 LethalArtDisplayUtility.AppendUnlockDescription(_descriptionBuilder, lethalArtDefinition, _descriptionNumberBuffer);
             }
+            else if (definition.EffectType == SkillTreeEffectType.ComboUnlock)
+            {
+                AppendComboInputDescription(comboDefinition);
+            }
 
             if (_descriptionBuilder.Length > 0)
             {
@@ -83,6 +88,31 @@ public sealed class SkillDescriptionView : MonoBehaviour
         if (_node != null)
         {
             RefreshUnlockCost(availablePoints);
+        }
+    }
+
+    private void AppendComboInputDescription(ComboDefinition definition)
+    {
+        if (!definition || definition.ComboSteps == null || definition.ComboSteps.Length == 0)
+        {
+            _descriptionBuilder.Append("콤보 정보를 찾을 수 없습니다.");
+            return;
+        }
+
+        // 콤보 이름 대신 실제 단계의 입력 순서를 표시하며 기존 설명 버퍼를 재사용한다.
+        _descriptionBuilder.Append("공격 입력: ");
+        ComboStep[] steps = definition.ComboSteps;
+        for (int i = 0; i < steps.Length; i++)
+        {
+            if (i > 0) _descriptionBuilder.Append(" → ");
+            string inputName = steps[i].AttackInputType switch
+            {
+                AttackInputType.Light => "약공격",
+                AttackInputType.Heavy => "강공격",
+                AttackInputType.Grab => "잡기",
+                _ => "알 수 없는 입력"
+            };
+            _descriptionBuilder.Append(inputName);
         }
     }
 

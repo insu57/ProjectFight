@@ -59,6 +59,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerManager
   _defaultUnlockedLethalArts: []
+  _defaultUnlockedCombos:
+  - {fileID: 11400000, guid: b5d5229cc7b4cb841a3b7dd9b92ee579, type: 2}
+  - {fileID: 11400000, guid: 236b70c55aa4d3747a0cb1c27e36ee26, type: 2}
+  - {fileID: 11400000, guid: 3712b67ddd7645840b918b296d7f2236, type: 2}
+  - {fileID: 11400000, guid: b3fd2292b4597514da5c622743eccd92, type: 2}
+  - {fileID: 11400000, guid: 060b79dc0090948458f5113ba946ed01, type: 2}
   _footstepSound: {fileID: 11400000, guid: b7f952f3b0cc1e74fad5a40e517524d3, type: 2}
   _walkFootstepDistance: 1.8
   _sprintFootstepDistance: 2.5

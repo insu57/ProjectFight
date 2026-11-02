@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: Node 05
   m_EditorClassIdentifier: Assembly-CSharp::SkillNodeDefinition
   <NodeID>k__BackingField: 30005
-  <NodeName>k__BackingField: Depth 01-3
-  <NodeIcon>k__BackingField: {fileID: 21300000, guid: 37e07b1bd28380b4f9cbfa0fc8bd564c, type: 3}
+  <NodeName>k__BackingField: "\uCF64\uBCF4 \uD574\uAE08"
+  <NodeIcon>k__BackingField: {fileID: 21300000, guid: 992d57164098d6e49b3fb15d023a2720, type: 3}
   <NodeDescription>k__BackingField: 
   <NodeType>k__BackingField: 0
   _requiredNodeIds: 3275000033750000
-  <EffectType>k__BackingField: 4
-  <EffectValue>k__BackingField: 0
-  <RequiredPoints>k__BackingField: 10
+  <EffectType>k__BackingField: 8
+  <EffectValue>k__BackingField: 41006
+  _statModifiers: []
+  <RequiredPoints>k__BackingField: 5
   <DisplayOrder>k__BackingField: 0

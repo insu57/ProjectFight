@@ -98,6 +98,21 @@ public sealed class SkillTreeRuntime
         }
     }
 
+    public void GetUnlockedComboIds(List<int> results)
+    {
+        if (results == null) throw new ArgumentNullException(nameof(results));
+
+        // 기본 콤보와 합치기 전에 실제 해금한 콤보 노드의 ID만 재사용 버퍼에 모은다.
+        results.Clear();
+
+        foreach (KeyValuePair<int, SkillTreeNodeRuntime> entry in _nodes)
+        {
+            SkillTreeNodeRuntime node = entry.Value;
+            if (!node.IsUnlocked || node.IsStartNode || node.Definition.EffectType != SkillTreeEffectType.ComboUnlock) continue;
+            results.Add(node.Definition.EffectValue);
+        }
+    }
+
     public SkillTreeUnlockResult TryUnlockNode(int nodeId)
     {
         if (!_nodes.TryGetValue(nodeId, out SkillTreeNodeRuntime node))
