@@ -10,8 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: faa1c3f7b82a485bb1c0b7f52bf4d7cd, type: 3}
-  m_Name: EncounterDefinition
+  m_Name: EncounterDefinition 03
   m_EditorClassIdentifier: Assembly-CSharp::EncounterDefinition
+  <MinStartRoomDistance>k__BackingField: 3
+  <MaxStartRoomDistance>k__BackingField: 3
   <Groups>k__BackingField:
   - <Enemies>k__BackingField:
     - <Prefab>k__BackingField: {fileID: 2218769238166298213, guid: a057a8c98bf48114e98d4eb5d34eca9d, type: 3}

@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ab90243c88a7494ba3b38960836c21be, type: 3}
-  m_Name: LethalArtDefinition
+  m_Name: LethalArt_02
   m_EditorClassIdentifier: Assembly-CSharp::LethalArtDefinition
-  <LethalArtId>k__BackingField: 42001
-  <LethalArtName>k__BackingField: 
+  <LethalArtId>k__BackingField: 42002
+  <LethalArtName>k__BackingField: "\uB2E4\uB9AC\uAC78\uAE30"
   <Description>k__BackingField: 
   <Icon>k__BackingField: {fileID: 0}
   <EnergyCost>k__BackingField: 100
   <Priority>k__BackingField: 0
-  <Attack>k__BackingField: {fileID: 11400000, guid: 200425bb686ec7547bd733fecb058c56, type: 2}
+  <Attack>k__BackingField: {fileID: 11400000, guid: e574e453608dc024e9cb967ec3f4535f, type: 2}
   <ProximityDistance>k__BackingField: 2
   _playerHealthCondition:
     <Enabled>k__BackingField: 0

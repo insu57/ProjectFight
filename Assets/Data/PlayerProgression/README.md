@@ -17,7 +17,7 @@ Level,TargetExp,SkillPointsOnReach,MaxHealth,AttackPower,DefensePower,MaxEnergy
 
 - `Level`: 1부터 중복과 누락 없이 오름차순으로 작성합니다.
 - `TargetExp`: 해당 레벨에서 다음 레벨까지 필요한 경험치입니다. 마지막 레벨만 `0`으로 작성하고, 앞선 레벨은 양의 정수로 작성합니다.
-- `SkillPointsOnReach`: 해당 레벨에 도달할 때 지급할 포인트 데이터입니다. 1→2라면 2레벨 행의 값입니다. 현재 스킬포인트 자동 지급은 연결하지 않았습니다.
+- `SkillPointsOnReach`: 경험치로 해당 레벨에 도달할 때 지급할 스킬 포인트입니다. 1→2라면 2레벨 행의 값을 사용합니다. 여러 레벨을 한 번에 올리면 도달한 각 레벨의 값을 합산하여 `PlayerManager`를 통해 스킬 트리에 지급합니다. 보유 포인트는 `int.MaxValue`까지만 증가하며 시작 레벨 설정과 `SetLevel()`에는 지급하지 않습니다.
 - `MaxHealth`, `AttackPower`, `DefensePower`, `MaxEnergy`: 증가량이 아닌 해당 레벨의 기본 스탯 값입니다. 최대 체력은 양수이고 나머지는 0 이상입니다.
 - 소수점은 `.`을 사용합니다. 천 단위 구분자, NaN/Infinity, 셀 안의 줄바꿈은 허용하지 않습니다.
 

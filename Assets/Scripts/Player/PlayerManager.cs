@@ -153,6 +153,8 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerInventory.InventoryChanged += HandleInventoryChanged;
         _playerInventory.ItemAcquired += HandleItemAcquired;
         _playerInventory.EquipmentChanged += HandleEquipmentChanged;
+        // 비활성화 중 경험치를 받아도 레벨업 보상이 누락되지 않도록 수명 동안 구독한다.
+        _playerStat.LevelUpSkillPointsEarned += HandleLevelUpSkillPointsEarned;
 
         _attackHitbox = GetComponentInChildren<AttackHitbox>();
         _hurtbox = GetComponentInChildren<Hurtbox>();
@@ -251,6 +253,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         _playerInventory.InventoryChanged -= HandleInventoryChanged;
         _playerInventory.ItemAcquired -= HandleItemAcquired;
         _playerInventory.EquipmentChanged -= HandleEquipmentChanged;
+        _playerStat.LevelUpSkillPointsEarned -= HandleLevelUpSkillPointsEarned;
     }
 
     public void BeginHitStop(float duration)
@@ -939,6 +942,16 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         // 장착·해제·교체 결과를 스탯에 반영한 뒤 UI 등에 장비 변경을 알린다.
         RefreshItemStatModifiers();
         EquipmentChanged?.Invoke(equipmentSlot);
+    }
+
+    private void HandleLevelUpSkillPointsEarned(int amount)
+    {
+        SkillTreeRuntime runtime = SkillTreeRuntime;
+        if (runtime == null) return;
+
+        // 성장표 보상도 기존 지급 경로를 사용하되 보유 포인트가 int 범위를 넘지 않게 한다.
+        int grantedPoints = Math.Min(amount, int.MaxValue - runtime.AvailablePoints);
+        if (grantedPoints > 0) AddSkillPoints(grantedPoints);
     }
 
     public void AddSkillPoints(int amount)

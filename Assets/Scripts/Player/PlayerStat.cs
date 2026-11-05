@@ -158,6 +158,8 @@ public class PlayerStat : MonoBehaviour
     [SerializeField, Min(0f)] private float _guardBreakMoveDistance = 1f;
 
     public event Action<PlayerStatSnapshot> StatsChanged;
+    // 레벨업 보상은 Manager가 받아 스킬 트리로 전달하며 두 하위 컴포넌트는 서로 참조하지 않는다.
+    public event Action<int> LevelUpSkillPointsEarned;
 
     public float CurrentPoise { get; private set; }
     public float CurrentGuardPoise { get; private set; }
@@ -650,6 +652,7 @@ public class PlayerStat : MonoBehaviour
 
         // 각 레벨의 요구 경험치가 다르므로 차례대로 차감하고 다음 레벨의 스탯을 적용한다.
         long totalExperience = (long)Mathf.Max(0, _currentExp) + amount;
+        int earnedSkillPoints = 0;
         _targetExp = currentLevel.TargetExp;
 
         while (_targetExp > 0 && totalExperience >= _targetExp && _level < _progressionDefinition.MaxLevel)
@@ -658,10 +661,14 @@ public class PlayerStat : MonoBehaviour
 
             totalExperience -= _targetExp;
             ApplyLevelData(nextLevel, true);
+            // 여러 레벨을 올리면 도달한 모든 행의 보상을 합산하고 정수 범위를 넘지 않게 한다.
+            earnedSkillPoints = (int)Math.Min(int.MaxValue, (long)earnedSkillPoints + nextLevel.SkillPointsOnReach);
         }
 
         // 최대 레벨에서는 경험치를 남기지 않고 더 이상 레벨업하지 않는다.
         _currentExp = _level >= _progressionDefinition.MaxLevel ? 0 : (int)Math.Min(totalExperience, int.MaxValue);
+        // 최종 레벨과 경험치를 확정한 뒤 보상을 한 번 전달하며 0점 지급 요청은 만들지 않는다.
+        if (earnedSkillPoints > 0) LevelUpSkillPointsEarned?.Invoke(earnedSkillPoints);
         // 여러 레벨을 한 번에 올려도 완성된 최종 스냅샷만 한 번 전달한다.
         NotifyStatsChanged();
     }

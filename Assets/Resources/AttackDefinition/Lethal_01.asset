@@ -16,9 +16,9 @@ MonoBehaviour:
   <AttackName>k__BackingField: Light_04
   <AnimationStateName>k__BackingField: Light_04
   <AnimationSpeed>k__BackingField: 1
-  <BaseDamage>k__BackingField: 100
-  <BasePoiseDamage>k__BackingField: 100
-  <BaseGuardPoiseDamage>k__BackingField: 100
+  <BaseDamage>k__BackingField: 40
+  <BasePoiseDamage>k__BackingField: 40
+  <BaseGuardPoiseDamage>k__BackingField: 40
   <BaseEnergyRecoveryOnHit>k__BackingField: 0
   <HitStopDuration>k__BackingField: 0.2
   <TransitionDuration>k__BackingField: 0.1
@@ -54,7 +54,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  <HitboxSize>k__BackingField: {x: 2, y: 2, z: 2}
+  <HitboxSize>k__BackingField: {x: 1.2, y: 1.2, z: 1.2}
   <HitboxOffset>k__BackingField: {x: 0, y: 1, z: 1}
   <HitStartNormalizedTime>k__BackingField: 0.2
   <HitEndNormalizedTime>k__BackingField: 0.4

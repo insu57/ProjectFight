@@ -13,7 +13,7 @@ public sealed class SkillTreeDescriptionView : MonoBehaviour
     [SerializeField] private Color _enoughPointsColor = Color.green;
     [SerializeField] private Color _notEnoughPointsColor = Color.red;
 
-    // 노드 선택이 바뀔 때 설명과 숫자 버퍼를 재사용하여 결합 문자열 할당을 피한다.
+    // 노드 선택이 바뀔 때 이름·설명용 버퍼와 숫자 버퍼를 재사용하여 결합 문자열 할당을 피한다.
     private readonly StringBuilder _descriptionBuilder = new(256);
     private readonly char[] _descriptionNumberBuffer = new char[64];
     private SkillTreeNodeRuntime _node;
@@ -23,8 +23,7 @@ public sealed class SkillTreeDescriptionView : MonoBehaviour
         Clear();
     }
 
-    public void Show(SkillTreeNodeRuntime node, int availablePoints, LethalArtDefinition lethalArtDefinition = null,
-        ComboDefinition comboDefinition = null)
+    public void Show(SkillTreeNodeRuntime node, int availablePoints, LethalArtDefinition lethalArtDefinition = null, ComboDefinition comboDefinition = null)
     {
         if (node == null)
         {
@@ -43,7 +42,17 @@ public sealed class SkillTreeDescriptionView : MonoBehaviour
 
         if (_nameText)
         {
-            _nameText.SetText(definition.NodeName);
+            if (definition.EffectType == SkillTreeEffectType.LethalArtUnlock && lethalArtDefinition && !string.IsNullOrWhiteSpace(lethalArtDefinition.LethalArtName))
+            {
+                // 제목을 먼저 복사한 뒤 같은 버퍼를 본문에 재사용하여 별도 결합 문자열을 만들지 않는다.
+                _descriptionBuilder.Clear();
+                _descriptionBuilder.Append(definition.NodeName).Append(" : ").Append(lethalArtDefinition.LethalArtName);
+                _nameText.SetText(_descriptionBuilder);
+            }
+            else
+            {
+                _nameText.SetText(definition.NodeName);
+            }
         }
 
         if (_descriptionTxt)
