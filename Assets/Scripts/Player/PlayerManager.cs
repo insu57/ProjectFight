@@ -95,6 +95,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
     public event Action<string> InteractionPromptChanged;
     public event Action<ItemType> InventoryChanged;
     public event Action<ItemDefinition> ItemAcquired;
+    public event Action<ItemDefinition> ConsumablePickupBlocked;
     public event Action<EquipmentSlot> EquipmentChanged;
     public event Action QuickslotsChanged;
 
@@ -841,6 +842,21 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         return isActiveAndEnabled && _hasCachedPlayerComponents && _playerInventory.TryAddItem(item);
     }
 
+    public bool TryPickUpItem(ItemDefinition item)
+    {
+        if (!isActiveAndEnabled || !_isGameplayInputEnabled || !_hasCachedPlayerComponents
+            || !item || _playerState.ActionState == PlayerActionState.Dead) return false;
+
+        // 획득 실패는 보유 목록과 획득 효과를 변경하지 않고 HUD에 최대 수량 안내만 전달한다.
+        if (_playerInventory.IsConsumableStackFull(item))
+        {
+            ConsumablePickupBlocked?.Invoke(item);
+            return false;
+        }
+
+        return _playerInventory.TryAddItem(item);
+    }
+
     public bool TryPurchaseItem(ItemDefinition item)
     {
         if (!isActiveAndEnabled || !_hasCachedPlayerComponents || !item || item.BasePrice < 0) return false;
@@ -1290,6 +1306,13 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         // 콤보 전환이나 공격 종료가 요청을 초기화하기 전에 이번 공격의 재생 시점을 확인한다.
         TryPlayAttackSound(hasNormalizedTime, normalizedTime);
 
+        if (_playerAttack.CanRotateDuringAttack(hasNormalizedTime, normalizedTime))
+        {
+            // 이전 프레임의 판정을 먼저 꺼서 회수 구간의 회전이 공격 범위를 쓸지 않도록 한다.
+            _attackHitbox.UpdateHitbox(hasNormalizedTime, normalizedTime);
+            UpdateAttackFacing(Time.deltaTime);
+        }
+
         if (hasNormalizedTime && _playerAttack.TryGetAttackMoveDisplacement(normalizedTime, out Vector2 localDisplacement))
         {
             // PlayerManager가 공격 진행 정보를 이동 컴포넌트로 전달한다.
@@ -1319,6 +1342,28 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         }
 
         _attackHitbox.UpdateHitbox(hasNormalizedTime, normalizedTime);
+    }
+
+    private void UpdateAttackFacing(float deltaTime)
+    {
+        if (!_isGameplayInputEnabled || IsHitStopped) return;
+
+        LockOnTarget target = _playerLockOn.CurrentTarget;
+        Vector3 worldDirection;
+        if (target)
+        {
+            worldDirection = target.AimPosition - transform.position;
+        }
+        else
+        {
+            Vector2 moveInput = _playerControl.MoveInput;
+            // 스틱의 미세 입력은 무시하고, 입력이 없으면 현재 방향을 유지한다.
+            if (moveInput.sqrMagnitude <= 0.01f) return;
+            worldDirection = _playerCamera.YawRotation * new Vector3(moveInput.x, 0f, moveInput.y);
+        }
+
+        // 공격 이동 거리는 유지하고 이번 프레임의 회전만 이동 담당에 요청한다.
+        _playerMove.RotateAttack(worldDirection, deltaTime);
     }
 
     private void UpdateGuard()

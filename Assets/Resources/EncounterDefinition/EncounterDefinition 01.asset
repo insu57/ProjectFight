@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: faa1c3f7b82a485bb1c0b7f52bf4d7cd, type: 3}
   m_Name: EncounterDefinition 01
   m_EditorClassIdentifier: Assembly-CSharp::EncounterDefinition
-  <MinStartRoomDistance>k__BackingField: 3
-  <MaxStartRoomDistance>k__BackingField: 3
+  <MinStartRoomDistance>k__BackingField: 5
+  <MaxStartRoomDistance>k__BackingField: 0
   <Groups>k__BackingField:
   - <Enemies>k__BackingField:
     - <Prefab>k__BackingField: {fileID: 2218769238166298213, guid: a057a8c98bf48114e98d4eb5d34eca9d, type: 3}
-      <Definition>k__BackingField: {fileID: 11400000, guid: f6d0da68762f0fd41a637801e1d223e6, type: 2}
+      <Definition>k__BackingField: {fileID: 11400000, guid: f4f70a9cf170138449b3f611a01ce8f5, type: 2}
       <Count>k__BackingField: 3
     <SpawnCondition>k__BackingField:
       <UseTime>k__BackingField: 0
@@ -28,12 +28,12 @@ MonoBehaviour:
       <CombineMode>k__BackingField: 0
   - <Enemies>k__BackingField:
     - <Prefab>k__BackingField: {fileID: 2249281327280941157, guid: e092858c4004b5c458d8785bcd5ae868, type: 3}
-      <Definition>k__BackingField: {fileID: 11400000, guid: f6d0da68762f0fd41a637801e1d223e6, type: 2}
+      <Definition>k__BackingField: {fileID: 11400000, guid: f4f70a9cf170138449b3f611a01ce8f5, type: 2}
       <Count>k__BackingField: 3
     <SpawnCondition>k__BackingField:
       <UseTime>k__BackingField: 1
       <RequiredSeconds>k__BackingField: 10
-      <UseEnemyCount>k__BackingField: 0
+      <UseEnemyCount>k__BackingField: 1
       <MaxAliveEnemies>k__BackingField: 0
-      <EnemyCountScope>k__BackingField: 1
-      <CombineMode>k__BackingField: 0
+      <EnemyCountScope>k__BackingField: 0
+      <CombineMode>k__BackingField: 1

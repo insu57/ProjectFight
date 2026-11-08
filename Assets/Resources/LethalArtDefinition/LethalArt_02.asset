@@ -17,7 +17,7 @@ MonoBehaviour:
   <Description>k__BackingField: 
   <Icon>k__BackingField: {fileID: 0}
   <EnergyCost>k__BackingField: 100
-  <Priority>k__BackingField: 0
+  <Priority>k__BackingField: 1
   <Attack>k__BackingField: {fileID: 11400000, guid: e574e453608dc024e9cb967ec3f4535f, type: 2}
   <ProximityDistance>k__BackingField: 2
   _playerHealthCondition:
@@ -32,5 +32,5 @@ MonoBehaviour:
   <EnemyStunRequirement>k__BackingField: 0
   <EnemyGuardBreakRequirement>k__BackingField: 0
   <PlayerSprintRequirement>k__BackingField: 0
-  <NearbyWallRequirement>k__BackingField: 1
+  <NearbyWallRequirement>k__BackingField: 0
   <WallProximityOrigin>k__BackingField: 0

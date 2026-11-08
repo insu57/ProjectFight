@@ -15,6 +15,24 @@ public class EnemyDefinition : ScriptableObject
     [field: SerializeField, Min(0)] public int MinMoneyReward { get; private set; }
     [field: SerializeField, Min(0)] public int MaxMoneyReward { get; private set; }
 
+    [field: Header("Item Drop")]
+    // 아이템 드랍 확률을 백분율로 설정하며, 0은 드랍하지 않고 100은 항상 드랍한다.
+    [field: SerializeField, Range(0f, 100f)] public float ItemDropChance { get; private set; }
+
+    [field: Header("Item Drop Type Weights")]
+    // 적별 드랍 타입의 상대 가중치이며, 0은 해당 타입을 선택에서 제외하는 설정이다.
+    [field: SerializeField, Min(0f)] public float DropEquipmentWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float DropConsumableWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float DropRelicWeight { get; private set; } = 1f;
+
+    [field: Header("Item Drop Rarity Weights")]
+    // 타입 가중치와 독립적으로 드랍 희귀도의 상대 가중치를 설정한다.
+    [field: SerializeField, Min(0f)] public float DropCommonWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float DropUncommonWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float DropRareWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float DropEpicWeight { get; private set; } = 1f;
+    [field: SerializeField, Min(0f)] public float DropLegendaryWeight { get; private set; } = 1f;
+
     [Header("Base Stats")]
     // 적 종류의 기본값이며 현재 체력 등 런타임 상태는 EnemyStat에서 관리한다.
     [field: SerializeField, Min(1f)] public float MaxHealth { get; private set; } = 100f;
@@ -39,6 +57,36 @@ public class EnemyDefinition : ScriptableObject
     [field: SerializeField, Min(0f)] public float GuardBreakDuration { get; private set; } = 1.5f;
     // 가드 브레이크 시간 동안 밀려나는 총 거리이다.
     [field: SerializeField, Min(0f)] public float GuardBreakMoveDistance { get; private set; } = 1f;
+
+    public float GetDropItemTypeWeight(ItemType itemType)
+    {
+        float weight = itemType switch
+        {
+            ItemType.Equipment => DropEquipmentWeight,
+            ItemType.Consumable => DropConsumableWeight,
+            ItemType.Relic => DropRelicWeight,
+            _ => 0f
+        };
+
+        // 상점 가중치와 동일하게 음수, NaN, Infinity는 선택에 사용하지 않는다.
+        return weight > 0f && !float.IsInfinity(weight) ? weight : 0f;
+    }
+
+    public float GetDropRarityWeight(ItemRarity rarity)
+    {
+        float weight = rarity switch
+        {
+            ItemRarity.Common => DropCommonWeight,
+            ItemRarity.Uncommon => DropUncommonWeight,
+            ItemRarity.Rare => DropRareWeight,
+            ItemRarity.Epic => DropEpicWeight,
+            ItemRarity.Legendary => DropLegendaryWeight,
+            _ => 0f
+        };
+
+        // 희귀도 가중치도 유효한 양수만 반환하여 이후 드랍 계산에 사용할 수 있게 한다.
+        return weight > 0f && !float.IsInfinity(weight) ? weight : 0f;
+    }
 
     public int GetMoneyReward()
     {

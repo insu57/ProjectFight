@@ -48,6 +48,8 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
         {
             SetGameplayActionsEnabled(false);
         }
+
+        RefreshCursorState();
     }
 
     private void OnDisable()
@@ -55,6 +57,19 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
         _sprintInputState = SprintInputState.Released;
         IsGuardRequested = false;
         _inputActions.Player.Disable();
+
+        // 플레이 종료나 씬 전환 후에는 이 컴포넌트가 설정한 커서 제한을 해제한다.
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus)
+        {
+            // 운영체제나 에디터가 변경한 커서 상태를 현재 입력 모드에 맞게 복구한다.
+            RefreshCursorState();
+        }
     }
 
     private void Update()
@@ -79,6 +94,7 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
 
         _isGameplayInputEnabled = isEnabled;
         SetGameplayActionsEnabled(isEnabled);
+        RefreshCursorState();
 
         if (isEnabled)
         {
@@ -91,6 +107,15 @@ public class PlayerControl : MonoBehaviour, InputSystem_Actions.IPlayerActions
         IsLookInputDelta = false;
         _sprintInputState = SprintInputState.Released;
         IsGuardRequested = false;
+    }
+
+    private void RefreshCursorState()
+    {
+        if (!isActiveAndEnabled || !Application.isFocused) return;
+
+        // 입력 모드와 무관하게 창 내부 제한을 유지하고 UI 입력 중에만 포인터를 표시한다.
+        Cursor.lockState = CursorLockMode.Confined;
+        Cursor.visible = !_isGameplayInputEnabled;
     }
 
     private void SetGameplayActionsEnabled(bool isEnabled)

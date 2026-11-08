@@ -15,6 +15,10 @@ public class StageManager : MonoBehaviour
     [field: SerializeField] private StageDefinition _stageDefinition;
     //현재 스테이지 진행 정보...
 
+    [Header("전투방 잠금 SFX")]
+    [SerializeField, Tooltip("전투 시작으로 방이 잠길 때 한 번 재생합니다.")] private SoundDefinition _roomLockSound;
+    [SerializeField, Tooltip("전투 완료로 방의 잠금이 해제될 때 한 번 재생합니다.")] private SoundDefinition _roomUnlockSound;
+
     [Header("보상 상자")]
     // Inspector의 사전 지정 상자와 생성된 보상방의 상자를 같은 목록에서 관리한다.
     [SerializeField] private List<RewardChest> _rewardChests = new();
@@ -162,7 +166,11 @@ public class StageManager : MonoBehaviour
         for (int i = 0; i < _pendingRoomClearNotifications.Count; i++)
         {
             Room room = _pendingRoomClearNotifications[i];
-            if (room && _roomEncounters.ContainsKey(room) && _playerManager) _playerManager.NotifyRoomCleared();
+            if (!room || !_roomEncounters.ContainsKey(room)) continue;
+
+            // 최초 완료 알림에서만 재생하여 매 프레임 갱신과 스테이지 정리 시에는 소리가 겹치지 않는다.
+            PlayRoomLockSound(false);
+            if (_playerManager) _playerManager.NotifyRoomCleared();
         }
         _pendingRoomClearNotifications.Clear();
     }
@@ -846,9 +854,20 @@ public class StageManager : MonoBehaviour
         _roomEncounters.Add(room, encounter);
         // 첫 스폰이나 다음 그룹의 대기 조건을 처리하기 전에 상호작용부터 차단한다.
         room.SetDoorOpeningBlocked(true);
+        PlayRoomLockSound(true);
         // 첫 그룹의 조건을 즉시 확인하되, 이후 대기와 재시도는 Update에서 이어간다.
         encounter.Tick(0f);
         room.SetDoorOpeningBlocked(!encounter.IsComplete);
+    }
+
+    private void PlayRoomLockSound(bool isLocked)
+    {
+        SoundDefinition sound = isLocked ? _roomLockSound : _roomUnlockSound;
+        if (!sound) return;
+
+        // 문 개수나 플레이어와의 거리에 관계없이 방 상태 전환을 2D SFX 한 번으로 알린다.
+        AudioManager audioManager = AudioManager.Instance;
+        if (audioManager) audioManager.PlaySfx2D(sound);
     }
 
     private static bool HasSpawnableEnemies(EncounterDefinition encounter)

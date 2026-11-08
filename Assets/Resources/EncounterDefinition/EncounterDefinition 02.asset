@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EncounterDefinition 02
   m_EditorClassIdentifier: Assembly-CSharp::EncounterDefinition
   <MinStartRoomDistance>k__BackingField: 0
-  <MaxStartRoomDistance>k__BackingField: 0
+  <MaxStartRoomDistance>k__BackingField: 3
   <Groups>k__BackingField:
   - <Enemies>k__BackingField:
     - <Prefab>k__BackingField: {fileID: 2218769238166298213, guid: a057a8c98bf48114e98d4eb5d34eca9d, type: 3}

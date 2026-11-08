@@ -243,7 +243,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98cda8bf454544c42959ad404e71abd8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStat
-  _progressionDefinition: {fileID: 0}
+  _progressionDefinition: {fileID: 11400000, guid: 453385d85b33a0445be659984ab66820, type: 2}
   _level: 1
   _currentExp: 0
   _targetExp: 100

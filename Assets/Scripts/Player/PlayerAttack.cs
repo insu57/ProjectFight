@@ -140,6 +140,17 @@ public sealed class PlayerAttack : MonoBehaviour
         return true;
     }
 
+    public bool CanRotateDuringAttack(bool hasNormalizedTime, float normalizedTime)
+    {
+        if (!IsAttacking) return false;
+
+        AttackDefinition attackDefinition = _currentNode != null ? _currentNode.AttackDefinition : _standaloneAttack;
+        if (!attackDefinition) return false;
+
+        // 상태 진입 전·준비·회수 구간에 회전하고, 타격 판정의 시작 이상·종료 미만 구간만 고정한다.
+        return !hasNormalizedTime || normalizedTime < attackDefinition.HitStartNormalizedTime || normalizedTime >= attackDefinition.HitEndNormalizedTime;
+    }
+
     public bool TryGetAttackMoveDisplacement(float normalizedTime, out Vector2 localDisplacement)
     {
         localDisplacement = Vector2.zero;

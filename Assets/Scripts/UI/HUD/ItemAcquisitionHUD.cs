@@ -7,6 +7,18 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class ItemAcquisitionHUD : MonoBehaviour
 {
+    private readonly struct ItemNotification
+    {
+        public readonly ItemDefinition Item;
+        public readonly bool IsStackFull;
+
+        public ItemNotification(ItemDefinition item, bool isStackFull)
+        {
+            Item = item;
+            IsStackFull = isStackFull;
+        }
+    }
+
     [Header("알림 표시")]
     [SerializeField] private CanvasGroup _notificationPanel;
     [SerializeField, Min(0.01f)] private float _displayDuration = 1.5f;
@@ -18,9 +30,12 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
     [SerializeField] private TMP_Text _itemTypeText;
 
     // 짧은 연속 획득에는 준비한 큐를 재사용하고 같은 아이템도 획득 순서대로 각각 표시한다.
-    private readonly Queue<ItemDefinition> _pendingItems = new(4);
+    private readonly Queue<ItemNotification> _pendingItems = new(4);
     private Action<ItemDefinition> _itemAcquiredHandler;
+    private Action<ItemDefinition> _pickupBlockedHandler;
     private PlayerManager _playerManager;
+    private ItemNotification _currentNotification;
+    private Color _defaultItemTypeColor;
     private float _remainingDisplayTime;
     private bool _isShowing;
 
@@ -28,11 +43,13 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
     {
         // 기존 HUD와 동일하게 플레이어 참조를 한 번만 찾고 Manager의 획득 이벤트를 구독한다.
         _playerManager = FindFirstObjectByType<PlayerManager>();
+        if (_itemTypeText) _defaultItemTypeColor = _itemTypeText.color;
     }
 
     private void OnEnable()
     {
         _itemAcquiredHandler ??= HandleItemAcquired;
+        _pickupBlockedHandler ??= HandlePickupBlocked;
         ClearNotifications();
 
         if (!_notificationPanel)
@@ -44,6 +61,7 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
         if (_playerManager)
         {
             _playerManager.ItemAcquired += _itemAcquiredHandler;
+            _playerManager.ConsumablePickupBlocked += _pickupBlockedHandler;
         }
     }
 
@@ -52,6 +70,7 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
         if (_playerManager)
         {
             _playerManager.ItemAcquired -= _itemAcquiredHandler;
+            _playerManager.ConsumablePickupBlocked -= _pickupBlockedHandler;
         }
 
         ClearNotifications();
@@ -59,15 +78,32 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
 
     private void HandleItemAcquired(ItemDefinition item)
     {
+        EnqueueNotification(item, false);
+    }
+
+    private void HandlePickupBlocked(ItemDefinition item)
+    {
+        EnqueueNotification(item, true);
+    }
+
+    private void EnqueueNotification(ItemDefinition item, bool isStackFull)
+    {
         if (!isActiveAndEnabled || !item) return;
 
         if (_isShowing)
         {
-            _pendingItems.Enqueue(item);
+            // 같은 실패를 반복해도 알림을 계속 쌓지 않고 현재 안내 시간만 갱신한다.
+            if (isStackFull && _currentNotification.IsStackFull && _currentNotification.Item == item)
+            {
+                _remainingDisplayTime = Mathf.Max(0.01f, _displayDuration);
+                return;
+            }
+
+            _pendingItems.Enqueue(new ItemNotification(item, isStackFull));
             return;
         }
 
-        ShowItem(item);
+        ShowItem(new ItemNotification(item, isStackFull));
     }
 
     private void Update()
@@ -80,11 +116,11 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
 
         while (_pendingItems.Count > 0)
         {
-            ItemDefinition item = _pendingItems.Dequeue();
+            ItemNotification notification = _pendingItems.Dequeue();
 
-            if (item)
+            if (notification.Item)
             {
-                ShowItem(item);
+                ShowItem(notification);
                 return;
             }
         }
@@ -92,8 +128,10 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
         HideNotification();
     }
 
-    private void ShowItem(ItemDefinition item)
+    private void ShowItem(ItemNotification notification)
     {
+        ItemDefinition item = notification.Item;
+        _currentNotification = notification;
         if (_icon)
         {
             _icon.sprite = item.ItemIcon;
@@ -114,7 +152,9 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
 
         if (_itemTypeText)
         {
-            _itemTypeText.SetText(ItemDisplayUtility.GetItemTypeText(item.ItemType));
+            // 기존 패널의 아이콘과 아이템명은 유지하고 실패 이유를 구분하여 표시한다.
+            _itemTypeText.SetText(notification.IsStackFull ? "최대 보유량으로 획득 불가" : ItemDisplayUtility.GetItemTypeText(item.ItemType));
+            _itemTypeText.color = notification.IsStackFull ? new Color32(255, 128, 128, 255) : _defaultItemTypeColor;
         }
 
         _remainingDisplayTime = Mathf.Max(0.01f, _displayDuration);
@@ -135,6 +175,7 @@ public sealed class ItemAcquisitionHUD : MonoBehaviour
     private void HideNotification()
     {
         _isShowing = false;
+        _currentNotification = default;
         _remainingDisplayTime = 0f;
 
         if (_notificationPanel)

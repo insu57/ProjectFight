@@ -16,7 +16,7 @@ MonoBehaviour:
   <LethalArtName>k__BackingField: "\uBCBD\uCFF5"
   <Description>k__BackingField: "\uBCBD\uCFF5"
   <Icon>k__BackingField: {fileID: 0}
-  <EnergyCost>k__BackingField: 100
+  <EnergyCost>k__BackingField: 50
   <Priority>k__BackingField: 0
   <Attack>k__BackingField: {fileID: 11400000, guid: 200425bb686ec7547bd733fecb058c56, type: 2}
   <ProximityDistance>k__BackingField: 2

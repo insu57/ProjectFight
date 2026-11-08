@@ -711,6 +711,10 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         _circleBlockedTime = 0f;
         _movementHitPauseRemaining = 0f;
 
+        // 실제 사망에서만 한 번 요청하며 풀 반환이나 방 정리에서는 드랍하지 않는다.
+        ItemDropManager itemDropManager = ItemDropManager.Instance;
+        if (itemDropManager) itemDropManager.TryDropItem(_enemyDefinition, transform.position);
+
         // 사망 중복 방지 이후에 지급하므로 추가 피격이나 사망 알림으로 보상이 중복되지 않는다.
         if (rewardRecipient)
         {

@@ -26,6 +26,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 74dc32a00021f90458bfa6f10734011a, type: 2}
   <BattleEncounters>k__BackingField:
   - {fileID: 11400000, guid: 5a9839b4f8b41a7489e464a295933251, type: 2}
+  - {fileID: 11400000, guid: 8cbd9b8d2368b944099b348d427244ca, type: 2}
+  - {fileID: 11400000, guid: a2759db6eed39df42810d4a1a0771c6e, type: 2}
   <EnemyPrewarmCountPerPrefab>k__BackingField: 20
   <BossEncounter>k__BackingField: {fileID: 11400000, guid: 5a9839b4f8b41a7489e464a295933251, type: 2}
   <RewardChestCommonWeight>k__BackingField: 50

@@ -14,6 +14,9 @@ public class PlayerMove : MonoBehaviour
     [SerializeField, Min(0f)] private float _moveSpeed = 5f;
     [SerializeField, Min(0f)] private float _rotationSpeed = 720f;
 
+    [Header("Attack")]
+    [SerializeField, Min(0f)] private float _attackRotationSpeed = 720f;
+
     [Header("Sprint")]
     [SerializeField, Min(0f)] private float _sprintSpeed = 8f;
 
@@ -84,6 +87,16 @@ public class PlayerMove : MonoBehaviour
 
         Quaternion targetRotation = targetDirection.sqrMagnitude > 0f ? Quaternion.LookRotation(targetDirection) : transform.rotation;
         MoveInternal(moveInput, targetRotation, FacingMode.ReferenceDirection, _moveSpeed * _moveSpeedMultiplier, deltaTime);
+    }
+
+    public void RotateAttack(Vector3 worldDirection, float deltaTime)
+    {
+        // 공격 중에는 수평 방향만 보정하며 이동·입력·락온 정보는 Manager가 전달한다.
+        worldDirection.y = 0f;
+        if (worldDirection.sqrMagnitude <= 0f || deltaTime <= 0f) return;
+
+        Quaternion targetRotation = Quaternion.LookRotation(worldDirection);
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, _attackRotationSpeed * deltaTime);
     }
 
     public void MoveAttack(Vector2 localDisplacement, float deltaTime)
