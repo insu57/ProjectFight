@@ -101,7 +101,7 @@ public class Door : MonoBehaviour
     public bool TryOpen()
     {
         if (!CanOpen) return false;
-        Debug.Log("TryOpen");
+        //Debug.Log("TryOpen");
         SetOpenTarget(true);
         RefreshLockIndicator();
         return true;

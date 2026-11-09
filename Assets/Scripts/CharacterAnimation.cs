@@ -4,6 +4,7 @@ using UnityEngine;
 public abstract class CharacterAnimation : MonoBehaviour
 {
     private const string AttackTagName = "Attack";
+    private const double DeathStateWaitDuration = 1d;
     private static readonly int _attackSpeedHash = Animator.StringToHash("AttackSpeed");
     private static readonly int _deadHash = Animator.StringToHash("Base Layer.Dead");
 
@@ -21,6 +22,9 @@ public abstract class CharacterAnimation : MonoBehaviour
     private double _hitStopEndTime;
     private float _speedBeforeHitStop;
     private bool _isDeathPlaying;
+    private bool _hasEnteredDeathState;
+    private int _deathRequestFrame;
+    private double _deathStateWaitEndTime;
     private AnimatorCullingMode _cullingBeforeDeath;
 
     public bool IsHitStopped { get; private set; }
@@ -97,33 +101,63 @@ public abstract class CharacterAnimation : MonoBehaviour
     {
         ClearHitStop();
         ResetAttackState();
-        if (!isActiveAndEnabled || !CharacterAnimator.HasState(0, _deadHash)) return false;
+        if (!isActiveAndEnabled || !CharacterAnimator.isActiveAndEnabled || !CharacterAnimator.HasState(0, _deadHash)) return false;
 
         // 화면 밖에서도 사망 모션이 진행되어 적이 풀로 반환될 수 있어야 한다.
         if (!_isDeathPlaying) _cullingBeforeDeath = CharacterAnimator.cullingMode;
         _isDeathPlaying = true;
+        _hasEnteredDeathState = false;
+        _deathRequestFrame = Time.frameCount;
+        _deathStateWaitEndTime = Time.timeAsDouble + DeathStateWaitDuration;
         CharacterAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         CharacterAnimator.Play(_deadHash, 0, 0f);
-        CharacterAnimator.Update(0f);
 
-        // 상태만 있고 Motion이 비어 있는 설정은 재생 실패로 처리한다.
-        if (CharacterAnimator.GetCurrentAnimatorClipInfoCount(0) > 0) return true;
-        ResetDeathState();
-        return false;
+        // 전환 중에는 클립 정보가 일시적으로 비므로 실제 Animator 갱신 이후에 진입을 확인한다.
+        return true;
     }
 
     public bool IsDeathFinished()
     {
-        if (!_isDeathPlaying || !isActiveAndEnabled) return true;
+        if (!_isDeathPlaying || !isActiveAndEnabled || !CharacterAnimator.isActiveAndEnabled) return true;
+        // 같은 프레임의 이전 상태나 풀 재사용 전 사망 진행도를 완료로 오인하지 않는다.
+        if (Time.frameCount <= _deathRequestFrame) return false;
 
         AnimatorStateInfo state = CharacterAnimator.GetCurrentAnimatorStateInfo(0);
-        return state.fullPathHash != _deadHash || state.normalizedTime >= 1f;
+        bool isInTransition = CharacterAnimator.IsInTransition(0);
+        if (!isInTransition && state.fullPathHash == _deadHash && CharacterAnimator.GetCurrentAnimatorClipInfoCount(0) > 0)
+        {
+            _hasEnteredDeathState = true;
+            _deathStateWaitEndTime = Time.timeAsDouble + DeathStateWaitDuration;
+            return state.normalizedTime >= 1f;
+        }
+
+        // Dead로 전환 중이라면 현재 상태 대신 다음 상태의 클립을 확인하고 전환 완료를 기다린다.
+        if (isInTransition && CharacterAnimator.GetNextAnimatorStateInfo(0).fullPathHash == _deadHash && CharacterAnimator.GetNextAnimatorClipInfoCount(0) > 0)
+        {
+            _deathStateWaitEndTime = Time.timeAsDouble + DeathStateWaitDuration;
+            return false;
+        }
+
+        // 진입 이후 다른 모션이 덮어써도 즉시 제거하지 않고 사망 모션을 다시 요청한다.
+        if (_hasEnteredDeathState && state.fullPathHash != _deadHash)
+        {
+            _hasEnteredDeathState = false;
+            CharacterAnimator.Play(_deadHash, 0, 0f);
+        }
+
+        // 일시적인 조회 실패는 기다리되, Motion 누락 등으로 적이 영구히 남지 않게 한다. 일시정지 중에는 대기 시간도 멈춘다.
+        if (Time.timeAsDouble < _deathStateWaitEndTime) return false;
+        Debug.LogWarning("사망 애니메이션의 Dead 상태 또는 클립을 확인하지 못해 사망 연출을 종료합니다.", this);
+        return true;
     }
 
     private void ResetDeathState()
     {
         if (_isDeathPlaying) CharacterAnimator.cullingMode = _cullingBeforeDeath;
         _isDeathPlaying = false;
+        _hasEnteredDeathState = false;
+        _deathRequestFrame = -1;
+        _deathStateWaitEndTime = 0d;
     }
 
     public bool TryPlayAttack(AttackDefinition attackDefinition, float attackSpeedMultiplier = 1f, float transitionDurationOverride = -1f)

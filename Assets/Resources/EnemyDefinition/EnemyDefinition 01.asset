@@ -21,7 +21,7 @@ MonoBehaviour:
   <ExperienceReward>k__BackingField: 50
   <MinMoneyReward>k__BackingField: 50
   <MaxMoneyReward>k__BackingField: 100
-  <ItemDropChance>k__BackingField: 100
+  <ItemDropChance>k__BackingField: 10
   <DropEquipmentWeight>k__BackingField: 5
   <DropConsumableWeight>k__BackingField: 90
   <DropRelicWeight>k__BackingField: 5
