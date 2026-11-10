@@ -329,6 +329,12 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
             if (damageInfo.Damage <= 0f && damageInfo.GuardPoiseDamage <= 0f) return;
 
             damageInfo.ApplyHitStop(this);
+            // 가드 브레이크 여부와 관계없이 유효하게 막은 타격에도 같은 피격음을 재생한다.
+            if (damageInfo.HitSound)
+            {
+                AudioManager audioManager = AudioManager.Instance;
+                if (audioManager) audioManager.PlaySfx(damageInfo.HitSound, transform.position);
+            }
 
             // 체력과 일반 강인도는 유지하고 가드 강인도만 감소시킨다.
             _playerStat.TakeGuardPoiseDamage(damageInfo.GuardPoiseDamage);
@@ -400,6 +406,7 @@ public class PlayerManager : MonoBehaviour, IHitStopReceiver, IAttackHitReceiver
         if (_playerState.ActionState == PlayerActionState.Dead) return;
 
         // 체력 변경 알림과 피격 경로가 겹쳐도 사망은 한 번만 처리한다.
+        _playerMove.SetControllerEnabled(false);
         _playerState.SetActionState(PlayerActionState.Dead);
         _playerState.SetLocomotionState(PlayerLocomotionState.Idle);
         _poiseReaction.Reset();

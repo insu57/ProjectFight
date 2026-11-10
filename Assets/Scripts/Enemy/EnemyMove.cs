@@ -43,11 +43,20 @@ public sealed class EnemyMove : MonoBehaviour
 
     public void ResetForSpawn()
     {
+        // 사망 시 꺼 둔 이동용 충돌을 풀 재사용 시 복구한다.
+        SetControllerEnabled(true);
+
         // 이전 위치에서 누적된 낙하 속도를 제거한다.
         _verticalVelocity = 0f;
         MoveAmount = 0f;
         HorizontalMoveDistance = 0f;
         SetNavigationRoom(null);
+    }
+
+    public void SetControllerEnabled(bool isEnabled)
+    {
+        // 사망 연출은 유지하면서 이동용 충돌만 Manager의 요청에 따라 제거한다.
+        _characterController.enabled = isEnabled;
     }
 
     public void SetNavigationRoom(Room room)

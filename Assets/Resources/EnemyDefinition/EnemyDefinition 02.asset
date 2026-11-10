@@ -19,8 +19,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f4e8d487e4f9d0a40b552465e17a7144, type: 2}
   - {fileID: 11400000, guid: a716367e797767245b685282c077b76a, type: 2}
   <ExperienceReward>k__BackingField: 80
-  <MinMoneyReward>k__BackingField: 80
-  <MaxMoneyReward>k__BackingField: 120
+  <MinMoneyReward>k__BackingField: 60
+  <MaxMoneyReward>k__BackingField: 100
   <ItemDropChance>k__BackingField: 15
   <DropEquipmentWeight>k__BackingField: 5
   <DropConsumableWeight>k__BackingField: 90

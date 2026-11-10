@@ -394,6 +394,13 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
             if (damageInfo.Damage <= 0f && damageInfo.GuardPoiseDamage <= 0f) return;
 
             damageInfo.ApplyHitStop(this);
+            // 가드 브레이크 여부와 관계없이 유효하게 막은 타격에도 같은 피격음을 재생한다.
+            if (damageInfo.HitSound)
+            {
+                AudioManager audioManager = AudioManager.Instance;
+                if (audioManager) audioManager.PlaySfx(damageInfo.HitSound, transform.position);
+            }
+
             _enemyStat.TakeGuardPoiseDamage(damageInfo.GuardPoiseDamage);
 
             if (damageInfo.GuardPoiseDamage > 0f && _enemyStat.CurrentGuardPoise <= 0f)
@@ -692,6 +699,7 @@ public sealed class EnemyManager : PoolableObject, IHitStopReceiver
         int experienceReward = _enemyDefinition ? _enemyDefinition.ExperienceReward : 0;
         int moneyReward = rewardRecipient && _enemyDefinition ? _enemyDefinition.GetMoneyReward() : 0;
 
+        _enemyMove.SetControllerEnabled(false);
         _enemyState.SetActionState(EnemyActionState.Dead);
 
         _enemyState.SetBehaviorState(EnemyBehaviorState.Idle);

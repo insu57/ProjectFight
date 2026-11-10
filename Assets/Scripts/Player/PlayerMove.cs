@@ -46,6 +46,12 @@ public class PlayerMove : MonoBehaviour
         TryGetComponent(out _characterController);
     }
 
+    public void SetControllerEnabled(bool isEnabled)
+    {
+        // 사망 시 이동용 충돌을 제거할 수 있도록 Manager가 활성 상태를 제어한다.
+        _characterController.enabled = isEnabled;
+    }
+
     public void SetSpeedMultiplier(float moveSpeedMultiplier)
     {
         _moveSpeedMultiplier = Mathf.Max(0f, moveSpeedMultiplier);

@@ -249,7 +249,7 @@ PrefabInstance:
     - target: {fileID: 1224717894380502781, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_NavMeshData
       value: 
-      objectReference: {fileID: 23800000, guid: 184e0f90b3de92c47904573fc631a867, type: 2}
+      objectReference: {fileID: 23800000, guid: 5e77d9c129f82f74aa65a9540b9c83a6, type: 2}
     - target: {fileID: 2273264256385536831, guid: f1deab079781c274db9b321569f95c73, type: 3}
       propertyPath: m_VersionIndex
       value: 3946
@@ -410,6 +410,22 @@ PrefabInstance:
     - target: {fileID: 218204204971923673, guid: 63ce8536aa8e91746bdc3e3147afa98b, type: 3}
       propertyPath: m_Name
       value: SM_FloorProps_02
+      objectReference: {fileID: 0}
+    - target: {fileID: 2410581238213787352, guid: 63ce8536aa8e91746bdc3e3147afa98b, type: 3}
+      propertyPath: m_Size.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2410581238213787352, guid: 63ce8536aa8e91746bdc3e3147afa98b, type: 3}
+      propertyPath: m_Size.y
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2410581238213787352, guid: 63ce8536aa8e91746bdc3e3147afa98b, type: 3}
+      propertyPath: m_Size.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2410581238213787352, guid: 63ce8536aa8e91746bdc3e3147afa98b, type: 3}
+      propertyPath: m_Center.y
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4597795316109701144, guid: 63ce8536aa8e91746bdc3e3147afa98b, type: 3}
       propertyPath: m_LocalPosition.x
